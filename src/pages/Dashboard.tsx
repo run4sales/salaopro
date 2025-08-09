@@ -107,6 +107,9 @@ const Dashboard = () => {
             <Button variant="outline" asChild>
               <a href="/reports">Relatórios</a>
             </Button>
+            <Button variant="outline" asChild>
+              <a href="/settings">Configurações</a>
+            </Button>
             <Button variant="outline" onClick={signOut}>
               Sair
             </Button>
