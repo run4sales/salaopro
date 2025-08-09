@@ -1,5 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, Users, DollarSign, Target, MessageCircle, BarChart3 } from 'lucide-react';
@@ -96,19 +96,19 @@ const Dashboard = () => {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" asChild>
-              <a href="/clients">Clientes</a>
+              <Link to="/clients">Clientes</Link>
             </Button>
             <Button variant="outline" asChild>
-              <a href="/agenda">Agenda</a>
+              <Link to="/agenda">Agenda</Link>
             </Button>
             <Button variant="outline" asChild>
-              <a href="/services">Serviços</a>
+              <Link to="/services">Serviços</Link>
             </Button>
             <Button variant="outline" asChild>
-              <a href="/reports">Relatórios</a>
+              <Link to="/reports">Relatórios</Link>
             </Button>
             <Button variant="outline" asChild>
-              <a href="/settings">Configurações</a>
+              <Link to="/settings">Configurações</Link>
             </Button>
             <Button variant="outline" onClick={signOut}>
               Sair
@@ -186,9 +186,9 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <Button className="w-full" asChild>
-                <a href="/clients?filter=inactive">
+                <Link to="/clients?filter=inactive">
                   Ver Clientes Inativos
-                </a>
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -205,9 +205,9 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <Button variant="outline" className="w-full" asChild>
-                <a href="/reports">
+                <Link to="/reports">
                   Ver Relatórios
-                </a>
+                </Link>
               </Button>
             </CardContent>
           </Card>
