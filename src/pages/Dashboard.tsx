@@ -109,6 +109,9 @@ const Dashboard = () => {
               <Link to="/services">Serviços</Link>
             </Button>
             <Button variant="outline" asChild>
+              <Link to="/sales">Vendas</Link>
+            </Button>
+            <Button variant="outline" asChild>
               <Link to="/reports">Relatórios</Link>
             </Button>
             <Button variant="outline" asChild>
