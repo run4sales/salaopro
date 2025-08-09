@@ -74,8 +74,11 @@ export type Database = {
       }
       clients: {
         Row: {
+          birth_date: string | null
           created_at: string
+          email: string | null
           establishment_id: string
+          gender: string | null
           id: string
           last_service_date: string | null
           name: string
@@ -86,8 +89,11 @@ export type Database = {
           visit_count: number | null
         }
         Insert: {
+          birth_date?: string | null
           created_at?: string
+          email?: string | null
           establishment_id: string
+          gender?: string | null
           id?: string
           last_service_date?: string | null
           name: string
@@ -98,8 +104,11 @@ export type Database = {
           visit_count?: number | null
         }
         Update: {
+          birth_date?: string | null
           created_at?: string
+          email?: string | null
           establishment_id?: string
+          gender?: string | null
           id?: string
           last_service_date?: string | null
           name?: string
@@ -309,6 +318,38 @@ export type Database = {
             foreignKeyName: "services_establishment_id_fkey"
             columns: ["establishment_id"]
             isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          created_at: string
+          establishment_id: string
+          id: string
+          inactive_days_threshold: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          establishment_id: string
+          id?: string
+          inactive_days_threshold?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          inactive_days_threshold?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settings_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
