@@ -14,16 +14,339 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      appointments: {
+        Row: {
+          appointment_date: string
+          client_id: string
+          created_at: string
+          establishment_id: string
+          id: string
+          notes: string | null
+          service_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          appointment_date: string
+          client_id: string
+          created_at?: string
+          establishment_id: string
+          id?: string
+          notes?: string | null
+          service_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          appointment_date?: string
+          client_id?: string
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          notes?: string | null
+          service_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          created_at: string
+          establishment_id: string
+          id: string
+          last_service_date: string | null
+          name: string
+          notes: string | null
+          phone: string
+          total_spent: number | null
+          updated_at: string
+          visit_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          establishment_id: string
+          id?: string
+          last_service_date?: string | null
+          name: string
+          notes?: string | null
+          phone: string
+          total_spent?: number | null
+          updated_at?: string
+          visit_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          last_service_date?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string
+          total_spent?: number | null
+          updated_at?: string
+          visit_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goals: {
+        Row: {
+          created_at: string
+          current_amount: number | null
+          establishment_id: string
+          id: string
+          month: number
+          target_amount: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          current_amount?: number | null
+          establishment_id: string
+          id?: string
+          month: number
+          target_amount: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          current_amount?: number | null
+          establishment_id?: string
+          id?: string
+          month?: number
+          target_amount?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          business_name: string
+          city: string | null
+          created_at: string
+          email: string
+          id: string
+          owner_name: string
+          phone: string
+          plan: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_name: string
+          city?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          owner_name: string
+          phone: string
+          plan?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_name?: string
+          city?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          owner_name?: string
+          phone?: string
+          plan?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sales: {
+        Row: {
+          amount: number
+          appointment_id: string | null
+          client_id: string
+          created_at: string
+          establishment_id: string
+          id: string
+          notes: string | null
+          payment_method: string | null
+          sale_date: string
+          service_id: string
+        }
+        Insert: {
+          amount: number
+          appointment_id?: string | null
+          client_id: string
+          created_at?: string
+          establishment_id: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          sale_date?: string
+          service_id: string
+        }
+        Update: {
+          amount?: number
+          appointment_id?: string | null
+          client_id?: string
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          sale_date?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          establishment_id: string
+          id: string
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          description?: string | null
+          duration_minutes: number
+          establishment_id: string
+          id?: string
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          establishment_id?: string
+          id?: string
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "establishment" | "super_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +473,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "establishment", "super_admin"],
+    },
   },
 } as const
