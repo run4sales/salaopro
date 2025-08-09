@@ -29,8 +29,12 @@ const LandingPage = () => {
             <a href="#planos" className="text-sm font-medium hover:text-primary transition-colors">
               Planos
             </a>
-            <Button variant="outline" size="sm">Entrar</Button>
-            <Button variant="hero" size="sm">Teste Grátis</Button>
+            <Button variant="outline" size="sm" asChild>
+              <a href="/auth">Entrar</a>
+            </Button>
+            <Button variant="hero" size="sm" asChild>
+              <a href="/auth">Teste Grátis</a>
+            </Button>
           </nav>
         </div>
       </header>
@@ -55,8 +59,8 @@ const LandingPage = () => {
             reativar clientes, aumentar a frequência de visitas e bater suas metas mensais.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button variant="hero" size="lg" className="text-lg px-8 py-3">
-              Começar Teste Grátis
+            <Button variant="hero" size="lg" className="text-lg px-8 py-3" asChild>
+              <a href="/auth">Começar Teste Grátis</a>
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8 py-3">
               Ver Demonstração
