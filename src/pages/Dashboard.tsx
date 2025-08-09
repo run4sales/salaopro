@@ -7,9 +7,13 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 const Dashboard = () => {
+  console.log('Dashboard component rendering...');
+  
   const { user, profile, signOut } = useAuth();
+  console.log('useAuth result:', { user: !!user, profile: !!profile });
 
   if (!user) {
+    console.log('No user found, redirecting to auth');
     return <Navigate to="/auth" replace />;
   }
 
