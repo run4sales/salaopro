@@ -1,6 +1,6 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -53,17 +53,30 @@ const Clients = () => {
     queryFn: async () => {
       if (!profile?.id) return null;
       
+      console.log('Fetching settings for establishment:', profile.id);
+      
       const { data, error } = await supabase
         .from('settings')
         .select('*')
         .eq('establishment_id', profile.id)
         .single();
       
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error && error.code !== 'PGRST116') {
+        console.error('Settings error:', error);
+        throw error;
+      }
+      console.log('Settings data:', data);
       return data;
     },
     enabled: !!profile?.id,
   });
+
+  // Update inactiveDaysConfig when settings are loaded
+  useEffect(() => {
+    if (settings?.inactive_days_threshold) {
+      setInactiveDaysConfig(settings.inactive_days_threshold);
+    }
+  }, [settings]);
 
   // Fetch clients
   const { data: allClients, isLoading } = useQuery({
@@ -71,13 +84,19 @@ const Clients = () => {
     queryFn: async () => {
       if (!profile?.id) return [];
 
+      console.log('Fetching clients for establishment:', profile.id);
+
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('establishment_id', profile.id)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Clients fetch error:', error);
+        throw error;
+      }
+      console.log('Clients data:', data);
       return data;
     },
     enabled: !!profile?.id,
@@ -108,22 +127,33 @@ const Clients = () => {
   // Add client mutation
   const addClientMutation = useMutation({
     mutationFn: async (clientData: typeof newClient) => {
+      console.log('Adding client with data:', clientData);
+      console.log('Profile ID:', profile?.id);
+      
+      const insertData = {
+        name: clientData.name,
+        phone: clientData.phone,
+        email: clientData.email || null,
+        gender: clientData.gender || null,
+        birth_date: clientData.birth_date?.toISOString().split('T')[0] || null,
+        last_service_date: clientData.last_service_date?.toISOString() || null,
+        notes: clientData.notes || null,
+        establishment_id: profile?.id,
+      };
+      
+      console.log('Insert data:', insertData);
+      
       const { data, error } = await supabase
         .from('clients')
-        .insert({
-          name: clientData.name,
-          phone: clientData.phone,
-          email: clientData.email || null,
-          gender: clientData.gender || null,
-          birth_date: clientData.birth_date?.toISOString().split('T')[0] || null,
-          last_service_date: clientData.last_service_date?.toISOString() || null,
-          notes: clientData.notes || null,
-          establishment_id: profile?.id,
-        })
+        .insert(insertData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Insert error:', error);
+        throw error;
+      }
+      console.log('Client added successfully:', data);
       return data;
     },
     onSuccess: () => {
@@ -331,7 +361,7 @@ const Clients = () => {
         ) : !filteredClients || filteredClients.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mb-4">
                 {searchTerm 
                   ? 'Nenhum cliente encontrado com os termos de busca.'
                   : filterType === 'inactive' 
@@ -339,6 +369,12 @@ const Clients = () => {
                     : 'Nenhum cliente cadastrado ainda.'
                 }
               </p>
+              {!searchTerm && filterType !== 'inactive' && (
+                <Button onClick={() => setIsAddDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Cadastrar Primeiro Cliente
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
