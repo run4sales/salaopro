@@ -12,6 +12,7 @@ import Services from "./pages/Services";
 import Sales from "./pages/Sales";
 import Agenda from "./pages/Agenda";
 import Reports from "./pages/Reports";
+import Metrics from "./pages/Metrics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import AppLayout from "./components/AppLayout";
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="/sales" element={<Sales />} />
               <Route path="/agenda" element={<Agenda />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/metrics" element={<Metrics />} />
               <Route path="/settings" element={<Settings />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

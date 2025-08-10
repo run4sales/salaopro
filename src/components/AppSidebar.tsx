@@ -21,6 +21,7 @@ const items = [
   { title: "Clientes", url: "/clients", icon: Users },
   { title: "Serviços", url: "/services", icon: Scissors },
   { title: "Vendas", url: "/sales", icon: DollarSign },
+  { title: "Métricas", url: "/metrics", icon: BarChart3 },
   { title: "Relatórios", url: "/reports", icon: BarChart3 },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
