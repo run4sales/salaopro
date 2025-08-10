@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 const Dashboard = () => {
   console.log('Dashboard component rendering...');
   
-  const { user, profile, signOut } = useAuth();
+  const { user, profile } = useAuth();
   console.log('useAuth result:', { user: !!user, profile: !!profile });
 
   if (!user) {
@@ -97,29 +97,6 @@ const Dashboard = () => {
             <p className="text-muted-foreground">
               Bem-vindo, {profile?.business_name}
             </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link to="/clients">Clientes</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/agenda">Agenda</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/services">Serviços</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/sales">Vendas</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/reports">Relatórios</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/settings">Configurações</Link>
-            </Button>
-            <Button variant="outline" onClick={signOut}>
-              Sair
-            </Button>
           </div>
         </div>
       </header>

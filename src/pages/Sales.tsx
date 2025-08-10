@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Calendar as CalendarIcon } from "lucide-react";
@@ -55,7 +56,7 @@ export default function Sales() {
   }, []);
 
   const [clientId, setClientId] = useState<string>("");
-  const [serviceId, setServiceId] = useState<string>("");
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<string>("Dinheiro");
   const [notes, setNotes] = useState<string>("");
   const [date, setDate] = useState<Date>(new Date());
@@ -91,48 +92,70 @@ export default function Sales() {
     enabled: !!profile?.id,
   });
 
-  const selectedService = useMemo(() => services?.find(s => s.id === serviceId), [services, serviceId]);
+  const selectedServices = useMemo(() => services?.filter(s => serviceIds.includes(s.id)) || [], [services, serviceIds]);
+
+  const totalSelected = useMemo(() => selectedServices.reduce((sum, s) => sum + Number(s.price), 0), [selectedServices]);
 
   useEffect(() => {
-    if (selectedService && !amount) {
-      setAmount(String(selectedService.price));
+    if (serviceIds.length === 1) {
+      const s = services?.find(x => x.id === serviceIds[0]);
+      if (s) setAmount(String(Number(s.price)));
+    } else {
+      setAmount("");
     }
-  }, [selectedService]);
+  }, [serviceIds, services]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile?.id) return;
 
-    if (!clientId || !serviceId || !amount || !date || !paymentMethod) {
+    if (!clientId || serviceIds.length === 0 || !date || !paymentMethod) {
       toast.error("Preencha todos os campos obrigatórios.");
       return;
     }
 
-    const value = Number(amount);
-    if (Number.isNaN(value) || value <= 0) {
-      toast.error("Informe um valor válido.");
-      return;
-    }
 
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("sales").insert([
-        {
+      let payload: any[] = [];
+
+      if (serviceIds.length === 1) {
+        const s = services?.find(x => x.id === serviceIds[0]);
+        const value = Number(amount || (s ? s.price : 0));
+        if (!s || Number.isNaN(value) || value <= 0) {
+          toast.error("Informe um valor válido para o serviço selecionado.");
+          setSubmitting(false);
+          return;
+        }
+        payload = [{
           establishment_id: profile.id,
           client_id: clientId,
-          service_id: serviceId,
+          service_id: s.id,
           amount: value,
           sale_date: date.toISOString(),
           payment_method: paymentMethod,
           notes: notes || null,
-        },
-      ]);
+        }];
+      } else {
+        const serviceMap = new Map<string, SimpleService>((services || []).map(s => [s.id, s]));
+        payload = serviceIds.map((id) => ({
+          establishment_id: profile.id,
+          client_id: clientId,
+          service_id: id,
+          amount: Number(serviceMap.get(id)?.price || 0),
+          sale_date: date.toISOString(),
+          payment_method: paymentMethod,
+          notes: notes || null,
+        }));
+      }
+
+      const { error } = await supabase.from("sales").insert(payload);
 
       if (error) throw error;
 
       toast.success("Venda lançada com sucesso!");
       // Reset parcial
-      setServiceId("");
+      setServiceIds([]);
       setAmount("");
       setPaymentMethod("Dinheiro");
       setNotes("");
@@ -178,19 +201,25 @@ export default function Sales() {
           </div>
 
           <div className="space-y-2">
-            <Label>Serviço</Label>
-            <Select value={serviceId} onValueChange={setServiceId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o serviço" />
-              </SelectTrigger>
-              <SelectContent>
-                {services?.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name} {Number.isFinite(s.price) ? `- R$ ${s.price.toFixed(2)}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Serviços</Label>
+            <div className="rounded-md border bg-card p-2 max-h-56 overflow-y-auto">
+              {services?.map((s) => (
+                <label key={s.id} className="flex items-center gap-2 py-1">
+                  <Checkbox
+                    checked={serviceIds.includes(s.id)}
+                    onCheckedChange={(checked) => {
+                      setServiceIds((prev) => (checked ? [...prev, s.id] : prev.filter((id) => id !== s.id)));
+                    }}
+                  />
+                  <span className="flex-1">{s.name}</span>
+                  <span className="text-muted-foreground text-sm">R$ {Number(s.price).toFixed(2)}</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">Selecione um ou mais serviços para este cliente.</p>
+            {serviceIds.length > 0 && (
+              <p className="text-sm">Selecionados: {serviceIds.length} • Total: R$ {totalSelected.toFixed(2)}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -202,8 +231,12 @@ export default function Sales() {
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="0,00"
+              placeholder={serviceIds.length === 1 ? "0,00" : "Calculado automaticamente para múltiplos serviços"}
+              disabled={serviceIds.length !== 1}
             />
+            {serviceIds.length !== 1 && (
+              <p className="text-xs text-muted-foreground">Com múltiplos serviços, o valor é somado automaticamente por item.</p>
+            )}
           </div>
 
           <div className="space-y-2">

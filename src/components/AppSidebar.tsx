@@ -12,14 +12,17 @@ import {
   SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, Scissors, DollarSign, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Scissors, DollarSign, LogOut, Calendar, BarChart3, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Agenda", url: "/agenda", icon: Calendar },
   { title: "Clientes", url: "/clients", icon: Users },
   { title: "Serviços", url: "/services", icon: Scissors },
   { title: "Vendas", url: "/sales", icon: DollarSign },
+  { title: "Relatórios", url: "/reports", icon: BarChart3 },
+  { title: "Configurações", url: "/settings", icon: Settings },
 ];
 
 export default function AppSidebar() {

@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MessageCircle, Plus, ArrowLeft, Search, Edit, CalendarIcon, Settings } from 'lucide-react';
+import { MessageCircle, Plus, Search, Edit, CalendarIcon, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -302,24 +302,16 @@ const Clients = () => {
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild>
-              <a href="/dashboard">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar
-              </a>
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">
-                {filterType === 'inactive' ? 'Clientes Inativos' : 'Clientes'}
-              </h1>
-              <p className="text-muted-foreground">
-                {filterType === 'inactive' 
-                  ? `Clientes sem atendimento há mais de ${settings?.inactive_days_threshold || 20} dias`
-                  : 'Gerencie seus clientes'
-                }
-              </p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold">
+              {filterType === 'inactive' ? 'Clientes Inativos' : 'Clientes'}
+            </h1>
+            <p className="text-muted-foreground">
+              {filterType === 'inactive' 
+                ? `Clientes sem atendimento há mais de ${settings?.inactive_days_threshold || 20} dias`
+                : 'Gerencie seus clientes'
+              }
+            </p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setIsSettingsDialogOpen(true)}>
