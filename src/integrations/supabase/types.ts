@@ -309,6 +309,30 @@ export type Database = {
           },
         ]
       }
+      service_professionals: {
+        Row: {
+          created_at: string
+          establishment_id: string
+          id: string
+          professional_id: string
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          establishment_id: string
+          id?: string
+          professional_id: string
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          professional_id?: string
+          service_id?: string
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           active: boolean | null
@@ -426,6 +450,10 @@ export type Database = {
       }
       get_public_catalog: {
         Args: { establishment: string }
+        Returns: Json
+      }
+      get_public_service_professionals: {
+        Args: { establishment: string; service: string }
         Returns: Json
       }
       has_role: {

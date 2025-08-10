@@ -41,7 +41,7 @@ export default function AgendaContent() {
     }
   });
 
-  const publicLink = establishmentId ? `${window.location.origin}/book/${establishmentId}` : "";
+  const publicLink = establishmentId ? `${window.location.origin}/agendar/${establishmentId}` : "";
 
   const copyLink = async () => {
     if (!publicLink) return;
@@ -57,7 +57,7 @@ export default function AgendaContent() {
       <div className="rounded-md border bg-card p-4 flex items-center justify-between">
         <div>
           <div className="text-sm text-muted-foreground">Link público da agenda</div>
-          <div className="text-sm font-medium break-all">{publicLink}</div>
+          <a href={publicLink} className="text-sm font-medium break-all underline underline-offset-4" target="_blank" rel="noreferrer">{publicLink}</a>
         </div>
         <Button onClick={copyLink} variant="outline">Copiar link</Button>
       </div>

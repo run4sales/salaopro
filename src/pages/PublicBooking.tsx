@@ -56,6 +56,7 @@ export default function PublicBooking() {
   }, [establishmentId, toast]);
 
   const selectedService = useMemo(() => services.find(s => s.id === serviceId), [services, serviceId]);
+  const priceFmt = useMemo(() => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }), []);
 
   // Load booked times whenever professional/date changes
   useEffect(() => {
@@ -142,7 +143,7 @@ export default function PublicBooking() {
                 </SelectTrigger>
                 <SelectContent>
                   {services.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    <SelectItem key={s.id} value={s.id}>{s.name} — {priceFmt.format(Number(s.price))}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -206,7 +207,10 @@ export default function PublicBooking() {
             </div>
             <Button className="w-full" disabled={!canSubmit} onClick={handleSubmit}>Confirmar agendamento</Button>
             {selectedService && (
-              <p className="text-xs text-muted-foreground">Duração estimada: {selectedService.duration} min</p>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p>Duração estimada: {selectedService.duration} min</p>
+                <p>Valor: {priceFmt.format(Number(selectedService.price))}</p>
+              </div>
             )}
           </div>
         </div>
