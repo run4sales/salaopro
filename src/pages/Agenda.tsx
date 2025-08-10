@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
+import AgendaContent from "./components/AgendaContent";
 
 export default function Agenda() {
   const { user } = useAuth();
@@ -23,10 +24,8 @@ export default function Agenda() {
           <p className="text-muted-foreground">Gerencie seus agendamentos</p>
         </div>
       </header>
-      <main className="container mx-auto px-4 py-10">
-        <div className="rounded-md border p-6 bg-card">
-          Em breve: visualização e gestão de agendamentos.
-        </div>
+      <main className="container mx-auto px-4 py-10 space-y-6">
+        <AgendaContent />
       </main>
     </div>
   );

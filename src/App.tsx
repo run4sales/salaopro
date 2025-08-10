@@ -15,6 +15,7 @@ import Reports from "./pages/Reports";
 import Metrics from "./pages/Metrics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import PublicBooking from "./pages/PublicBooking";
 import AppLayout from "./components/AppLayout";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/book/:establishmentId" element={<PublicBooking />} />
             <Route element={<AppLayout />}>
               <Route path="/" element={<Index />} />
               <Route path="/dashboard" element={<Dashboard />} />
