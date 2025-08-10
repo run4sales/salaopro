@@ -4,6 +4,7 @@ import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileForm } from "@/components/settings/ProfileForm";
 import { GeneralSettingsForm } from "@/components/settings/GeneralSettingsForm";
+import { GoalsForm } from "@/components/settings/GoalsForm";
 
 export default function Settings() {
   const { user, profile } = useAuth();
@@ -37,6 +38,7 @@ export default function Settings() {
             <TabsList>
               <TabsTrigger value="profile">Perfil</TabsTrigger>
               <TabsTrigger value="general">Preferências</TabsTrigger>
+              <TabsTrigger value="goals">Metas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile" className="mt-4">
@@ -52,6 +54,14 @@ export default function Settings() {
                 <GeneralSettingsForm establishmentId={profile.id} />
               ) : (
                 <div className="text-sm text-muted-foreground">Carregando preferências...</div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="goals" className="mt-4">
+              {profile ? (
+                <GoalsForm establishmentId={profile.id} />
+              ) : (
+                <div className="text-sm text-muted-foreground">Carregando metas...</div>
               )}
             </TabsContent>
           </Tabs>
