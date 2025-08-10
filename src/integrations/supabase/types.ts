@@ -22,6 +22,7 @@ export type Database = {
           establishment_id: string
           id: string
           notes: string | null
+          professional_id: string | null
           service_id: string
           status: string | null
           updated_at: string
@@ -33,6 +34,7 @@ export type Database = {
           establishment_id: string
           id?: string
           notes?: string | null
+          professional_id?: string | null
           service_id: string
           status?: string | null
           updated_at?: string
@@ -44,6 +46,7 @@ export type Database = {
           establishment_id?: string
           id?: string
           notes?: string | null
+          professional_id?: string | null
           service_id?: string
           status?: string | null
           updated_at?: string
@@ -168,6 +171,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      professionals: {
+        Row: {
+          active: boolean
+          created_at: string
+          establishment_id: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          establishment_id: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -378,6 +408,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_public_booking: {
+        Args: {
+          establishment: string
+          client_name: string
+          phone: string
+          service: string
+          professional: string
+          start_time: string
+          notes?: string
+        }
+        Returns: string
+      }
+      get_public_availability: {
+        Args: { establishment: string; professional: string; day: string }
+        Returns: Json
+      }
+      get_public_catalog: {
+        Args: { establishment: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _user_id: string
