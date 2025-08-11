@@ -28,10 +28,12 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/auth" element={<Auth />} />
+            {/* Public pages */}
             <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
             <Route path="/agendar/:establishmentId" element={<PublicBooking />} />
-            <Route path="/:slug" element={<PublicBooking />} />
+
+            {/* Internal pages (with sidebar) */}
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/clients" element={<Clients />} />
@@ -41,9 +43,13 @@ const App = () => (
               <Route path="/reports" element={<Reports />} />
               <Route path="/metrics" element={<Metrics />} />
               <Route path="/settings" element={<Settings />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
             </Route>
+
+            {/* Dynamic public page, must be after other routes */}
+            <Route path="/:slug" element={<PublicBooking />} />
+
+            {/* Catch-all Not Found page */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
