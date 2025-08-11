@@ -41,7 +41,8 @@ export default function AgendaContent() {
     }
   });
 
-  const publicLink = establishmentId ? `${window.location.origin}/agendar/${establishmentId}` : "";
+  const slug = (profile as any)?.slug as string | undefined;
+  const publicLink = establishmentId ? `${window.location.origin}/${slug ?? `agendar/${establishmentId}`}` : "";
 
   const copyLink = async () => {
     if (!publicLink) return;

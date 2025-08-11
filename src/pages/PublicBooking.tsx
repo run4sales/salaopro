@@ -16,7 +16,9 @@ interface Service { id: string; name: string; price: number; duration: number }
 interface Professional { id: string; name: string }
 
 export default function PublicBooking() {
-  const { establishmentId } = useParams<{ establishmentId: string }>();
+  const { establishmentId, slug } = useParams<{ establishmentId?: string; slug?: string }>();
+  const [resolvedId, setResolvedId] = useState<string | null>(null);
+  const [salonName, setSalonName] = useState<string>("");
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [serviceId, setServiceId] = useState<string>("");
@@ -41,9 +43,32 @@ export default function PublicBooking() {
   }, []);
 
   useEffect(() => {
-    if (!establishmentId) return;
+    const run = async () => {
+      if (slug) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, business_name")
+          .eq("slug", slug)
+          .maybeSingle();
+        if (error || !data) {
+          console.error(error);
+          toast({ title: "Salão não encontrado", description: "Verifique o link.", variant: "destructive" });
+          return;
+        }
+        setResolvedId((data as any).id);
+        setSalonName((data as any).business_name || "");
+        document.title = `${(data as any).business_name || "Agendar atendimento"} | Salão PRO`;
+      } else if (establishmentId) {
+        setResolvedId(establishmentId);
+      }
+    };
+    run();
+  }, [slug, establishmentId, toast]);
+
+  useEffect(() => {
+    if (!resolvedId) return;
     (async () => {
-      const { data, error } = await supabase.rpc("get_public_catalog", { establishment: establishmentId });
+      const { data, error } = await supabase.rpc("get_public_catalog", { establishment: resolvedId });
       if (error) {
         console.error(error);
         toast({ title: "Erro ao carregar catálogo", description: error.message, variant: "destructive" });
@@ -53,18 +78,18 @@ export default function PublicBooking() {
       setServices(((catalog?.services ?? []) as Service[]) || []);
       setProfessionals(((catalog?.professionals ?? []) as Professional[]) || []);
     })();
-  }, [establishmentId, toast]);
+  }, [resolvedId, toast]);
 
   const selectedService = useMemo(() => services.find(s => s.id === serviceId), [services, serviceId]);
   const priceFmt = useMemo(() => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }), []);
 
   // Load booked times whenever professional/date changes
   useEffect(() => {
-    if (!establishmentId || !professionalId || !date) return;
+    if (!resolvedId || !professionalId || !date) return;
     (async () => {
       const dayStr = format(date, "yyyy-MM-dd");
       const { data: avData, error } = await supabase.rpc("get_public_availability", {
-        establishment: establishmentId,
+        establishment: resolvedId,
         professional: professionalId,
         day: dayStr,
       });
@@ -78,7 +103,7 @@ export default function PublicBooking() {
       setBookedTimes(booked);
       setSlot("");
     })();
-  }, [establishmentId, professionalId, date, toast]);
+  }, [resolvedId, professionalId, date, toast]);
 
   const slots = useMemo(() => {
     if (!date) return [] as Date[];
@@ -101,14 +126,14 @@ export default function PublicBooking() {
     });
   };
 
-  const canSubmit = establishmentId && serviceId && professionalId && date && slot && clientName && phone;
+  const canSubmit = resolvedId && serviceId && professionalId && date && slot && clientName && phone;
 
   const handleSubmit = async () => {
     if (!canSubmit || !date) return;
     const [hh, mm] = slot.split(":").map(Number);
     const startTime = setMinutes(setHours(new Date(date), hh), mm);
     const { data, error } = await supabase.rpc("create_public_booking", {
-      establishment: establishmentId,
+      establishment: resolvedId,
       client_name: clientName,
       phone,
       service: serviceId,
@@ -128,7 +153,7 @@ export default function PublicBooking() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-6">
-          <h1 className="text-2xl font-bold">Agendar atendimento</h1>
+          <h1 className="text-2xl font-bold">Agendar atendimento {salonName ? `— ${salonName}` : ""}</h1>
           <p className="text-muted-foreground">Escolha serviço, profissional, data e hora</p>
         </div>
       </header>
