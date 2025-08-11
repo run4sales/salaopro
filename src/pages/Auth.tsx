@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,11 +24,14 @@ const Auth = () => {
     phone: '',
   });
 
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'login';
+  const [tab, setTab] = useState<'login' | 'signup'>(initialTab);
+
   // Redirect if user is already logged in
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -59,7 +62,7 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as 'login' | 'signup')} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Entrar</TabsTrigger>
               <TabsTrigger value="signup">Cadastrar</TabsTrigger>

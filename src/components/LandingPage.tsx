@@ -30,10 +30,10 @@ const LandingPage = () => {
               Planos
             </a>
             <Button variant="outline" size="sm" asChild>
-              <a href="/auth">Entrar</a>
+              <a href="/auth?tab=login">Entrar</a>
             </Button>
             <Button variant="hero" size="sm" asChild>
-              <a href="/auth">Teste Grátis</a>
+              <a href="/auth?tab=signup">Teste Grátis</a>
             </Button>
           </nav>
         </div>
@@ -60,7 +60,7 @@ const LandingPage = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button variant="hero" size="lg" className="text-lg px-8 py-3" asChild>
-              <a href="/auth">Começar Teste Grátis</a>
+              <a href="/auth?tab=signup">Começar Teste Grátis</a>
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8 py-3">
               Ver Demonstração
@@ -328,8 +328,8 @@ const LandingPage = () => {
                     Relatórios básicos
                   </li>
                 </ul>
-                <Button className="w-full mt-6" variant="outline">
-                  Começar Teste Grátis
+                <Button className="w-full mt-6" variant="outline" asChild>
+                  <a href="/auth?tab=signup">Começar Teste Grátis</a>
                 </Button>
               </CardContent>
             </Card>
@@ -377,8 +377,8 @@ const LandingPage = () => {
                     Suporte prioritário
                   </li>
                 </ul>
-                <Button className="w-full mt-6" variant="hero">
-                  Começar Teste Grátis
+                <Button className="w-full mt-6" variant="hero" asChild>
+                  <a href="/auth?tab=signup">Começar Teste Grátis</a>
                 </Button>
               </CardContent>
             </Card>
@@ -421,8 +421,8 @@ const LandingPage = () => {
                     Suporte dedicado
                   </li>
                 </ul>
-                <Button className="w-full mt-6" variant="outline">
-                  Começar Teste Grátis
+                <Button className="w-full mt-6" variant="outline" asChild>
+                  <a href="/auth?tab=signup">Começar Teste Grátis</a>
                 </Button>
               </CardContent>
             </Card>
@@ -440,8 +440,8 @@ const LandingPage = () => {
             Junte-se a centenas de profissionais que já aumentaram seu faturamento 
             com o Salão PRO. Comece seu teste grátis hoje mesmo!
           </p>
-          <Button variant="cta" size="lg" className="text-lg px-8 py-3">
-            Começar Teste Grátis Agora
+          <Button variant="cta" size="lg" className="text-lg px-8 py-3" asChild>
+            <a href="/auth?tab=signup">Começar Teste Grátis Agora</a>
           </Button>
           <p className="text-sm mt-4 opacity-75">
             ✅ Sem cartão de crédito • ✅ 14 dias grátis • ✅ Cancelamento fácil
