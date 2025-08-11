@@ -209,6 +209,7 @@ export type Database = {
           owner_name: string
           phone: string
           plan: string | null
+          slug: string | null
           status: string | null
           updated_at: string
           user_id: string
@@ -222,6 +223,7 @@ export type Database = {
           owner_name: string
           phone: string
           plan?: string | null
+          slug?: string | null
           status?: string | null
           updated_at?: string
           user_id: string
@@ -235,6 +237,7 @@ export type Database = {
           owner_name?: string
           phone?: string
           plan?: string | null
+          slug?: string | null
           status?: string | null
           updated_at?: string
           user_id?: string
@@ -462,6 +465,18 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
+      }
+      slugify: {
+        Args: { input: string }
+        Returns: string
+      }
+      unaccent: {
+        Args: { "": string }
+        Returns: string
+      }
+      unaccent_init: {
+        Args: { "": unknown }
+        Returns: unknown
       }
     }
     Enums: {
