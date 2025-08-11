@@ -29,10 +29,10 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={<Index />} />
             <Route path="/agendar/:establishmentId" element={<PublicBooking />} />
             <Route path="/:slug" element={<PublicBooking />} />
             <Route element={<AppLayout />}>
-              <Route path="/" element={<Index />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/clients" element={<Clients />} />
               <Route path="/services" element={<Services />} />
