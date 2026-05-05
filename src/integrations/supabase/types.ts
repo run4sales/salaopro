@@ -131,6 +131,42 @@ export type Database = {
           },
         ]
       }
+      expenses: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          description: string
+          establishment_id: string
+          expense_date: string
+          id: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          created_at?: string
+          description: string
+          establishment_id: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          description?: string
+          establishment_id?: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           created_at: string
@@ -175,6 +211,7 @@ export type Database = {
       professionals: {
         Row: {
           active: boolean
+          commission_percentage: number
           created_at: string
           establishment_id: string
           id: string
@@ -183,6 +220,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          commission_percentage?: number
           created_at?: string
           establishment_id: string
           id?: string
@@ -191,6 +229,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          commission_percentage?: number
           created_at?: string
           establishment_id?: string
           id?: string
@@ -262,6 +301,7 @@ export type Database = {
           id: string
           notes: string | null
           payment_method: string | null
+          professional_id: string | null
           sale_date: string
           service_id: string
         }
@@ -274,6 +314,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string | null
+          professional_id?: string | null
           sale_date?: string
           service_id: string
         }
@@ -286,6 +327,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string | null
+          professional_id?: string | null
           sale_date?: string
           service_id?: string
         }
