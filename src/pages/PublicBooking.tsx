@@ -135,7 +135,7 @@ export default function PublicBooking() {
     const { data, error } = await supabase.rpc("create_public_booking", {
       establishment: resolvedId,
       client_name: clientName,
-      phone,
+      p_phone: phone,
       service: serviceId,
       professional: professionalId,
       start_time: startTime.toISOString(),
