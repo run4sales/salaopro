@@ -7,10 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.4"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -197,7 +197,15 @@ export type Database = {
           name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "professionals_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -437,47 +445,34 @@ export type Database = {
     Functions: {
       create_public_booking: {
         Args: {
-          establishment: string
           client_name: string
-          phone: string
-          service: string
-          professional: string
-          start_time: string
+          establishment: string
           notes?: string
+          p_phone: string
+          professional: string
+          service: string
+          start_time: string
         }
         Returns: string
       }
       get_public_availability: {
-        Args: { establishment: string; professional: string; day: string }
+        Args: { day: string; establishment: string; professional: string }
         Returns: Json
       }
-      get_public_catalog: {
-        Args: { establishment: string }
-        Returns: Json
-      }
+      get_public_catalog: { Args: { establishment: string }; Returns: Json }
       get_public_service_professionals: {
         Args: { establishment: string; service: string }
         Returns: Json
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
-      slugify: {
-        Args: { input: string }
-        Returns: string
-      }
-      unaccent: {
-        Args: { "": string }
-        Returns: string
-      }
-      unaccent_init: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
+      slugify: { Args: { input: string }; Returns: string }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "establishment" | "super_admin"
