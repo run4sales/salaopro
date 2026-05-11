@@ -24,6 +24,9 @@ const Services = () => {
     price: '',
     duration_minutes: '',
     description: '',
+    commission_solo: '40',
+    commission_with_assistants: '0',
+    commission_as_assistant: '0',
     active: true,
   });
 
