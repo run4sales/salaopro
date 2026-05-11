@@ -40,8 +40,17 @@ const Clients = () => {
     gender: '',
     birth_date: null as Date | null,
     last_service_date: null as Date | null,
+    acquisition_source: '',
     notes: '',
   });
+
+  const ACQUISITION_SOURCES = [
+    { value: 'indicacao', label: 'Indicação' },
+    { value: 'redes_sociais', label: 'Redes Sociais' },
+    { value: 'google', label: 'Google' },
+    { value: 'trafego_pago', label: 'Tráfego Pago' },
+    { value: 'outros', label: 'Outros' },
+  ];
 
   if (!user) {
     return <Navigate to="/auth" replace />;
