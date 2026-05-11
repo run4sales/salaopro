@@ -654,6 +654,19 @@ const Clients = () => {
                 </Popover>
               </div>
               <div className="space-y-2">
+                <Label htmlFor="edit-acquisition">Como chegou</Label>
+                <Select value={editingClient.acquisition_source || ''} onValueChange={(value) => setEditingClient({ ...editingClient, acquisition_source: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACQUISITION_SOURCES.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="edit-notes">Observações</Label>
                 <Textarea
                   id="edit-notes"
