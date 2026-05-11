@@ -77,6 +77,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          acquisition_source: string | null
           birth_date: string | null
           created_at: string
           email: string | null
@@ -92,6 +93,7 @@ export type Database = {
           visit_count: number | null
         }
         Insert: {
+          acquisition_source?: string | null
           birth_date?: string | null
           created_at?: string
           email?: string | null
@@ -107,6 +109,7 @@ export type Database = {
           visit_count?: number | null
         }
         Update: {
+          acquisition_source?: string | null
           birth_date?: string | null
           created_at?: string
           email?: string | null
@@ -291,6 +294,39 @@ export type Database = {
         }
         Relationships: []
       }
+      sale_professionals: {
+        Row: {
+          commission_amount: number
+          commission_percentage: number
+          created_at: string
+          establishment_id: string
+          id: string
+          professional_id: string
+          role: string
+          sale_id: string
+        }
+        Insert: {
+          commission_amount?: number
+          commission_percentage?: number
+          created_at?: string
+          establishment_id: string
+          id?: string
+          professional_id: string
+          role?: string
+          sale_id: string
+        }
+        Update: {
+          commission_amount?: number
+          commission_percentage?: number
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          professional_id?: string
+          role?: string
+          sale_id?: string
+        }
+        Relationships: []
+      }
       sales: {
         Row: {
           amount: number
@@ -389,6 +425,9 @@ export type Database = {
       services: {
         Row: {
           active: boolean | null
+          commission_as_assistant: number
+          commission_solo: number
+          commission_with_assistants: number
           created_at: string
           description: string | null
           duration_minutes: number
@@ -400,6 +439,9 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          commission_as_assistant?: number
+          commission_solo?: number
+          commission_with_assistants?: number
           created_at?: string
           description?: string | null
           duration_minutes: number
@@ -411,6 +453,9 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          commission_as_assistant?: number
+          commission_solo?: number
+          commission_with_assistants?: number
           created_at?: string
           description?: string | null
           duration_minutes?: number
