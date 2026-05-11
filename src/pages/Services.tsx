@@ -96,6 +96,9 @@ const Services = () => {
         price: Number(payload.price),
         duration_minutes: Number(payload.duration_minutes),
         description: payload.description || null,
+        commission_solo: Number(payload.commission_solo) || 0,
+        commission_with_assistants: Number(payload.commission_with_assistants) || 0,
+        commission_as_assistant: Number(payload.commission_as_assistant) || 0,
         active: payload.active,
         establishment_id: profile?.id,
       };
@@ -109,7 +112,7 @@ const Services = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services'] });
-      setNewService({ name: '', price: '', duration_minutes: '', description: '', active: true });
+      setNewService({ name: '', price: '', duration_minutes: '', description: '', commission_solo: '40', commission_with_assistants: '0', commission_as_assistant: '0', active: true });
       toast({ title: 'Serviço cadastrado!', description: 'Novo serviço adicionado com sucesso.' });
     },
     onError: () => {
