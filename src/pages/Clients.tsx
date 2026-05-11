@@ -205,6 +205,7 @@ const Clients = () => {
           gender: clientData.gender || null,
           birth_date: clientData.birth_date?.toISOString?.()?.split('T')[0] || null,
           last_service_date: clientData.last_service_date?.toISOString?.() || null,
+          acquisition_source: clientData.acquisition_source || null,
           notes: clientData.notes || null,
         })
         .eq('id', id)
