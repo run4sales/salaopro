@@ -24,6 +24,9 @@ const Services = () => {
     price: '',
     duration_minutes: '',
     description: '',
+    commission_solo: '40',
+    commission_with_assistants: '0',
+    commission_as_assistant: '0',
     active: true,
   });
 
@@ -93,6 +96,9 @@ const Services = () => {
         price: Number(payload.price),
         duration_minutes: Number(payload.duration_minutes),
         description: payload.description || null,
+        commission_solo: Number(payload.commission_solo) || 0,
+        commission_with_assistants: Number(payload.commission_with_assistants) || 0,
+        commission_as_assistant: Number(payload.commission_as_assistant) || 0,
         active: payload.active,
         establishment_id: profile?.id,
       };
@@ -106,7 +112,7 @@ const Services = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services'] });
-      setNewService({ name: '', price: '', duration_minutes: '', description: '', active: true });
+      setNewService({ name: '', price: '', duration_minutes: '', description: '', commission_solo: '40', commission_with_assistants: '0', commission_as_assistant: '0', active: true });
       toast({ title: 'Serviço cadastrado!', description: 'Novo serviço adicionado com sucesso.' });
     },
     onError: () => {
@@ -225,6 +231,24 @@ const Services = () => {
                 <Label htmlFor="description">Descrição</Label>
                 <Textarea id="description" value={newService.description} onChange={(e) => setNewService({ ...newService, description: e.target.value })} />
               </div>
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 border rounded-md p-4 bg-muted/30">
+                <div className="md:col-span-3 -mb-2">
+                  <Label className="text-sm font-semibold">Comissões (%)</Label>
+                  <p className="text-xs text-muted-foreground">Definição manual da comissão deste serviço para cada cenário.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="c-solo">Sozinho</Label>
+                  <Input id="c-solo" type="number" min="0" max="100" step="0.01" value={newService.commission_solo} onChange={(e) => setNewService({ ...newService, commission_solo: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="c-with">Com assistentes</Label>
+                  <Input id="c-with" type="number" min="0" max="100" step="0.01" value={newService.commission_with_assistants} onChange={(e) => setNewService({ ...newService, commission_with_assistants: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="c-as">Como assistente</Label>
+                  <Input id="c-as" type="number" min="0" max="100" step="0.01" value={newService.commission_as_assistant} onChange={(e) => setNewService({ ...newService, commission_as_assistant: e.target.value })} />
+                </div>
+              </div>
               <div className="flex items-center gap-3">
                 <Switch id="active" checked={newService.active} onCheckedChange={(checked) => setNewService({ ...newService, active: checked })} />
                 <Label htmlFor="active">Ativo</Label>
@@ -254,6 +278,7 @@ const Services = () => {
                     <TableHead>Nome</TableHead>
                     <TableHead>Preço</TableHead>
                     <TableHead>Duração</TableHead>
+                    <TableHead>Comissão (Sozinho / C/ Assist. / Como Assist.)</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -263,6 +288,7 @@ const Services = () => {
                       <TableCell className="font-medium">{s.name}</TableCell>
                       <TableCell>R$ {Number(s.price).toFixed(2)}</TableCell>
                       <TableCell>{s.duration_minutes} min</TableCell>
+                      <TableCell>{Number(s.commission_solo ?? 0)}% / {Number(s.commission_with_assistants ?? 0)}% / {Number(s.commission_as_assistant ?? 0)}%</TableCell>
                       <TableCell>{s.active ? 'Ativo' : 'Inativo'}</TableCell>
                     </TableRow>
                   ))}

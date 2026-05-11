@@ -40,8 +40,17 @@ const Clients = () => {
     gender: '',
     birth_date: null as Date | null,
     last_service_date: null as Date | null,
+    acquisition_source: '',
     notes: '',
   });
+
+  const ACQUISITION_SOURCES = [
+    { value: 'indicacao', label: 'Indicação' },
+    { value: 'redes_sociais', label: 'Redes Sociais' },
+    { value: 'google', label: 'Google' },
+    { value: 'trafego_pago', label: 'Tráfego Pago' },
+    { value: 'outros', label: 'Outros' },
+  ];
 
   if (!user) {
     return <Navigate to="/auth" replace />;
@@ -137,6 +146,7 @@ const Clients = () => {
         gender: clientData.gender || null,
         birth_date: clientData.birth_date?.toISOString().split('T')[0] || null,
         last_service_date: clientData.last_service_date?.toISOString() || null,
+        acquisition_source: clientData.acquisition_source || null,
         notes: clientData.notes || null,
         establishment_id: profile?.id,
       };
@@ -165,6 +175,7 @@ const Clients = () => {
         gender: '', 
         birth_date: null, 
         last_service_date: null, 
+        acquisition_source: '',
         notes: '' 
       });
       setIsAddDialogOpen(false);
@@ -194,6 +205,7 @@ const Clients = () => {
           gender: clientData.gender || null,
           birth_date: clientData.birth_date?.toISOString?.()?.split('T')[0] || null,
           last_service_date: clientData.last_service_date?.toISOString?.() || null,
+          acquisition_source: clientData.acquisition_source || null,
           notes: clientData.notes || null,
         })
         .eq('id', id)
@@ -384,6 +396,7 @@ const Clients = () => {
                     <TableHead>Telefone</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Origem</TableHead>
                     <TableHead>Total Gasto</TableHead>
                     <TableHead>Visitas</TableHead>
                     <TableHead>Ações</TableHead>
@@ -396,6 +409,7 @@ const Clients = () => {
                       <TableCell>{client.phone}</TableCell>
                       <TableCell>{client.email || '-'}</TableCell>
                       <TableCell>{getStatusBadge(client.last_service_date)}</TableCell>
+                      <TableCell>{ACQUISITION_SOURCES.find(s => s.value === (client as any).acquisition_source)?.label || '-'}</TableCell>
                       <TableCell>R$ {Number(client.total_spent).toFixed(2)}</TableCell>
                       <TableCell>{client.visit_count}</TableCell>
                       <TableCell>
@@ -504,6 +518,19 @@ const Clients = () => {
                   />
                 </PopoverContent>
               </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="acquisition_source">Como chegou</Label>
+              <Select value={newClient.acquisition_source} onValueChange={(value) => setNewClient({ ...newClient, acquisition_source: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACQUISITION_SOURCES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="notes">Observações</Label>
@@ -627,6 +654,19 @@ const Clients = () => {
                     />
                   </PopoverContent>
                 </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-acquisition">Como chegou</Label>
+                <Select value={editingClient.acquisition_source || ''} onValueChange={(value) => setEditingClient({ ...editingClient, acquisition_source: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACQUISITION_SOURCES.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-notes">Observações</Label>
