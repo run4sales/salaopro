@@ -146,6 +146,7 @@ const Clients = () => {
         gender: clientData.gender || null,
         birth_date: clientData.birth_date?.toISOString().split('T')[0] || null,
         last_service_date: clientData.last_service_date?.toISOString() || null,
+        acquisition_source: clientData.acquisition_source || null,
         notes: clientData.notes || null,
         establishment_id: profile?.id,
       };
@@ -174,6 +175,7 @@ const Clients = () => {
         gender: '', 
         birth_date: null, 
         last_service_date: null, 
+        acquisition_source: '',
         notes: '' 
       });
       setIsAddDialogOpen(false);
