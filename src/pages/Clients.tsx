@@ -396,6 +396,7 @@ const Clients = () => {
                     <TableHead>Telefone</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Origem</TableHead>
                     <TableHead>Total Gasto</TableHead>
                     <TableHead>Visitas</TableHead>
                     <TableHead>Ações</TableHead>
@@ -408,6 +409,7 @@ const Clients = () => {
                       <TableCell>{client.phone}</TableCell>
                       <TableCell>{client.email || '-'}</TableCell>
                       <TableCell>{getStatusBadge(client.last_service_date)}</TableCell>
+                      <TableCell>{ACQUISITION_SOURCES.find(s => s.value === (client as any).acquisition_source)?.label || '-'}</TableCell>
                       <TableCell>R$ {Number(client.total_spent).toFixed(2)}</TableCell>
                       <TableCell>{client.visit_count}</TableCell>
                       <TableCell>
