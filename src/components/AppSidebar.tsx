@@ -12,18 +12,50 @@ import {
   SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, Scissors, DollarSign, LogOut, Calendar, BarChart3, Settings } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  Scissors,
+  DollarSign,
+  LogOut,
+  Calendar,
+  BarChart3,
+  Settings,
+  Receipt,
+  TrendingUp,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
-const items = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Agenda", url: "/agenda", icon: Calendar },
-  { title: "Clientes", url: "/clients", icon: Users },
-  { title: "Serviços", url: "/services", icon: Scissors },
-  { title: "Vendas", url: "/sales", icon: DollarSign },
-  { title: "Métricas", url: "/metrics", icon: BarChart3 },
-  { title: "Relatórios", url: "/reports", icon: BarChart3 },
-  { title: "Configurações", url: "/settings", icon: Settings },
+const groups = [
+  {
+    label: "Operação",
+    items: [
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+      { title: "Agenda", url: "/agenda", icon: Calendar },
+      { title: "Clientes", url: "/clients", icon: Users },
+    ],
+  },
+  {
+    label: "Financeiro",
+    items: [
+      { title: "Vendas", url: "/sales", icon: DollarSign },
+      { title: "Despesas", url: "/expenses", icon: Receipt },
+    ],
+  },
+  {
+    label: "Análise",
+    items: [
+      { title: "Métricas", url: "/metrics", icon: TrendingUp },
+      { title: "Relatórios", url: "/reports", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Configuração",
+    items: [
+      { title: "Serviços", url: "/services", icon: Scissors },
+      { title: "Configurações", url: "/settings", icon: Settings },
+    ],
+  },
 ];
 
 export default function AppSidebar() {
@@ -35,32 +67,40 @@ export default function AppSidebar() {
   return (
     <Sidebar className="bg-sidebar text-sidebar-foreground" collapsible="offcanvas">
       <SidebarHeader>
-        <div className="px-2 py-2">
-          <div className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
+        <div className="px-3 py-4">
+          <div className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent tracking-tight">
             Salão PRO
           </div>
-          <div className="text-xs text-sidebar-foreground/70">Gestão do seu salão</div>
+          <div className="text-xs text-sidebar-foreground/60 mt-0.5">Gestão completa do seu salão</div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} end>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {groups.map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider font-semibold text-sidebar-foreground/50">
+              {group.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(item.url)}
+                      className="transition-colors"
+                    >
+                      <NavLink to={item.url} end>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarSeparator />
