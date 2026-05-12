@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import Services from "./pages/Services";
 import Sales from "./pages/Sales";
+import Expenses from "./pages/Expenses";
 import Agenda from "./pages/Agenda";
 import Reports from "./pages/Reports";
 import Metrics from "./pages/Metrics";
