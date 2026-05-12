@@ -342,26 +342,61 @@ export default function Sales() {
                 </div>
               )}
             </div>
-            {professionalEntries.length > 0 && selectedServices.length > 0 && (
-              <div className="rounded-md border p-3 text-sm space-y-1 bg-muted/30">
-                <div className="font-medium mb-1">Prévia de comissões</div>
-                {selectedServices.map((svc) => (
-                  <div key={svc.id}>
-                    <span className="text-muted-foreground">{svc.name}:</span>{" "}
-                    {professionalEntries.map((e) => {
-                      const prof = professionals?.find(p => p.id === e.professional_id);
-                      const pct = getCommissionPct(svc, e.role);
-                      const value = Number(svc.price) * (pct / 100);
-                      return (
-                        <span key={e.professional_id} className="mr-3">
-                          {prof?.name} ({roleLabels[e.role]}) — {pct}% = R$ {value.toFixed(2)}
-                        </span>
-                      );
-                    })}
+            {professionalEntries.length > 0 && selectedServices.length > 0 && (() => {
+              const perProfessional = professionalEntries.map((e) => {
+                const prof = professionals?.find(p => p.id === e.professional_id);
+                const commission = selectedServices.reduce((sum, svc) => {
+                  const pct = getCommissionPct(svc, e.role);
+                  return sum + Number(svc.price) * (pct / 100);
+                }, 0);
+                return {
+                  id: e.professional_id,
+                  name: prof?.name || "Profissional",
+                  role: e.role,
+                  commission,
+                };
+              });
+              const totalCommissions = perProfessional.reduce((s, p) => s + p.commission, 0);
+              const equalSplit = totalSelected / professionalEntries.length;
+              return (
+                <div className="rounded-lg border bg-gradient-to-br from-primary/5 to-accent/5 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold">Resumo do fechamento</div>
+                    <div className="text-xs text-muted-foreground">
+                      {professionalEntries.length} {professionalEntries.length === 1 ? "profissional" : "profissionais"} • {selectedServices.length} {selectedServices.length === 1 ? "serviço" : "serviços"}
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
+
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-md bg-card border p-2">
+                      <div className="text-[10px] uppercase text-muted-foreground tracking-wider">Total da venda</div>
+                      <div className="font-bold">R$ {totalSelected.toFixed(2)}</div>
+                    </div>
+                    <div className="rounded-md bg-card border p-2">
+                      <div className="text-[10px] uppercase text-muted-foreground tracking-wider">Comissões</div>
+                      <div className="font-bold text-primary">R$ {totalCommissions.toFixed(2)}</div>
+                    </div>
+                    <div className="rounded-md bg-card border p-2">
+                      <div className="text-[10px] uppercase text-muted-foreground tracking-wider">Divisão igual</div>
+                      <div className="font-bold">R$ {equalSplit.toFixed(2)}</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-medium text-muted-foreground">Comissão por profissional</div>
+                    {perProfessional.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between rounded-md bg-card/60 border px-3 py-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{p.name}</span>
+                          <span className="text-xs text-muted-foreground">({roleLabels[p.role]})</span>
+                        </div>
+                        <span className="font-semibold">R$ {p.commission.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="space-y-2">
