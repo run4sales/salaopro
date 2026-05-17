@@ -46,26 +46,37 @@ export default function PublicBooking() {
 
   useEffect(() => {
     const run = async () => {
+      setLookupState("loading");
       if (slug) {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("id, business_name")
-          .eq("slug", slug)
-          .maybeSingle();
-        if (error || !data) {
-          console.error(error);
-          toast({ title: "Salão não encontrado", description: "Verifique o link.", variant: "destructive" });
+        const { data, error } = await supabase.rpc("get_public_salon_by_slug", { p_slug: slug });
+        const salon = data as any;
+        if (error || !salon?.id) {
+          console.error("Slug lookup failed", error);
+          setLookupState("not_found");
           return;
         }
-        setResolvedId((data as any).id);
-        setSalonName((data as any).business_name || "");
-        document.title = `${(data as any).business_name || "Agendar atendimento"} | Salão PRO`;
+        setResolvedId(salon.id);
+        setSalonName(salon.business_name || "");
+        setAcceptingBookings(salon.accepting_bookings !== false);
+        setLookupState("ok");
+        document.title = `${salon.business_name || "Agendar atendimento"} | Salão PRO`;
       } else if (establishmentId) {
-        setResolvedId(establishmentId);
+        const { data, error } = await supabase.rpc("get_public_salon_by_id", { p_id: establishmentId });
+        const salon = data as any;
+        if (error || !salon?.id) {
+          setLookupState("not_found");
+          return;
+        }
+        setResolvedId(salon.id);
+        setSalonName(salon.business_name || "");
+        setAcceptingBookings(salon.accepting_bookings !== false);
+        setLookupState("ok");
+      } else {
+        setLookupState("not_found");
       }
     };
     run();
-  }, [slug, establishmentId, toast]);
+  }, [slug, establishmentId]);
 
   useEffect(() => {
     if (!resolvedId) return;
