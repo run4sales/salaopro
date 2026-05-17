@@ -162,6 +162,28 @@ export default function PublicBooking() {
     setSlot("");
   };
 
+  if (lookupState === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground text-sm">Carregando…</p>
+      </div>
+    );
+  }
+
+  if (lookupState === "not_found") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="max-w-md text-center space-y-4">
+          <div className="text-5xl">😕</div>
+          <h1 className="text-2xl font-bold">Salão não encontrado</h1>
+          <p className="text-muted-foreground">
+            O link que você acessou não corresponde a nenhum salão ativo. Confira com o estabelecimento se o endereço está correto.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
@@ -171,7 +193,12 @@ export default function PublicBooking() {
         </div>
       </header>
       <main className="container mx-auto px-4 py-8 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {!acceptingBookings && (
+          <div className="rounded-md border border-warning/40 bg-warning/10 p-4 text-sm">
+            ⏸️ Os agendamentos estão <strong>temporariamente indisponíveis</strong>. Tente novamente em breve.
+          </div>
+        )}
+        <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4", !acceptingBookings && "pointer-events-none opacity-60")}>
           <div className="rounded-md border bg-card p-4 space-y-3">
             <div>
               <label className="text-sm text-muted-foreground">Serviço</label>
