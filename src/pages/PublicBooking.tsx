@@ -19,6 +19,8 @@ export default function PublicBooking() {
   const { establishmentId, slug } = useParams<{ establishmentId?: string; slug?: string }>();
   const [resolvedId, setResolvedId] = useState<string | null>(null);
   const [salonName, setSalonName] = useState<string>("");
+  const [acceptingBookings, setAcceptingBookings] = useState<boolean>(true);
+  const [lookupState, setLookupState] = useState<"loading" | "ok" | "not_found">("loading");
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [serviceId, setServiceId] = useState<string>("");
