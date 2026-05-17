@@ -19,6 +19,8 @@ export default function PublicBooking() {
   const { establishmentId, slug } = useParams<{ establishmentId?: string; slug?: string }>();
   const [resolvedId, setResolvedId] = useState<string | null>(null);
   const [salonName, setSalonName] = useState<string>("");
+  const [acceptingBookings, setAcceptingBookings] = useState<boolean>(true);
+  const [lookupState, setLookupState] = useState<"loading" | "ok" | "not_found">("loading");
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [serviceId, setServiceId] = useState<string>("");
@@ -44,26 +46,37 @@ export default function PublicBooking() {
 
   useEffect(() => {
     const run = async () => {
+      setLookupState("loading");
       if (slug) {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("id, business_name")
-          .eq("slug", slug)
-          .maybeSingle();
-        if (error || !data) {
-          console.error(error);
-          toast({ title: "Salão não encontrado", description: "Verifique o link.", variant: "destructive" });
+        const { data, error } = await supabase.rpc("get_public_salon_by_slug", { p_slug: slug });
+        const salon = data as any;
+        if (error || !salon?.id) {
+          console.error("Slug lookup failed", error);
+          setLookupState("not_found");
           return;
         }
-        setResolvedId((data as any).id);
-        setSalonName((data as any).business_name || "");
-        document.title = `${(data as any).business_name || "Agendar atendimento"} | Salão PRO`;
+        setResolvedId(salon.id);
+        setSalonName(salon.business_name || "");
+        setAcceptingBookings(salon.accepting_bookings !== false);
+        setLookupState("ok");
+        document.title = `${salon.business_name || "Agendar atendimento"} | Salão PRO`;
       } else if (establishmentId) {
-        setResolvedId(establishmentId);
+        const { data, error } = await supabase.rpc("get_public_salon_by_id", { p_id: establishmentId });
+        const salon = data as any;
+        if (error || !salon?.id) {
+          setLookupState("not_found");
+          return;
+        }
+        setResolvedId(salon.id);
+        setSalonName(salon.business_name || "");
+        setAcceptingBookings(salon.accepting_bookings !== false);
+        setLookupState("ok");
+      } else {
+        setLookupState("not_found");
       }
     };
     run();
-  }, [slug, establishmentId, toast]);
+  }, [slug, establishmentId]);
 
   useEffect(() => {
     if (!resolvedId) return;
@@ -149,6 +162,28 @@ export default function PublicBooking() {
     setSlot("");
   };
 
+  if (lookupState === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground text-sm">Carregando…</p>
+      </div>
+    );
+  }
+
+  if (lookupState === "not_found") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="max-w-md text-center space-y-4">
+          <div className="text-5xl">😕</div>
+          <h1 className="text-2xl font-bold">Salão não encontrado</h1>
+          <p className="text-muted-foreground">
+            O link que você acessou não corresponde a nenhum salão ativo. Confira com o estabelecimento se o endereço está correto.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
@@ -158,7 +193,12 @@ export default function PublicBooking() {
         </div>
       </header>
       <main className="container mx-auto px-4 py-8 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {!acceptingBookings && (
+          <div className="rounded-md border border-warning/40 bg-warning/10 p-4 text-sm">
+            ⏸️ Os agendamentos estão <strong>temporariamente indisponíveis</strong>. Tente novamente em breve.
+          </div>
+        )}
+        <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4", !acceptingBookings && "pointer-events-none opacity-60")}>
           <div className="rounded-md border bg-card p-4 space-y-3">
             <div>
               <label className="text-sm text-muted-foreground">Serviço</label>

@@ -251,6 +251,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          accepting_bookings: boolean
           business_name: string
           city: string | null
           created_at: string
@@ -265,6 +266,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          accepting_bookings?: boolean
           business_name: string
           city?: string | null
           created_at?: string
@@ -279,6 +281,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          accepting_bookings?: boolean
           business_name?: string
           city?: string | null
           created_at?: string
@@ -547,6 +550,8 @@ export type Database = {
         Returns: Json
       }
       get_public_catalog: { Args: { establishment: string }; Returns: Json }
+      get_public_salon_by_id: { Args: { p_id: string }; Returns: Json }
+      get_public_salon_by_slug: { Args: { p_slug: string }; Returns: Json }
       get_public_service_professionals: {
         Args: { establishment: string; service: string }
         Returns: Json
