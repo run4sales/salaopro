@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -14,28 +15,44 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["settings", establishmentId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("settings")
-        .select("id, inactive_days_threshold")
-        .eq("establishment_id", establishmentId)
-        .maybeSingle();
-      if (error) throw error;
-      return data as { id: string; inactive_days_threshold: number } | null;
+      const [settingsRes, profileRes] = await Promise.all([
+        supabase.from("settings").select("id, inactive_days_threshold").eq("establishment_id", establishmentId).maybeSingle(),
+        supabase.from("profiles").select("accepting_bookings").eq("id", establishmentId).maybeSingle(),
+      ]);
+      if (settingsRes.error) throw settingsRes.error;
+      if (profileRes.error) throw profileRes.error;
+      return {
+        settings: settingsRes.data as { id: string; inactive_days_threshold: number } | null,
+        accepting_bookings: (profileRes.data as any)?.accepting_bookings ?? true,
+      };
     },
   });
 
   const [threshold, setThreshold] = useState<number>(20);
+  const [accepting, setAccepting] = useState<boolean>(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (data?.inactive_days_threshold != null) setThreshold(Number(data.inactive_days_threshold));
+    if (data?.settings?.inactive_days_threshold != null) setThreshold(Number(data.settings.inactive_days_threshold));
+    if (data) setAccepting(data.accepting_bookings);
   }, [data]);
+
+  const toggleAccepting = async (next: boolean) => {
+    setAccepting(next);
+    const { error } = await supabase.from("profiles").update({ accepting_bookings: next } as any).eq("id", establishmentId);
+    if (error) {
+      toast.error("Não foi possível atualizar.");
+      setAccepting(!next);
+      return;
+    }
+    toast.success(next ? "Agendamentos ativados" : "Agendamentos pausados");
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      if (data?.id) {
+      if (data?.settings?.id) {
         const { error } = await supabase
           .from("settings")
           .update({ inactive_days_threshold: threshold })
@@ -57,30 +74,42 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      <div>
-        <h3 className="text-base font-semibold">Clientes inativos</h3>
-        <p className="text-sm text-muted-foreground">
-          Número de dias sem retorno para considerar um cliente como inativo.
-        </p>
+    <div className="space-y-8">
+      <div className="flex items-center justify-between rounded-lg border p-4">
+        <div>
+          <h3 className="text-base font-semibold">Aceitar agendamentos online</h3>
+          <p className="text-sm text-muted-foreground">
+            Quando desligado, o link público continua acessível mas exibe aviso de indisponibilidade.
+          </p>
+        </div>
+        <Switch checked={accepting} onCheckedChange={toggleAccepting} disabled={isLoading} />
       </div>
 
-      <div className="max-w-xs space-y-2">
-        <Label>Dias de inatividade</Label>
-        <Input
-          type="number"
-          min={1}
-          value={isLoading ? "" : threshold}
-          onChange={(e) => setThreshold(Number(e.target.value))}
-          required
-        />
-      </div>
+      <form onSubmit={onSubmit} className="space-y-6">
+        <div>
+          <h3 className="text-base font-semibold">Clientes inativos</h3>
+          <p className="text-sm text-muted-foreground">
+            Número de dias sem retorno para considerar um cliente como inativo.
+          </p>
+        </div>
 
-      <div className="flex gap-3">
-        <Button type="submit" className="min-w-40" disabled={saving}>
-          {saving ? "Salvando..." : "Salvar preferências"}
-        </Button>
-      </div>
-    </form>
+        <div className="max-w-xs space-y-2">
+          <Label>Dias de inatividade</Label>
+          <Input
+            type="number"
+            min={1}
+            value={isLoading ? "" : threshold}
+            onChange={(e) => setThreshold(Number(e.target.value))}
+            required
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <Button type="submit" className="min-w-40" disabled={saving}>
+            {saving ? "Salvando..." : "Salvar preferências"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
