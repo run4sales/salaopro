@@ -63,6 +63,9 @@ export default function Reports() {
             <TabsTrigger value="expenses" className="gap-2">
               <TrendingDown className="h-4 w-4" /> Despesas
             </TabsTrigger>
+            <TabsTrigger value="cashflow" className="gap-2">
+              <Banknote className="h-4 w-4" /> Fluxo de caixa
+            </TabsTrigger>
           </TabsList>
 
           {profile?.id ? (
@@ -71,6 +74,7 @@ export default function Reports() {
               <TabsContent value="pro"><ProfessionalServicesReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
               <TabsContent value="commissions"><CommissionsReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
               <TabsContent value="expenses"><ExpensesReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
+              <TabsContent value="cashflow"><CashFlowReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
             </>
           ) : (
             <div className="text-sm text-muted-foreground">Carregando perfil…</div>
