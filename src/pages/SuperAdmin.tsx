@@ -33,7 +33,7 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
 ];
 
 export default function SuperAdmin() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("dashboard");
 
@@ -42,12 +42,22 @@ export default function SuperAdmin() {
   }, []);
 
   useEffect(() => {
-    if (!user) navigate("/auth");
-  }, [user, navigate]);
+    if (!loading && !user) navigate("/auth");
+  }, [loading, user, navigate]);
+
+  if (loading) {
+    return (
+      <main className="p-4 md:p-6 space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-28" />
+        <Skeleton className="h-64" />
+      </main>
+    );
+  }
 
   const { data: roles, isLoading } = useQuery({
     queryKey: ["roles", user?.id],
-    enabled: !!user,
+    enabled: !loading && !!user,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_roles")
