@@ -1,494 +1,583 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, TrendingUp, MessageCircle, Calendar, Target, BarChart3, Star, Check } from "lucide-react";
-import heroImage from "@/assets/hero-image.jpg";
-import retentionIcon from "@/assets/retention-icon.jpg";
-import growthIcon from "@/assets/growth-icon.jpg";
-import whatsappIcon from "@/assets/whatsapp-icon.jpg";
+import {
+  Calendar,
+  Users,
+  Wallet,
+  BarChart3,
+  Percent,
+  MessageCircle,
+  Check,
+  X,
+  TrendingUp,
+  Sparkles,
+  ArrowRight,
+  Star,
+  ShieldCheck,
+  Zap,
+} from "lucide-react";
 
 const LandingPage = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#08020f] text-white antialiased overflow-x-hidden">
+      {/* Ambient glow background */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-[hsl(267_84%_48%/0.25)] blur-3xl" />
+        <div className="absolute top-1/3 -right-40 h-[500px] w-[500px] rounded-full bg-[hsl(45_93%_55%/0.15)] blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-[400px] w-[400px] rounded-full bg-[hsl(267_84%_48%/0.2)] blur-3xl" />
+      </div>
+
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#08020f]/80 backdrop-blur-xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded bg-gradient-primary"></div>
-            <span className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Salão PRO
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[hsl(267_84%_55%)] to-[hsl(45_93%_60%)] shadow-[0_0_20px_hsl(267_84%_55%/0.5)]" />
+            <span className="text-xl font-bold tracking-tight">
+              Beauty<span className="bg-gradient-to-r from-[hsl(267_84%_70%)] to-[hsl(45_93%_66%)] bg-clip-text text-transparent">Core</span>
             </span>
           </div>
-          <nav className="hidden md:flex items-center space-x-6">
-            <a href="#funcionalidades" className="text-sm font-medium hover:text-primary transition-colors">
-              Funcionalidades
+          <nav className="hidden md:flex items-center space-x-8">
+            <a href="#funcionalidades" className="text-sm text-white/70 hover:text-white transition-colors">Funcionalidades</a>
+            <a href="#financeiro" className="text-sm text-white/70 hover:text-white transition-colors">Financeiro</a>
+            <a href="#planos" className="text-sm text-white/70 hover:text-white transition-colors">Planos</a>
+            <a
+              href="/auth?tab=login"
+              className="text-sm text-white/70 hover:text-white transition-colors"
+            >
+              Entrar
             </a>
-            <a href="#beneficios" className="text-sm font-medium hover:text-primary transition-colors">
-              Benefícios
-            </a>
-            <a href="#planos" className="text-sm font-medium hover:text-primary transition-colors">
-              Planos
-            </a>
-            <Button variant="outline" size="sm" asChild>
-              <a href="/auth?tab=login">Entrar</a>
-            </Button>
-            <Button variant="hero" size="sm" asChild>
+            <Button
+              size="sm"
+              className="bg-gradient-to-r from-[hsl(267_84%_55%)] to-[hsl(267_84%_45%)] hover:opacity-90 text-white border-0 shadow-[0_0_24px_hsl(267_84%_55%/0.4)]"
+              asChild
+            >
               <a href="/auth?tab=signup">Teste Grátis</a>
             </Button>
           </nav>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-10"
-          style={{ backgroundImage: `url(${heroImage})` }}
-        />
-        <div className="relative container mx-auto px-4 py-24 text-center">
-          <Badge className="mb-6 bg-primary/10 text-primary hover:bg-primary/20">
-            CRM Especializado para Beleza
-          </Badge>
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-hero bg-clip-text text-transparent">
-            Transforme Clientes Inativos em 
-            <br />
-            Receita Recorrente
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            O Salão PRO é o CRM que ajuda salões, barbearias e profissionais de beleza a 
-            reativar clientes, aumentar a frequência de visitas e bater suas metas mensais.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button variant="hero" size="lg" className="text-lg px-8 py-3" asChild>
-              <a href="/auth?tab=signup">Começar Teste Grátis</a>
-            </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8 py-3">
-              Ver Demonstração
-            </Button>
-          </div>
-          <p className="text-sm text-muted-foreground mt-4">
-            ✅ 14 dias grátis • ✅ Sem cartão de crédito • ✅ Cancelamento a qualquer momento
-          </p>
-        </div>
-      </section>
+      {/* HERO */}
+      <section className="relative">
+        <div className="container mx-auto px-4 pt-20 pb-24 md:pt-28 md:pb-32">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <Badge className="mb-6 bg-white/5 border border-white/10 text-[hsl(45_93%_70%)] hover:bg-white/10">
+                <Sparkles className="h-3 w-3 mr-1.5" />
+                Sistema de gestão para salões premium
+              </Badge>
+              <h1 className="text-4xl md:text-6xl font-bold leading-[1.05] tracking-tight mb-6">
+                Transforme seu salão em uma{" "}
+                <span className="bg-gradient-to-r from-[hsl(267_84%_70%)] via-[hsl(290_84%_70%)] to-[hsl(45_93%_66%)] bg-clip-text text-transparent">
+                  empresa lucrativa
+                </span>{" "}
+                e previsível
+              </h1>
+              <p className="text-lg text-white/70 mb-8 max-w-xl leading-relaxed">
+                O Beauty Core é o sistema completo que une agenda, financeiro, clientes e marketing em
+                um só lugar — para você ter mais controle, mais lucro e crescimento real.
+              </p>
 
-      {/* Benefits Section */}
-      <section id="beneficios" className="py-24 bg-muted/50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Por que escolher o Salão PRO?
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Desenvolvido especificamente para o mercado de beleza, com funcionalidades 
-              que realmente fazem a diferença no seu faturamento.
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="text-center shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <div className="mx-auto mb-4">
-                  <img src={retentionIcon} alt="Retenção de Clientes" className="w-16 h-16 mx-auto" />
-                </div>
-                <CardTitle className="text-xl">Recupere Clientes Perdidos</CardTitle>
-                <CardDescription>
-                  Identifique automaticamente clientes que não voltam há dias e reative-os 
-                  com um clique via WhatsApp.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="text-center shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <div className="mx-auto mb-4">
-                  <img src={growthIcon} alt="Crescimento de Vendas" className="w-16 h-16 mx-auto" />
-                </div>
-                <CardTitle className="text-xl">Aumente seu Faturamento</CardTitle>
-                <CardDescription>
-                  Defina metas mensais e acompanhe seu progresso em tempo real. 
-                  Saiba exatamente quantos atendimentos faltam para bater sua meta.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="text-center shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <div className="mx-auto mb-4">
-                  <img src={whatsappIcon} alt="Integração WhatsApp" className="w-16 h-16 mx-auto" />
-                </div>
-                <CardTitle className="text-xl">WhatsApp Integrado</CardTitle>
-                <CardDescription>
-                  Envie promoções e cupons diretamente pelo WhatsApp com apenas um clique. 
-                  Mantenha contato constante com seus clientes.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="funcionalidades" className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Tudo que você precisa em um só lugar
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Funcionalidades pensadas especificamente para profissionais de beleza 
-              que querem crescer e organizar seu negócio.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <Users className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Gestão de Clientes</CardTitle>
-                <CardDescription>
-                  Cadastre clientes com histórico completo de serviços, 
-                  telefone e data do último atendimento.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <Calendar className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Agenda Inteligente</CardTitle>
-                <CardDescription>
-                  Visualize seus agendamentos por dia, semana ou mês. 
-                  Nunca mais perca um compromisso.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <Target className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Metas e Objetivos</CardTitle>
-                <CardDescription>
-                  Defina suas metas mensais e acompanhe o progresso. 
-                  Saiba quantos atendimentos faltam para o sucesso.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <BarChart3 className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Relatórios Detalhados</CardTitle>
-                <CardDescription>
-                  Compare faturamento entre meses, identifique tendências 
-                  e tome decisões baseadas em dados.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <MessageCircle className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Clientes Inativos</CardTitle>
-                <CardDescription>
-                  Filtro automático de clientes que não voltam há dias. 
-                  Reative-os com promoções via WhatsApp.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <TrendingUp className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Dashboard Completo</CardTitle>
-                <CardDescription>
-                  Visão geral do seu negócio: faturamento, metas, 
-                  próximos agendamentos e muito mais.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-24 bg-muted/50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              O que nossos clientes dizem
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="shadow-card">
-              <CardHeader>
-                <div className="flex items-center mb-4">
-                  <div className="flex text-yellow-500">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-current" />
-                    ))}
-                  </div>
-                </div>
-                <CardDescription className="text-base">
-                  "Aumentei meu faturamento em 40% depois que comecei a usar o Salão PRO. 
-                  A funcionalidade de clientes inativos é incrível!"
-                </CardDescription>
-                <div className="mt-4">
-                  <p className="font-semibold">Maria Silva</p>
-                  <p className="text-sm text-muted-foreground">Salão Beleza Pura</p>
-                </div>
-              </CardHeader>
-            </Card>
-
-            <Card className="shadow-card">
-              <CardHeader>
-                <div className="flex items-center mb-4">
-                  <div className="flex text-yellow-500">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-current" />
-                    ))}
-                  </div>
-                </div>
-                <CardDescription className="text-base">
-                  "Finalmente consigo acompanhar minhas metas e saber exatamente 
-                  quantos cortes preciso fazer para atingir meu objetivo mensal."
-                </CardDescription>
-                <div className="mt-4">
-                  <p className="font-semibold">João Santos</p>
-                  <p className="text-sm text-muted-foreground">Barbearia Style</p>
-                </div>
-              </CardHeader>
-            </Card>
-
-            <Card className="shadow-card">
-              <CardHeader>
-                <div className="flex items-center mb-4">
-                  <div className="flex text-yellow-500">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-current" />
-                    ))}
-                  </div>
-                </div>
-                <CardDescription className="text-base">
-                  "A integração com WhatsApp revolucionou meu relacionamento com os clientes. 
-                  Super fácil de usar e muito eficiente!"
-                </CardDescription>
-                <div className="mt-4">
-                  <p className="font-semibold">Ana Costa</p>
-                  <p className="text-sm text-muted-foreground">Estética Renovar</p>
-                </div>
-              </CardHeader>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="planos" className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Planos que cabem no seu bolso
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Escolha o plano ideal para o seu negócio. 
-              Todos incluem 14 dias de teste grátis.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <Card className="shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader className="text-center">
-                <CardTitle className="text-2xl">Básico</CardTitle>
-                <div className="mt-4">
-                  <span className="text-3xl font-bold">R$ 29</span>
-                  <span className="text-muted-foreground">/mês</span>
-                </div>
-                <CardDescription>
-                  Perfeito para profissionais autônomos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    Até 200 clientes
+              <ul className="space-y-3 mb-8">
+                {[
+                  "Controle total do seu financeiro (fluxo de caixa automático)",
+                  "Saiba exatamente quanto você lucra, não só quanto fatura",
+                  "Agenda inteligente que evita horários vazios",
+                  "Recupere clientes inativos no automático com WhatsApp",
+                ].map((b) => (
+                  <li key={b} className="flex items-start gap-3 text-white/80">
+                    <span className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[hsl(267_84%_55%/0.2)] border border-[hsl(267_84%_55%/0.4)]">
+                      <Check className="h-3 w-3 text-[hsl(267_84%_75%)]" />
+                    </span>
+                    <span className="text-sm md:text-base">{b}</span>
                   </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    Agenda básica
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    WhatsApp integrado
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    Relatórios básicos
-                  </li>
-                </ul>
-                <Button className="w-full mt-6" variant="outline" asChild>
-                  <a href="/auth?tab=signup">Começar Teste Grátis</a>
+                ))}
+              </ul>
+
+              <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                <Button
+                  size="lg"
+                  className="bg-gradient-to-r from-[hsl(267_84%_55%)] to-[hsl(267_84%_45%)] hover:opacity-90 text-white border-0 shadow-[0_0_32px_hsl(267_84%_55%/0.5)] text-base px-7 py-6"
+                  asChild
+                >
+                  <a href="/auth?tab=signup">
+                    Começar teste grátis
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </a>
                 </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-elegant border-primary relative">
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-gradient-secondary text-foreground font-semibold">
-                  Mais Popular
-                </Badge>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white text-base px-7 py-6"
+                >
+                  Ver como funciona
+                </Button>
               </div>
-              <CardHeader className="text-center">
-                <CardTitle className="text-2xl">Profissional</CardTitle>
-                <div className="mt-4">
-                  <span className="text-3xl font-bold">R$ 59</span>
-                  <span className="text-muted-foreground">/mês</span>
-                </div>
-                <CardDescription>
-                  Ideal para salões pequenos e médios
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    Até 1000 clientes
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    Agenda avançada
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    WhatsApp integrado
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    Relatórios avançados
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    Metas e indicadores
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    Suporte prioritário
-                  </li>
-                </ul>
-                <Button className="w-full mt-6" variant="hero" asChild>
-                  <a href="/auth?tab=signup">Começar Teste Grátis</a>
-                </Button>
-              </CardContent>
-            </Card>
 
-            <Card className="shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader className="text-center">
-                <CardTitle className="text-2xl">Premium</CardTitle>
-                <div className="mt-4">
-                  <span className="text-3xl font-bold">R$ 99</span>
-                  <span className="text-muted-foreground">/mês</span>
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-white/50">
+                <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[hsl(45_93%_66%)]" /> Sem cartão de crédito</span>
+                <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[hsl(45_93%_66%)]" /> 14 dias grátis</span>
+                <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[hsl(45_93%_66%)]" /> Cancelamento fácil</span>
+              </div>
+            </div>
+
+            {/* Mockup */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-tr from-[hsl(267_84%_55%/0.3)] to-[hsl(45_93%_60%/0.2)] blur-3xl" />
+              <div className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-5 backdrop-blur-xl shadow-[0_0_60px_hsl(267_84%_55%/0.3)]">
+                <div className="flex items-center gap-1.5 mb-4">
+                  <div className="h-3 w-3 rounded-full bg-red-500/70" />
+                  <div className="h-3 w-3 rounded-full bg-yellow-500/70" />
+                  <div className="h-3 w-3 rounded-full bg-green-500/70" />
                 </div>
-                <CardDescription>
-                  Para salões grandes e redes
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    Clientes ilimitados
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    Múltiplos usuários
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    WhatsApp integrado
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    Relatórios personalizados
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    API integração
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    Suporte dedicado
-                  </li>
-                </ul>
-                <Button className="w-full mt-6" variant="outline" asChild>
-                  <a href="/auth?tab=signup">Começar Teste Grátis</a>
-                </Button>
-              </CardContent>
-            </Card>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between rounded-lg bg-white/5 border border-white/10 p-4">
+                    <div>
+                      <p className="text-xs text-white/50">Faturamento do mês</p>
+                      <p className="text-2xl font-bold text-white">R$ 48.250</p>
+                    </div>
+                    <div className="flex items-center gap-1 text-[hsl(142_71%_55%)] text-sm font-semibold">
+                      <TrendingUp className="h-4 w-4" /> +32%
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg bg-white/5 border border-white/10 p-4">
+                      <p className="text-xs text-white/50">Lucro real</p>
+                      <p className="text-lg font-bold text-[hsl(45_93%_66%)]">R$ 18.430</p>
+                    </div>
+                    <div className="rounded-lg bg-white/5 border border-white/10 p-4">
+                      <p className="text-xs text-white/50">Agendamentos</p>
+                      <p className="text-lg font-bold text-white">142</p>
+                    </div>
+                  </div>
+                  {/* Fake chart */}
+                  <div className="rounded-lg bg-white/5 border border-white/10 p-4">
+                    <p className="text-xs text-white/50 mb-3">Evolução de receita</p>
+                    <div className="flex items-end gap-1.5 h-24">
+                      {[40, 55, 35, 70, 50, 80, 65, 90, 75, 95, 85, 100].map((h, i) => (
+                        <div
+                          key={i}
+                          className="flex-1 rounded-t bg-gradient-to-t from-[hsl(267_84%_55%)] to-[hsl(45_93%_66%)] opacity-90"
+                          style={{ height: `${h}%` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-24 bg-gradient-hero text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Pronto para transformar seu negócio?
+      {/* PROBLEMA */}
+      <section className="relative py-24 border-t border-white/5">
+        <div className="container mx-auto px-4 max-w-4xl text-center">
+          <Badge className="mb-6 bg-red-500/10 border border-red-500/30 text-red-300">O Problema</Badge>
+          <h2 className="text-3xl md:text-5xl font-bold mb-6 tracking-tight">
+            Seu salão fatura… mas você não sabe para onde o{" "}
+            <span className="bg-gradient-to-r from-red-400 to-[hsl(45_93%_66%)] bg-clip-text text-transparent">
+              dinheiro está indo?
+            </span>
           </h2>
-          <p className="text-lg mb-8 max-w-2xl mx-auto opacity-90">
-            Junte-se a centenas de profissionais que já aumentaram seu faturamento 
-            com o Salão PRO. Comece seu teste grátis hoje mesmo!
+          <p className="text-lg text-white/70 mb-10">A maioria dos salões vive no escuro:</p>
+          <div className="grid sm:grid-cols-2 gap-4 text-left max-w-2xl mx-auto mb-10">
+            {[
+              "Não sabe o lucro real",
+              "Não controla despesas",
+              "Agenda desorganizada",
+              "Clientes que somem",
+            ].map((p) => (
+              <div key={p} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.02] p-4">
+                <X className="h-5 w-5 text-red-400 shrink-0" />
+                <span className="text-white/80">{p}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xl md:text-2xl font-semibold">
+            Isso não é falta de cliente.{" "}
+            <span className="bg-gradient-to-r from-[hsl(267_84%_70%)] to-[hsl(45_93%_66%)] bg-clip-text text-transparent">
+              É falta de gestão.
+            </span>
           </p>
-          <Button variant="cta" size="lg" className="text-lg px-8 py-3" asChild>
-            <a href="/auth?tab=signup">Começar Teste Grátis Agora</a>
+        </div>
+      </section>
+
+      {/* TRANSFORMAÇÃO */}
+      <section className="py-24 border-t border-white/5">
+        <div className="container mx-auto px-4 max-w-5xl">
+          <div className="text-center mb-14">
+            <Badge className="mb-4 bg-[hsl(267_84%_55%/0.15)] border border-[hsl(267_84%_55%/0.4)] text-[hsl(267_84%_80%)]">
+              A Transformação
+            </Badge>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
+              Transforme desorganização em{" "}
+              <span className="bg-gradient-to-r from-[hsl(267_84%_70%)] to-[hsl(45_93%_66%)] bg-clip-text text-transparent">
+                crescimento previsível
+              </span>
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8">
+              <p className="text-sm text-white/50 mb-4 uppercase tracking-wider">Antes</p>
+              <ul className="space-y-4">
+                {["Agenda bagunçada", "Faturamento confuso", "Clientes sumindo", "Sem controle"].map((i) => (
+                  <li key={i} className="flex items-center gap-3 text-white/70">
+                    <X className="h-5 w-5 text-red-400" />
+                    <span>{i}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-[hsl(267_84%_55%/0.4)] bg-gradient-to-br from-[hsl(267_84%_55%/0.15)] to-[hsl(45_93%_60%/0.05)] p-8 shadow-[0_0_40px_hsl(267_84%_55%/0.25)]">
+              <p className="text-sm text-[hsl(45_93%_70%)] mb-4 uppercase tracking-wider">Depois com Beauty Core</p>
+              <ul className="space-y-4">
+                {["Agenda inteligente", "Fluxo de caixa claro", "Clientes recorrentes", "Gestão profissional"].map((i) => (
+                  <li key={i} className="flex items-center gap-3 text-white">
+                    <Check className="h-5 w-5 text-[hsl(45_93%_66%)]" />
+                    <span className="font-medium">{i}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* TUDO EM UM SÓ LUGAR */}
+      <section id="funcionalidades" className="py-24 border-t border-white/5">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-14 max-w-3xl mx-auto">
+            <Badge className="mb-4 bg-white/5 border border-white/10 text-white/70">Tudo em um só lugar</Badge>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
+              Tudo que seu salão precisa para crescer, em um{" "}
+              <span className="bg-gradient-to-r from-[hsl(267_84%_70%)] to-[hsl(45_93%_66%)] bg-clip-text text-transparent">
+                único sistema
+              </span>
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[
+              { icon: Calendar, title: "Agenda Inteligente", desc: "Nunca perca horários. Controle total da agenda." },
+              { icon: Users, title: "Gestão de Clientes", desc: "Histórico completo + reativação automática." },
+              { icon: Wallet, title: "Financeiro Completo", desc: "Fluxo de caixa, despesas e lucro real." },
+              { icon: BarChart3, title: "Relatórios Inteligentes", desc: "Decisões baseadas em dados reais." },
+              { icon: Percent, title: "Comissões Automáticas", desc: "Controle de profissionais sem dor de cabeça." },
+              { icon: MessageCircle, title: "WhatsApp Integrado", desc: "Marketing e relacionamento automatizado." },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div
+                key={title}
+                className="group relative rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent p-6 hover:border-[hsl(267_84%_55%/0.5)] transition-all hover:shadow-[0_0_30px_hsl(267_84%_55%/0.25)]"
+              >
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(267_84%_55%/0.3)] to-[hsl(45_93%_60%/0.15)] border border-white/10 mb-4">
+                  <Icon className="h-5 w-5 text-[hsl(45_93%_70%)]" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+                <p className="text-sm text-white/60 leading-relaxed">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FINANCEIRO - DIFERENCIAL */}
+      <section id="financeiro" className="py-24 border-t border-white/5 relative">
+        <div className="container mx-auto px-4">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <Badge className="mb-6 bg-[hsl(45_93%_60%/0.15)] border border-[hsl(45_93%_60%/0.4)] text-[hsl(45_93%_70%)]">
+                Seu diferencial
+              </Badge>
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
+                Pare de só faturar.{" "}
+                <span className="bg-gradient-to-r from-[hsl(45_93%_66%)] to-[hsl(267_84%_70%)] bg-clip-text text-transparent">
+                  Comece a lucrar de verdade.
+                </span>
+              </h2>
+              <p className="text-lg text-white/70 mb-8 leading-relaxed">
+                O Beauty Core não mostra só quanto você vende — ele mostra{" "}
+                <span className="text-white font-semibold">quanto sobra no seu bolso.</span>
+              </p>
+              <ul className="space-y-3">
+                {[
+                  "Fluxo de caixa automático",
+                  "Controle de entradas e saídas",
+                  "Visão clara de lucro/prejuízo",
+                  "Relatórios financeiros completos",
+                ].map((i) => (
+                  <li key={i} className="flex items-center gap-3 text-white/85">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-[hsl(267_84%_55%)] to-[hsl(45_93%_60%)] shadow-[0_0_12px_hsl(267_84%_55%/0.5)]">
+                      <Check className="h-3.5 w-3.5 text-white" />
+                    </span>
+                    {i}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-[hsl(45_93%_60%/0.2)] to-[hsl(267_84%_55%/0.2)] blur-3xl" />
+              <div className="relative rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="rounded-xl bg-gradient-to-br from-[hsl(142_71%_42%/0.2)] to-transparent border border-[hsl(142_71%_42%/0.3)] p-4">
+                    <p className="text-xs text-white/60">Entradas</p>
+                    <p className="text-xl font-bold text-[hsl(142_71%_60%)]">R$ 52.180</p>
+                  </div>
+                  <div className="rounded-xl bg-gradient-to-br from-red-500/15 to-transparent border border-red-500/30 p-4">
+                    <p className="text-xs text-white/60">Saídas</p>
+                    <p className="text-xl font-bold text-red-400">R$ 33.750</p>
+                  </div>
+                </div>
+                <div className="rounded-xl bg-gradient-to-r from-[hsl(267_84%_55%/0.25)] to-[hsl(45_93%_60%/0.2)] border border-[hsl(45_93%_60%/0.3)] p-5 mb-4">
+                  <p className="text-xs text-white/70 uppercase tracking-wider">Lucro real</p>
+                  <p className="text-3xl font-bold bg-gradient-to-r from-white to-[hsl(45_93%_70%)] bg-clip-text text-transparent">
+                    R$ 18.430
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {[
+                    { label: "Pix", v: 42 },
+                    { label: "Crédito", v: 31 },
+                    { label: "Débito", v: 18 },
+                    { label: "Dinheiro", v: 9 },
+                  ].map((r) => (
+                    <div key={r.label} className="flex items-center gap-3 text-sm">
+                      <span className="w-20 text-white/60">{r.label}</span>
+                      <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[hsl(267_84%_55%)] to-[hsl(45_93%_66%)]"
+                          style={{ width: `${r.v}%` }}
+                        />
+                      </div>
+                      <span className="w-10 text-right text-white/70">{r.v}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SOCIAL PROOF */}
+      <section className="py-24 border-t border-white/5">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-14">
+            <Badge className="mb-4 bg-white/5 border border-white/10 text-white/70">Prova social</Badge>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
+              Salões que cresceram com o{" "}
+              <span className="bg-gradient-to-r from-[hsl(267_84%_70%)] to-[hsl(45_93%_66%)] bg-clip-text text-transparent">
+                Beauty Core
+              </span>
+            </h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { quote: "Passei a entender meu lucro de verdade. Hoje sei quanto sobra todo mês.", name: "Maria Silva", role: "Salão Beleza Pura" },
+              { quote: "Minha agenda nunca mais ficou vazia. O sistema me ajuda a preencher horários.", name: "João Santos", role: "Barbearia Style" },
+              { quote: "Comecei a crescer de forma organizada, com números na mão.", name: "Ana Costa", role: "Estética Renovar" },
+            ].map((t) => (
+              <div key={t.name} className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 hover:border-[hsl(45_93%_60%/0.4)] transition-colors">
+                <div className="flex text-[hsl(45_93%_66%)] mb-4">
+                  {[...Array(5)].map((_, i) => <Star key={i} className="h-4 w-4 fill-current" />)}
+                </div>
+                <p className="text-white/85 mb-5 leading-relaxed">"{t.quote}"</p>
+                <div>
+                  <p className="font-semibold text-white">{t.name}</p>
+                  <p className="text-sm text-white/50">{t.role}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* PARA QUEM É */}
+      <section className="py-24 border-t border-white/5">
+        <div className="container mx-auto px-4 max-w-4xl text-center">
+          <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-10">
+            O Beauty Core é{" "}
+            <span className="bg-gradient-to-r from-[hsl(267_84%_70%)] to-[hsl(45_93%_66%)] bg-clip-text text-transparent">
+              para você que:
+            </span>
+          </h2>
+          <div className="grid sm:grid-cols-2 gap-4 text-left">
+            {[
+              "Quer parar de improvisar",
+              "Quer ter controle financeiro",
+              "Quer crescer de forma estruturada",
+              "Quer profissionalizar seu salão",
+            ].map((i) => (
+              <div key={i} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-5">
+                <Zap className="h-5 w-5 text-[hsl(45_93%_66%)] shrink-0" />
+                <span className="text-white/85">{i}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* PLANOS */}
+      <section id="planos" className="py-24 border-t border-white/5">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-14 max-w-2xl mx-auto">
+            <Badge className="mb-4 bg-white/5 border border-white/10 text-white/70">Planos</Badge>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
+              Invista no{" "}
+              <span className="bg-gradient-to-r from-[hsl(267_84%_70%)] to-[hsl(45_93%_66%)] bg-clip-text text-transparent">
+                crescimento do seu salão
+              </span>
+            </h2>
+            <p className="text-white/60">Escolha o nível de crescimento do seu negócio.</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {[
+              {
+                name: "Essencial",
+                price: "R$ 29",
+                desc: "Para profissionais autônomos começando.",
+                features: ["Até 200 clientes", "Agenda básica", "WhatsApp integrado", "Relatórios básicos"],
+                featured: false,
+              },
+              {
+                name: "Crescimento",
+                price: "R$ 59",
+                desc: "Para salões que querem profissionalizar.",
+                features: [
+                  "Até 1000 clientes",
+                  "Agenda avançada",
+                  "Financeiro completo",
+                  "Comissões automáticas",
+                  "Relatórios avançados",
+                  "Suporte prioritário",
+                ],
+                featured: true,
+              },
+              {
+                name: "Escala",
+                price: "R$ 99",
+                desc: "Para salões grandes e redes.",
+                features: [
+                  "Clientes ilimitados",
+                  "Múltiplos usuários",
+                  "BI financeiro completo",
+                  "API integração",
+                  "Onboarding dedicado",
+                  "Suporte premium",
+                ],
+                featured: false,
+              },
+            ].map((plan) => (
+              <div
+                key={plan.name}
+                className={`relative rounded-2xl border p-7 ${
+                  plan.featured
+                    ? "border-[hsl(45_93%_60%/0.5)] bg-gradient-to-br from-[hsl(267_84%_55%/0.15)] to-[hsl(45_93%_60%/0.08)] shadow-[0_0_40px_hsl(267_84%_55%/0.3)]"
+                    : "border-white/10 bg-white/[0.02]"
+                }`}
+              >
+                {plan.featured && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-gradient-to-r from-[hsl(267_84%_55%)] to-[hsl(45_93%_60%)] text-white border-0">
+                      Mais escolhido
+                    </Badge>
+                  </div>
+                )}
+                <h3 className="text-xl font-semibold text-white mb-1">{plan.name}</h3>
+                <p className="text-sm text-white/60 mb-5">{plan.desc}</p>
+                <div className="mb-6">
+                  <span className="text-4xl font-bold text-white">{plan.price}</span>
+                  <span className="text-white/50">/mês</span>
+                </div>
+                <ul className="space-y-3 mb-7">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2.5 text-sm text-white/80">
+                      <Check className={`h-4 w-4 mt-0.5 ${plan.featured ? "text-[hsl(45_93%_66%)]" : "text-[hsl(267_84%_70%)]"}`} />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  className={`w-full ${
+                    plan.featured
+                      ? "bg-gradient-to-r from-[hsl(267_84%_55%)] to-[hsl(267_84%_45%)] hover:opacity-90 text-white border-0 shadow-[0_0_24px_hsl(267_84%_55%/0.5)]"
+                      : "bg-white/5 border border-white/15 text-white hover:bg-white/10"
+                  }`}
+                  asChild
+                >
+                  <a href="/auth?tab=signup">Começar teste grátis</a>
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA FINAL */}
+      <section className="py-24 border-t border-white/5 relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[hsl(267_84%_30%/0.2)] to-transparent" />
+        <div className="container mx-auto px-4 max-w-4xl text-center relative">
+          <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
+            Seu salão pode faturar mais…{" "}
+            <span className="bg-gradient-to-r from-[hsl(267_84%_70%)] to-[hsl(45_93%_66%)] bg-clip-text text-transparent">
+              ou crescer de verdade.
+            </span>
+          </h2>
+          <p className="text-xl text-white/70 mb-10">A diferença está na gestão.</p>
+          <Button
+            size="lg"
+            className="bg-gradient-to-r from-[hsl(267_84%_55%)] to-[hsl(45_93%_60%)] hover:opacity-90 text-white border-0 shadow-[0_0_48px_hsl(267_84%_55%/0.6)] text-base px-10 py-7"
+            asChild
+          >
+            <a href="/auth?tab=signup">
+              Comece agora com o Beauty Core
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </a>
           </Button>
-          <p className="text-sm mt-4 opacity-75">
-            ✅ Sem cartão de crédito • ✅ 14 dias grátis • ✅ Cancelamento fácil
-          </p>
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-6 text-xs text-white/50">
+            <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-[hsl(45_93%_66%)]" /> Sem cartão de crédito</span>
+            <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[hsl(45_93%_66%)]" /> 14 dias grátis</span>
+            <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-[hsl(45_93%_66%)]" /> Cancelamento fácil</span>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-foreground text-background py-12">
+      <footer className="border-t border-white/5 py-12 bg-black/40">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <div className="h-8 w-8 rounded bg-gradient-primary"></div>
-                <span className="text-xl font-bold">Salão PRO</span>
+                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[hsl(267_84%_55%)] to-[hsl(45_93%_60%)]" />
+                <span className="text-xl font-bold">
+                  Beauty<span className="bg-gradient-to-r from-[hsl(267_84%_70%)] to-[hsl(45_93%_66%)] bg-clip-text text-transparent">Core</span>
+                </span>
               </div>
-              <p className="text-sm opacity-75">
-                O CRM especializado para profissionais de beleza que querem crescer.
+              <p className="text-sm text-white/50 leading-relaxed">
+                Mais controle. Mais lucro. Mais crescimento.
               </p>
             </div>
-            <div>
-              <h4 className="font-semibold mb-4">Produto</h4>
-              <ul className="space-y-2 text-sm opacity-75">
-                <li><a href="#" className="hover:opacity-100">Funcionalidades</a></li>
-                <li><a href="#" className="hover:opacity-100">Preços</a></li>
-                <li><a href="#" className="hover:opacity-100">Demonstração</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Suporte</h4>
-              <ul className="space-y-2 text-sm opacity-75">
-                <li><a href="#" className="hover:opacity-100">Central de Ajuda</a></li>
-                <li><a href="#" className="hover:opacity-100">Contato</a></li>
-                <li><a href="#" className="hover:opacity-100">WhatsApp</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Empresa</h4>
-              <ul className="space-y-2 text-sm opacity-75">
-                <li><a href="#" className="hover:opacity-100">Sobre</a></li>
-                <li><a href="#" className="hover:opacity-100">Blog</a></li>
-                <li><a href="#" className="hover:opacity-100">Privacidade</a></li>
-              </ul>
-            </div>
+            {[
+              { title: "Produto", items: ["Funcionalidades", "Financeiro", "Planos"] },
+              { title: "Suporte", items: ["Central de Ajuda", "Contato", "WhatsApp"] },
+              { title: "Empresa", items: ["Sobre", "Blog", "Privacidade"] },
+            ].map((col) => (
+              <div key={col.title}>
+                <h4 className="font-semibold mb-4 text-white">{col.title}</h4>
+                <ul className="space-y-2 text-sm text-white/50">
+                  {col.items.map((i) => (
+                    <li key={i}><a href="#" className="hover:text-white transition-colors">{i}</a></li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
-          <div className="border-t border-background/20 mt-8 pt-8 text-center text-sm opacity-75">
-            <p>&copy; 2024 Salão PRO. Todos os direitos reservados.</p>
+          <div className="border-t border-white/5 mt-10 pt-6 text-center text-xs text-white/40">
+            <p>&copy; 2026 Beauty Core. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>
