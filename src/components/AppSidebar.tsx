@@ -69,7 +69,7 @@ export default function AppSidebar() {
       <SidebarHeader>
         <div className="px-3 py-4">
           <div className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent tracking-tight">
-            Salão PRO
+            Beauty Core
           </div>
           <div className="text-xs text-sidebar-foreground/60 mt-0.5">Gestão completa do seu salão</div>
         </div>

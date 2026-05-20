@@ -77,7 +77,7 @@ export default function Sales() {
   const { user, profile } = useAuth();
 
   useEffect(() => {
-    document.title = "PDV de Vendas | Salão PRO";
+    document.title = "PDV de Vendas | Beauty Core";
   }, []);
 
   // PDV state

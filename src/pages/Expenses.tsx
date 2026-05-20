@@ -44,7 +44,7 @@ export default function Expenses() {
   const qc = useQueryClient();
 
   useEffect(() => {
-    document.title = "Despesas | Salão PRO";
+    document.title = "Despesas | Beauty Core";
   }, []);
 
   const [description, setDescription] = useState("");

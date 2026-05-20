@@ -14,7 +14,7 @@ export default function Reports() {
   const { user, profile } = useAuth();
 
   useEffect(() => {
-    document.title = "Relatórios | Salão PRO";
+    document.title = "Relatórios | Beauty Core";
     const desc = "Relatórios de faturamento, profissionais, comissões e despesas";
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.appendChild(meta); }

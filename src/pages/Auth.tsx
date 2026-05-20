@@ -55,7 +55,7 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl bg-gradient-primary bg-clip-text text-transparent">
-            Salão PRO
+            Beauty Core
           </CardTitle>
           <CardDescription>
             Acesse ou crie sua conta para gerenciar seu salão

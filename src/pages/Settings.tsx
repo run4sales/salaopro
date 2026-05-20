@@ -10,7 +10,7 @@ export default function Settings() {
   const { user, profile } = useAuth();
 
   useEffect(() => {
-    document.title = "Configurações | Salão PRO";
+    document.title = "Configurações | Beauty Core";
     const desc = "Configurações do estabelecimento e preferências";
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.appendChild(meta); }

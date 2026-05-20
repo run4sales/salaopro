@@ -9,7 +9,7 @@ export default function AppLayout() {
       <header className="h-12 flex items-center border-b md:hidden">
         <SidebarTrigger className="ml-2" />
         <span className="ml-2 text-sm font-semibold bg-gradient-primary bg-clip-text text-transparent">
-          Salão PRO
+          Beauty Core
         </span>
       </header>
 
