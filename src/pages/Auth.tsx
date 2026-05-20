@@ -20,8 +20,14 @@ const Auth = () => {
     email: '',
     password: '',
     businessName: '',
+    document: '',
     ownerName: '',
     phone: '',
+    cep: '',
+    street: '',
+    neighborhood: '',
+    city: '',
+    businessType: '',
   });
 
   const [searchParams] = useSearchParams();
@@ -44,8 +50,14 @@ const Auth = () => {
     setIsLoading(true);
     await signUp(signupData.email, signupData.password, {
       business_name: signupData.businessName,
+      document: signupData.document,
       owner_name: signupData.ownerName,
       phone: signupData.phone,
+      cep: signupData.cep,
+      street: signupData.street,
+      neighborhood: signupData.neighborhood,
+      city: signupData.city,
+      business_type: signupData.businessType,
     });
     setIsLoading(false);
   };
@@ -113,6 +125,15 @@ const Auth = () => {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="document">CPF ou CNPJ</Label>
+                  <Input
+                    id="document"
+                    value={signupData.document}
+                    onChange={(e) => setSignupData({ ...signupData, document: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="owner-name">Nome do Proprietário</Label>
                   <Input
                     id="owner-name"
@@ -129,6 +150,59 @@ const Auth = () => {
                     onChange={(e) => setSignupData({ ...signupData, phone: e.target.value })}
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cep">CEP</Label>
+                  <Input
+                    id="cep"
+                    value={signupData.cep}
+                    onChange={(e) => setSignupData({ ...signupData, cep: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="street">Rua</Label>
+                  <Input
+                    id="street"
+                    value={signupData.street}
+                    onChange={(e) => setSignupData({ ...signupData, street: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="neighborhood">Bairro</Label>
+                  <Input
+                    id="neighborhood"
+                    value={signupData.neighborhood}
+                    onChange={(e) => setSignupData({ ...signupData, neighborhood: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="city">Cidade</Label>
+                  <Input
+                    id="city"
+                    value={signupData.city}
+                    onChange={(e) => setSignupData({ ...signupData, city: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="business-type">Tipo de comércio</Label>
+                  <select
+                    id="business-type"
+                    value={signupData.businessType}
+                    onChange={(e) => setSignupData({ ...signupData, businessType: e.target.value })}
+                    required
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="" disabled>Selecione...</option>
+                    <option value="Salao de beleza">Salão de beleza</option>
+                    <option value="Barbeiro">Barbeiro</option>
+                    <option value="Clinica Estetica">Clinica Estética</option>
+                    <option value="Trancista">Trancista</option>
+                    <option value="Manicure">Manicure</option>
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>

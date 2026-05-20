@@ -331,48 +331,63 @@ export type Database = {
         Row: {
           accepting_bookings: boolean
           business_name: string
-          city: string | null
+          business_type: string
+          cep: string
+          city: string
           created_at: string
+          document: string
           email: string
           id: string
           last_access_at: string | null
+          neighborhood: string
           owner_name: string
           phone: string
           plan: string | null
           slug: string | null
           status: string | null
+          street: string
           updated_at: string
           user_id: string
         }
         Insert: {
           accepting_bookings?: boolean
           business_name: string
-          city?: string | null
+          business_type: string
+          cep: string
+          city: string
           created_at?: string
+          document: string
           email: string
           id?: string
           last_access_at?: string | null
+          neighborhood: string
           owner_name: string
           phone: string
           plan?: string | null
           slug?: string | null
           status?: string | null
+          street: string
           updated_at?: string
           user_id: string
         }
         Update: {
           accepting_bookings?: boolean
           business_name?: string
-          city?: string | null
+          business_type?: string
+          cep?: string
+          city?: string
           created_at?: string
+          document?: string
           email?: string
           id?: string
           last_access_at?: string | null
+          neighborhood?: string
           owner_name?: string
           phone?: string
           plan?: string | null
           slug?: string | null
           status?: string | null
+          street?: string
           updated_at?: string
           user_id?: string
         }
