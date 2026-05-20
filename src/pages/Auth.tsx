@@ -51,11 +51,16 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary-glow to-secondary flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="dark min-h-screen bg-background text-foreground flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-primary/20 blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full bg-accent/15 blur-3xl" />
+      </div>
+      <Card className="w-full max-w-md border-border/60 bg-card/80 backdrop-blur-xl shadow-elegant">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl bg-gradient-primary bg-clip-text text-transparent">
-            Beauty Core
+          <div className="mx-auto mb-3 h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent shadow-[0_0_24px_hsl(var(--primary)/0.5)]" />
+          <CardTitle className="text-2xl font-bold tracking-tight">
+            Beauty<span className="bg-gradient-to-r from-primary-glow to-accent bg-clip-text text-transparent">Core</span>
           </CardTitle>
           <CardDescription>
             Acesse ou crie sua conta para gerenciar seu salão
