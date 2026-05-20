@@ -1,18 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DateRangePicker } from "@/components/reports/DateRangePicker";
-import { RevenueReport } from "@/components/reports/RevenueReport";
-import { ServicesReport } from "@/components/reports/ServicesReport";
+import { PeriodFilter, PeriodPreset, applyPreset } from "@/components/reports/PeriodFilter";
+import { RevenueGeneralReport } from "@/components/reports/RevenueGeneralReport";
+import { ProfessionalServicesReport } from "@/components/reports/ProfessionalServicesReport";
+import { CommissionsReport } from "@/components/reports/CommissionsReport";
+import { ExpensesReport } from "@/components/reports/ExpensesReport";
+import { DollarSign, Users, Wallet, TrendingDown } from "lucide-react";
 
 export default function Reports() {
   const { user, profile } = useAuth();
 
-  // SEO
   useEffect(() => {
     document.title = "Relatórios | Salão PRO";
-    const desc = "Relatórios de faturamento e serviços por período";
+    const desc = "Relatórios de faturamento, profissionais, comissões e despesas";
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.appendChild(meta); }
     meta.content = desc;
@@ -21,56 +23,58 @@ export default function Reports() {
     canonical.href = window.location.href;
   }, []);
 
+  const initial = applyPreset("30");
+  const [startDate, setStartDate] = useState<Date>(initial.start);
+  const [endDate, setEndDate] = useState<Date>(initial.end);
+  const [preset, setPreset] = useState<PeriodPreset>("30");
+
   if (!user) return <Navigate to="/auth" replace />;
-
-  // Período padrão: últimos 30 dias
-  const today = useMemo(() => new Date(), []);
-  const startDefault = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - 30); d.setHours(0,0,0,0); return d; }, []);
-  const endDefault = useMemo(() => { const d = new Date(); d.setHours(23,59,59,999); return d; }, []);
-
-  const [startDate, setStartDate] = useState<Date>(startDefault);
-  const [endDate, setEndDate] = useState<Date>(endDefault);
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-6">
-          <h1 className="text-2xl font-bold">Relatórios</h1>
-          <p className="text-muted-foreground">Acompanhe seu desempenho por período</p>
+        <div className="container mx-auto px-4 py-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
+            <p className="text-sm text-muted-foreground">Inteligência de negócio para decisões mais rápidas</p>
+          </div>
+          <PeriodFilter
+            startDate={startDate}
+            endDate={endDate}
+            preset={preset}
+            onChange={(s, e, p) => { setStartDate(s); setEndDate(e); setPreset(p); }}
+          />
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        <section className="mb-6">
-          <DateRangePicker
-            startDate={startDate}
-            endDate={endDate}
-            onChange={(s, e) => { setStartDate(s); setEndDate(e); }}
-          />
-        </section>
+      <main className="container mx-auto px-4 py-6">
+        <Tabs defaultValue="revenue" className="space-y-4">
+          <TabsList className="h-auto flex-wrap justify-start gap-1 bg-muted/60 p-1">
+            <TabsTrigger value="revenue" className="gap-2">
+              <DollarSign className="h-4 w-4" /> Faturamento geral
+            </TabsTrigger>
+            <TabsTrigger value="pro" className="gap-2">
+              <Users className="h-4 w-4" /> Por profissional
+            </TabsTrigger>
+            <TabsTrigger value="commissions" className="gap-2">
+              <Wallet className="h-4 w-4" /> Comissões
+            </TabsTrigger>
+            <TabsTrigger value="expenses" className="gap-2">
+              <TrendingDown className="h-4 w-4" /> Despesas
+            </TabsTrigger>
+          </TabsList>
 
-        <section className="rounded-md border bg-card p-4">
-          <Tabs defaultValue="revenue">
-            <TabsList>
-              <TabsTrigger value="revenue">Faturamento</TabsTrigger>
-              <TabsTrigger value="services">Serviços</TabsTrigger>
-            </TabsList>
-            <TabsContent value="revenue" className="mt-4">
-              {profile?.id ? (
-                <RevenueReport establishmentId={profile.id} startDate={startDate} endDate={endDate} />
-              ) : (
-                <div className="text-sm text-muted-foreground">Carregando perfil...</div>
-              )}
-            </TabsContent>
-            <TabsContent value="services" className="mt-4">
-              {profile?.id ? (
-                <ServicesReport establishmentId={profile.id} startDate={startDate} endDate={endDate} />
-              ) : (
-                <div className="text-sm text-muted-foreground">Carregando perfil...</div>
-              )}
-            </TabsContent>
-          </Tabs>
-        </section>
+          {profile?.id ? (
+            <>
+              <TabsContent value="revenue"><RevenueGeneralReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
+              <TabsContent value="pro"><ProfessionalServicesReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
+              <TabsContent value="commissions"><CommissionsReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
+              <TabsContent value="expenses"><ExpensesReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
+            </>
+          ) : (
+            <div className="text-sm text-muted-foreground">Carregando perfil…</div>
+          )}
+        </Tabs>
       </main>
     </div>
   );
