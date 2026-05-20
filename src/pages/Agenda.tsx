@@ -7,7 +7,7 @@ export default function Agenda() {
   const { user } = useAuth();
 
   useEffect(() => {
-    document.title = "Agenda | Salão PRO";
+    document.title = "Agenda | Beauty Core";
     const desc = "Agenda de atendimentos do salão";
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.appendChild(meta); }

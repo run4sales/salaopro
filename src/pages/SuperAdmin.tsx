@@ -24,7 +24,7 @@ export default function SuperAdmin() {
 
   React.useEffect(() => {
     // Basic SEO for this page
-    document.title = "Painel Super Admin | Salão PRO";
+    document.title = "Painel Super Admin | Beauty Core";
     const metaName = "description";
     const description =
       "Painel Super Admin: estabelecimentos, planos, contatos e faturamento total";

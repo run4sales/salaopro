@@ -12,7 +12,7 @@ export default function Metrics() {
   const { user, profile } = useAuth();
 
   useEffect(() => {
-    document.title = "Métricas | Salão PRO";
+    document.title = "Métricas | Beauty Core";
     const desc = "Métricas financeiras, clientes, operação e insights";
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.appendChild(meta); }

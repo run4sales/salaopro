@@ -34,7 +34,7 @@ export default function PublicBooking() {
   const { toast } = useToast();
 
   useEffect(() => {
-    document.title = "Agendar atendimento | Salão PRO";
+    document.title = "Agendar atendimento | Beauty Core";
     const desc = "Escolha serviço, profissional, dia e hora para agendar";
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.appendChild(meta); }
@@ -59,7 +59,7 @@ export default function PublicBooking() {
         setSalonName(salon.business_name || "");
         setAcceptingBookings(salon.accepting_bookings !== false);
         setLookupState("ok");
-        document.title = `${salon.business_name || "Agendar atendimento"} | Salão PRO`;
+        document.title = `${salon.business_name || "Agendar atendimento"} | Beauty Core`;
       } else if (establishmentId) {
         const { data, error } = await supabase.rpc("get_public_salon_by_id", { p_id: establishmentId });
         const salon = data as any;
