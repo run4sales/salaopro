@@ -75,6 +75,57 @@ export type Database = {
           },
         ]
       }
+      cash_flow_entries: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          description: string
+          entry_date: string
+          entry_type: string
+          establishment_id: string
+          id: string
+          notes: string | null
+          payment_method: string | null
+          source: string
+          source_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          created_at?: string
+          description: string
+          entry_date?: string
+          entry_type: string
+          establishment_id: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          source?: string
+          source_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          description?: string
+          entry_date?: string
+          entry_type?: string
+          establishment_id?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          source?: string
+          source_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           acquisition_source: string | null
