@@ -7,7 +7,8 @@ import { RevenueGeneralReport } from "@/components/reports/RevenueGeneralReport"
 import { ProfessionalServicesReport } from "@/components/reports/ProfessionalServicesReport";
 import { CommissionsReport } from "@/components/reports/CommissionsReport";
 import { ExpensesReport } from "@/components/reports/ExpensesReport";
-import { DollarSign, Users, Wallet, TrendingDown } from "lucide-react";
+import { CashFlowReport } from "@/components/reports/CashFlowReport";
+import { DollarSign, Users, Wallet, TrendingDown, Banknote } from "lucide-react";
 
 export default function Reports() {
   const { user, profile } = useAuth();
