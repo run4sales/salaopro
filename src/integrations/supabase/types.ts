@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_actions_log: {
+        Row: {
+          action: string
+          admin_user_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          target_establishment_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_establishment_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_establishment_id?: string | null
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           appointment_date: string
@@ -308,6 +335,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          last_access_at: string | null
           owner_name: string
           phone: string
           plan: string | null
@@ -323,6 +351,7 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
+          last_access_at?: string | null
           owner_name: string
           phone: string
           plan?: string | null
@@ -338,6 +367,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          last_access_at?: string | null
           owner_name?: string
           phone?: string
           plan?: string | null
@@ -557,6 +587,98 @@ export type Database = {
             columns: ["establishment_id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_plans: {
+        Row: {
+          active: boolean
+          created_at: string
+          display_order: number
+          features: Json
+          id: string
+          max_clients: number | null
+          max_users: number | null
+          monthly_price: number
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          display_order?: number
+          features?: Json
+          id?: string
+          max_clients?: number | null
+          max_users?: number | null
+          monthly_price?: number
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          display_order?: number
+          features?: Json
+          id?: string
+          max_clients?: number | null
+          max_users?: number | null
+          monthly_price?: number
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          canceled_at: string | null
+          created_at: string
+          establishment_id: string
+          id: string
+          monthly_amount: number
+          next_billing_at: string | null
+          plan_id: string | null
+          started_at: string
+          status: string
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          created_at?: string
+          establishment_id: string
+          id?: string
+          monthly_amount?: number
+          next_billing_at?: string | null
+          plan_id?: string | null
+          started_at?: string
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          canceled_at?: string | null
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          monthly_amount?: number
+          next_billing_at?: string | null
+          plan_id?: string | null
+          started_at?: string
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
             referencedColumns: ["id"]
           },
         ]
