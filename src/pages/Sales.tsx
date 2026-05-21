@@ -587,15 +587,27 @@ export default function Sales() {
                 </div>
               )}
               <div className="flex justify-between items-baseline pt-1.5 border-t">
-                <span className="font-semibold">Total</span>
-                <span className="text-2xl font-bold text-primary">R$ {total.toFixed(2)}</span>
+                <span className="font-semibold">Total bruto</span>
+                <span className="text-xl font-bold">R$ {grossTotal.toFixed(2)}</span>
               </div>
+              {feeAmount > 0 && (
+                <>
+                  <div className="flex justify-between text-amber-600">
+                    <span>Taxa ({feePercentage.toFixed(2)}%)</span>
+                    <span>- R$ {feeAmount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline pt-1.5 border-t">
+                    <span className="font-semibold">Líquido</span>
+                    <span className="text-2xl font-bold text-primary">R$ {netTotal.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Payment */}
             <div className="px-3 py-3 border-t bg-muted/20 space-y-2">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Forma de pagamento</Label>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 {paymentMethods.map((m) => {
                   const Icon = m.icon;
                   const active = paymentMethod === m.value;
@@ -615,6 +627,32 @@ export default function Sales() {
                   );
                 })}
               </div>
+              {isCard && (
+                <div className="space-y-2 pt-2">
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                    value={cardMachineId}
+                    onChange={(e) => setCardMachineId(e.target.value)}
+                  >
+                    <option value="">Selecione a maquininha...</option>
+                    {(machines ?? []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                  {currentPaymentMeta?.cardType === 'credit_installment' && (
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                      value={installments}
+                      onChange={(e) => setInstallments(e.target.value)}
+                    >
+                      {Array.from({ length: 11 }, (_, i) => i + 2).map(n => (
+                        <option key={n} value={n}>{n}x</option>
+                      ))}
+                    </select>
+                  )}
+                  {isCard && cardMachineId && feePercentage === 0 && (
+                    <p className="text-xs text-amber-600">⚠ Sem taxa cadastrada para esta modalidade. Configure em Configurações → Maquininhas.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="px-3 py-3 border-t">
