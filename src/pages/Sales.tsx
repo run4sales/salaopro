@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ClientCombobox } from "@/components/ClientCombobox";
 
 interface SimpleClient { id: string; name: string }
 interface SimpleService {
