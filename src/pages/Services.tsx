@@ -288,7 +288,7 @@ const Services = () => {
                       <TableCell className="font-medium">{s.name}</TableCell>
                       <TableCell>R$ {Number(s.price).toFixed(2)}</TableCell>
                       <TableCell>{s.duration_minutes} min</TableCell>
-                      <TableCell>{Number(s.commission_solo ?? 0)}% / {Number(s.commission_with_assistants ?? 0)}% / {Number(s.commission_as_assistant ?? 0)}%</TableCell>
+                      <TableCell>{Number(s.commission_solo ?? 0)}%</TableCell>
                       <TableCell>{s.active ? 'Ativo' : 'Inativo'}</TableCell>
                     </TableRow>
                   ))}
