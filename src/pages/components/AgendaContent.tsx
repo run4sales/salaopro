@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
+import { ClientCombobox } from "@/components/ClientCombobox";
 
 const STATUS_LABELS: Record<string, string> = {
   scheduled: "Pendente",
