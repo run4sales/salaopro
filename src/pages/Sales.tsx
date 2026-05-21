@@ -373,49 +373,17 @@ export default function Sales() {
       <main className="container mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4">
         {/* LEFT: Catalog */}
         <section className="space-y-4">
-          {/* Client picker */}
           <div className="rounded-xl border bg-card p-3">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cliente</Label>
-            {selectedClient ? (
-              <div className="mt-2 flex items-center justify-between rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <UserCircle2 className="h-5 w-5 text-primary" />
-                  <span className="font-semibold">{selectedClient.name}</span>
-                </div>
-                <Button size="sm" variant="ghost" onClick={() => setClientId("")}>
-                  Trocar
-                </Button>
-              </div>
-            ) : (
-              <div className="mt-2 space-y-2">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    value={clientSearch}
-                    onChange={(e) => setClientSearch(e.target.value)}
-                    placeholder="Buscar cliente por nome..."
-                    className="pl-8"
-                  />
-                </div>
-                {clientSearch && (
-                  <div className="max-h-40 overflow-y-auto rounded-md border bg-background">
-                    {filteredClients.slice(0, 6).map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => { setClientId(c.id); setClientSearch(""); }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted text-sm border-b last:border-0"
-                      >
-                        {c.name}
-                      </button>
-                    ))}
-                    {filteredClients.length === 0 && (
-                      <div className="px-3 py-2 text-sm text-muted-foreground">Nenhum cliente encontrado</div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cliente *</Label>
+            <div className="mt-2">
+              {profile?.id && (
+                <ClientCombobox
+                  establishmentId={profile.id}
+                  value={clientId}
+                  onChange={(id) => setClientId(id)}
+                />
+              )}
+            </div>
           </div>
 
           {/* Services catalog */}
