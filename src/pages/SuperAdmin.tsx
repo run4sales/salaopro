@@ -45,16 +45,6 @@ export default function SuperAdmin() {
     if (!loading && !user) navigate("/auth");
   }, [loading, user, navigate]);
 
-  if (loading) {
-    return (
-      <main className="p-4 md:p-6 space-y-4">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-28" />
-        <Skeleton className="h-64" />
-      </main>
-    );
-  }
-
   const { data: roles, isLoading } = useQuery({
     queryKey: ["roles", user?.id],
     enabled: !loading && !!user,
@@ -67,6 +57,16 @@ export default function SuperAdmin() {
       return (data ?? []).map((r) => r.role as string);
     },
   });
+
+  if (loading || isLoading) {
+    return (
+      <main className="p-4 md:p-6 space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-28" />
+        <Skeleton className="h-64" />
+      </main>
+    );
+  }
 
   const isSuperAdmin = roles?.includes("super_admin");
 
