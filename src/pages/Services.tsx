@@ -314,6 +314,41 @@ const Services = () => {
                 <Switch id="prof-active" checked={newProfessional.active} onCheckedChange={(checked) => setNewProfessional({ ...newProfessional, active: checked })} />
                 <Label htmlFor="prof-active">Ativo</Label>
               </div>
+              <div className="md:col-span-2 border rounded-md p-4 bg-muted/30 space-y-3">
+                <div>
+                  <Label className="text-sm font-semibold">Tipo de comissão</Label>
+                  <p className="text-xs text-muted-foreground">Como esse profissional é remunerado.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {([
+                    { value: 'per_service', label: 'Por serviço', desc: 'Usa o % de cada serviço' },
+                    { value: 'custom_percentage', label: '% próprio', desc: 'Sobrescreve o do serviço' },
+                    { value: 'fixed_daily', label: 'Diária fixa', desc: 'Valor fixo por dia' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setNewProfessional({ ...newProfessional, commission_type: opt.value })}
+                      className={`text-left rounded-md border p-3 text-sm transition ${newProfessional.commission_type === opt.value ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
+                    >
+                      <div className="font-semibold">{opt.label}</div>
+                      <div className="text-xs text-muted-foreground">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+                {newProfessional.commission_type === 'custom_percentage' && (
+                  <div className="md:max-w-xs space-y-1">
+                    <Label htmlFor="custom-pct">% personalizado</Label>
+                    <Input id="custom-pct" type="number" min="0" max="100" step="0.01" value={newProfessional.custom_percentage} onChange={(e) => setNewProfessional({ ...newProfessional, custom_percentage: e.target.value })} />
+                  </div>
+                )}
+                {newProfessional.commission_type === 'fixed_daily' && (
+                  <div className="md:max-w-xs space-y-1">
+                    <Label htmlFor="daily">Valor diário (R$)</Label>
+                    <Input id="daily" type="number" min="0" step="0.01" value={newProfessional.daily_amount} onChange={(e) => setNewProfessional({ ...newProfessional, daily_amount: e.target.value })} />
+                  </div>
+                )}
+              </div>
               <div className="md:col-span-2">
                 <Button type="submit">Cadastrar Profissional</Button>
               </div>
