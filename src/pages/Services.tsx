@@ -25,12 +25,16 @@ const Services = () => {
     duration_minutes: '',
     description: '',
     commission_solo: '40',
-    commission_with_assistants: '0',
-    commission_as_assistant: '0',
     active: true,
   });
 
-  const [newProfessional, setNewProfessional] = useState({ name: '', active: true });
+  const [newProfessional, setNewProfessional] = useState({
+    name: '',
+    active: true,
+    commission_type: 'per_service' as 'per_service' | 'custom_percentage' | 'fixed_daily',
+    custom_percentage: '40',
+    daily_amount: '0',
+  });
   const [linkServiceId, setLinkServiceId] = useState('');
   const [linkProfessionalId, setLinkProfessionalId] = useState('');
 
@@ -91,14 +95,15 @@ const Services = () => {
 
   const addServiceMutation = useMutation({
     mutationFn: async (payload: typeof newService) => {
+      const pct = Number(payload.commission_solo) || 0;
       const insertData = {
         name: payload.name,
         price: Number(payload.price),
         duration_minutes: Number(payload.duration_minutes),
         description: payload.description || null,
-        commission_solo: Number(payload.commission_solo) || 0,
-        commission_with_assistants: Number(payload.commission_with_assistants) || 0,
-        commission_as_assistant: Number(payload.commission_as_assistant) || 0,
+        commission_solo: pct,
+        commission_with_assistants: pct,
+        commission_as_assistant: pct,
         active: payload.active,
         establishment_id: profile?.id,
       };
@@ -112,7 +117,7 @@ const Services = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services'] });
-      setNewService({ name: '', price: '', duration_minutes: '', description: '', commission_solo: '40', commission_with_assistants: '0', commission_as_assistant: '0', active: true });
+      setNewService({ name: '', price: '', duration_minutes: '', description: '', commission_solo: '40', active: true });
       toast({ title: 'Serviço cadastrado!', description: 'Novo serviço adicionado com sucesso.' });
     },
     onError: () => {
@@ -121,10 +126,13 @@ const Services = () => {
   });
 
   const addProfessionalMutation = useMutation({
-    mutationFn: async (payload: { name: string; active: boolean }) => {
+    mutationFn: async (payload: typeof newProfessional) => {
       const insertData = {
         name: payload.name,
         active: payload.active,
+        commission_type: payload.commission_type,
+        custom_percentage: Number(payload.custom_percentage) || 0,
+        daily_amount: Number(payload.daily_amount) || 0,
         establishment_id: profile?.id,
       } as any;
       const { data, error } = await supabase
@@ -137,7 +145,7 @@ const Services = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['professionals'] });
-      setNewProfessional({ name: '', active: true });
+      setNewProfessional({ name: '', active: true, commission_type: 'per_service', custom_percentage: '40', daily_amount: '0' });
       toast({ title: 'Profissional cadastrado!', description: 'Novo profissional adicionado.' });
     },
     onError: () => {
@@ -233,20 +241,12 @@ const Services = () => {
               </div>
               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 border rounded-md p-4 bg-muted/30">
                 <div className="md:col-span-3 -mb-2">
-                  <Label className="text-sm font-semibold">Comissões (%)</Label>
-                  <p className="text-xs text-muted-foreground">Definição manual da comissão deste serviço para cada cenário.</p>
+                  <Label className="text-sm font-semibold">Comissão</Label>
+                  <p className="text-xs text-muted-foreground">% pago aos profissionais. Quando 2+ profissionais atendem juntos, o sistema divide igualmente.</p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="c-solo">Sozinho</Label>
+                <div className="space-y-2 md:col-span-3 md:max-w-xs">
+                  <Label htmlFor="c-solo">% de comissão</Label>
                   <Input id="c-solo" type="number" min="0" max="100" step="0.01" value={newService.commission_solo} onChange={(e) => setNewService({ ...newService, commission_solo: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="c-with">Com assistentes</Label>
-                  <Input id="c-with" type="number" min="0" max="100" step="0.01" value={newService.commission_with_assistants} onChange={(e) => setNewService({ ...newService, commission_with_assistants: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="c-as">Como assistente</Label>
-                  <Input id="c-as" type="number" min="0" max="100" step="0.01" value={newService.commission_as_assistant} onChange={(e) => setNewService({ ...newService, commission_as_assistant: e.target.value })} />
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -278,7 +278,7 @@ const Services = () => {
                     <TableHead>Nome</TableHead>
                     <TableHead>Preço</TableHead>
                     <TableHead>Duração</TableHead>
-                    <TableHead>Comissão (Sozinho / C/ Assist. / Como Assist.)</TableHead>
+                    <TableHead>Comissão</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -288,7 +288,7 @@ const Services = () => {
                       <TableCell className="font-medium">{s.name}</TableCell>
                       <TableCell>R$ {Number(s.price).toFixed(2)}</TableCell>
                       <TableCell>{s.duration_minutes} min</TableCell>
-                      <TableCell>{Number(s.commission_solo ?? 0)}% / {Number(s.commission_with_assistants ?? 0)}% / {Number(s.commission_as_assistant ?? 0)}%</TableCell>
+                      <TableCell>{Number(s.commission_solo ?? 0)}%</TableCell>
                       <TableCell>{s.active ? 'Ativo' : 'Inativo'}</TableCell>
                     </TableRow>
                   ))}
@@ -313,6 +313,41 @@ const Services = () => {
               <div className="flex items-center gap-3">
                 <Switch id="prof-active" checked={newProfessional.active} onCheckedChange={(checked) => setNewProfessional({ ...newProfessional, active: checked })} />
                 <Label htmlFor="prof-active">Ativo</Label>
+              </div>
+              <div className="md:col-span-2 border rounded-md p-4 bg-muted/30 space-y-3">
+                <div>
+                  <Label className="text-sm font-semibold">Tipo de comissão</Label>
+                  <p className="text-xs text-muted-foreground">Como esse profissional é remunerado.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {([
+                    { value: 'per_service', label: 'Por serviço', desc: 'Usa o % de cada serviço' },
+                    { value: 'custom_percentage', label: '% próprio', desc: 'Sobrescreve o do serviço' },
+                    { value: 'fixed_daily', label: 'Diária fixa', desc: 'Valor fixo por dia' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setNewProfessional({ ...newProfessional, commission_type: opt.value })}
+                      className={`text-left rounded-md border p-3 text-sm transition ${newProfessional.commission_type === opt.value ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
+                    >
+                      <div className="font-semibold">{opt.label}</div>
+                      <div className="text-xs text-muted-foreground">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+                {newProfessional.commission_type === 'custom_percentage' && (
+                  <div className="md:max-w-xs space-y-1">
+                    <Label htmlFor="custom-pct">% personalizado</Label>
+                    <Input id="custom-pct" type="number" min="0" max="100" step="0.01" value={newProfessional.custom_percentage} onChange={(e) => setNewProfessional({ ...newProfessional, custom_percentage: e.target.value })} />
+                  </div>
+                )}
+                {newProfessional.commission_type === 'fixed_daily' && (
+                  <div className="md:max-w-xs space-y-1">
+                    <Label htmlFor="daily">Valor diário (R$)</Label>
+                    <Input id="daily" type="number" min="0" step="0.01" value={newProfessional.daily_amount} onChange={(e) => setNewProfessional({ ...newProfessional, daily_amount: e.target.value })} />
+                  </div>
+                )}
               </div>
               <div className="md:col-span-2">
                 <Button type="submit">Cadastrar Profissional</Button>

@@ -102,6 +102,74 @@ export type Database = {
           },
         ]
       }
+      card_machine_fees: {
+        Row: {
+          card_machine_id: string
+          created_at: string
+          establishment_id: string
+          fee_percentage: number
+          id: string
+          installments: number | null
+          payment_type: string
+          updated_at: string
+        }
+        Insert: {
+          card_machine_id: string
+          created_at?: string
+          establishment_id: string
+          fee_percentage?: number
+          id?: string
+          installments?: number | null
+          payment_type: string
+          updated_at?: string
+        }
+        Update: {
+          card_machine_id?: string
+          created_at?: string
+          establishment_id?: string
+          fee_percentage?: number
+          id?: string
+          installments?: number | null
+          payment_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_machine_fees_card_machine_id_fkey"
+            columns: ["card_machine_id"]
+            isOneToOne: false
+            referencedRelation: "card_machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_machines: {
+        Row: {
+          active: boolean
+          created_at: string
+          establishment_id: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          establishment_id: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cash_flow_entries: {
         Row: {
           amount: number
@@ -293,7 +361,10 @@ export type Database = {
         Row: {
           active: boolean
           commission_percentage: number
+          commission_type: string
           created_at: string
+          custom_percentage: number
+          daily_amount: number
           establishment_id: string
           id: string
           name: string
@@ -302,7 +373,10 @@ export type Database = {
         Insert: {
           active?: boolean
           commission_percentage?: number
+          commission_type?: string
           created_at?: string
+          custom_percentage?: number
+          daily_amount?: number
           establishment_id: string
           id?: string
           name: string
@@ -311,7 +385,10 @@ export type Database = {
         Update: {
           active?: boolean
           commission_percentage?: number
+          commission_type?: string
           created_at?: string
+          custom_percentage?: number
+          daily_amount?: number
           establishment_id?: string
           id?: string
           name?: string
@@ -430,10 +507,15 @@ export type Database = {
         Row: {
           amount: number
           appointment_id: string | null
+          card_machine_id: string | null
           client_id: string
           created_at: string
           establishment_id: string
+          fee_amount: number
+          gross_amount: number | null
           id: string
+          installments: number | null
+          net_amount: number | null
           notes: string | null
           payment_method: string | null
           professional_id: string | null
@@ -443,10 +525,15 @@ export type Database = {
         Insert: {
           amount: number
           appointment_id?: string | null
+          card_machine_id?: string | null
           client_id: string
           created_at?: string
           establishment_id: string
+          fee_amount?: number
+          gross_amount?: number | null
           id?: string
+          installments?: number | null
+          net_amount?: number | null
           notes?: string | null
           payment_method?: string | null
           professional_id?: string | null
@@ -456,10 +543,15 @@ export type Database = {
         Update: {
           amount?: number
           appointment_id?: string | null
+          card_machine_id?: string | null
           client_id?: string
           created_at?: string
           establishment_id?: string
+          fee_amount?: number
+          gross_amount?: number | null
           id?: string
+          installments?: number | null
+          net_amount?: number | null
           notes?: string | null
           payment_method?: string | null
           professional_id?: string | null

@@ -1,10 +1,11 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileForm } from "@/components/settings/ProfileForm";
 import { GeneralSettingsForm } from "@/components/settings/GeneralSettingsForm";
 import { GoalsForm } from "@/components/settings/GoalsForm";
+import { CardMachinesForm } from "@/components/settings/CardMachinesForm";
 
 export default function Settings() {
   const { user, profile } = useAuth();
@@ -35,34 +36,27 @@ export default function Settings() {
       <main className="container mx-auto px-4 py-8">
         <div className="rounded-md border bg-card p-4">
           <Tabs defaultValue="profile">
-            <TabsList>
+            <TabsList className="flex-wrap h-auto">
               <TabsTrigger value="profile">Perfil</TabsTrigger>
               <TabsTrigger value="general">Preferências</TabsTrigger>
               <TabsTrigger value="goals">Metas</TabsTrigger>
+              <TabsTrigger value="machines">Maquininhas & Taxas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile" className="mt-4">
-              {profile ? (
-                <ProfileForm profile={profile} />
-              ) : (
-                <div className="text-sm text-muted-foreground">Carregando perfil...</div>
-              )}
+              {profile ? <ProfileForm profile={profile} /> : <div className="text-sm text-muted-foreground">Carregando perfil...</div>}
             </TabsContent>
 
             <TabsContent value="general" className="mt-4">
-              {profile ? (
-                <GeneralSettingsForm establishmentId={profile.id} />
-              ) : (
-                <div className="text-sm text-muted-foreground">Carregando preferências...</div>
-              )}
+              {profile ? <GeneralSettingsForm establishmentId={profile.id} /> : <div className="text-sm text-muted-foreground">Carregando preferências...</div>}
             </TabsContent>
 
             <TabsContent value="goals" className="mt-4">
-              {profile ? (
-                <GoalsForm establishmentId={profile.id} />
-              ) : (
-                <div className="text-sm text-muted-foreground">Carregando metas...</div>
-              )}
+              {profile ? <GoalsForm establishmentId={profile.id} /> : <div className="text-sm text-muted-foreground">Carregando metas...</div>}
+            </TabsContent>
+
+            <TabsContent value="machines" className="mt-4">
+              {profile ? <CardMachinesForm establishmentId={profile.id} /> : <div className="text-sm text-muted-foreground">Carregando...</div>}
             </TabsContent>
           </Tabs>
         </div>

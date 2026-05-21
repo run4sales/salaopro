@@ -1,52 +1,97 @@
-## Funcionalidades a implementar
+## Ajustes Prioritários — Beauty Core
 
-### 1. Cadastro de Clientes — Origem ("Como chegou")
-- Adicionar campo `acquisition_source` na tabela `clients` (texto).
-- Opções no formulário: Indicação, Redes Sociais, Google, Tráfego Pago, Outros.
-- Exibir nos filtros/relatórios de clientes (chip/badge).
+Vou implementar em 5 frentes, na ordem de prioridade que você definiu. Como envolve mudanças de schema + várias telas, peço aprovação antes de começar para não quebrar fluxos já em uso.
 
-### 2. Vendas — Múltiplos profissionais por serviço
-Hoje a venda tem apenas `professional_id` (único). Vamos suportar N profissionais por venda mantendo compatibilidade.
+---
 
-**Mudança de modelo:**
-- Criar tabela `sale_professionals`:
-  - `sale_id` (uuid)
-  - `professional_id` (uuid)
-  - `role` (text): `solo` | `with_assistants` | `as_assistant`
-  - `commission_percentage` (numeric) — congelado no momento da venda
-  - `commission_amount` (numeric) — valor calculado
-  - `establishment_id` (uuid) — para RLS
-- Manter `sales.professional_id` como "profissional principal" (compatibilidade).
-- RLS por `establishment_id`.
+### 1. Comanda Inteligente (PRIORIDADE MÁXIMA)
 
-**UI em Vendas:**
-- Permitir selecionar 1 ou mais profissionais por venda.
-- Para cada profissional escolhido, escolher o papel: Sozinho / Com Assistentes / Como Assistente.
-- O percentual de comissão é puxado do cadastro do serviço (item 3) conforme o papel.
+Hoje "Vendas (PDV)" registra apenas 1 serviço + 1 profissional por linha. Vou transformar em **comanda multi-item**:
 
-### 3. Comissionamento por serviço — 3 regras
-Atualmente o % de comissão fica no profissional. Conforme regra do usuário, deve ficar **no serviço**, com três faixas.
+**Novo fluxo:**
+- Botão "Abrir Comanda" → seleciona cliente (obrigatório) e, se vier de agendamento, pré-carrega serviços/profissionais
+- Tela da comanda lista itens, cada item com:
+  - Serviço (editável)
+  - Profissional(is) — 1 ou vários, divide comissão igualmente
+  - Valor (editável — sobrescreve preço padrão)
+  - Comissão calculada e exibida em tempo real
+- Ações: ➕ adicionar serviço, 🗑 remover, ✏️ editar valor/profissionais
+- **Finalização:** escolhe forma de pagamento (Dinheiro / Pix / Débito / Crédito à vista / Crédito parcelado) → aplica taxa → gera venda + entradas no fluxo de caixa (receita bruta + despesa "Taxa de cartão" automática) + comissões em `sale_professionals`
 
-**Mudança no `services`:**
-- `commission_solo` (numeric, default 40)
-- `commission_with_assistants` (numeric, default 0)
-- `commission_as_assistant` (numeric, default 0)
+**Schema:**
+- Reaproveita `sales` (1 linha por item da comanda) + `sale_professionals` já existente
+- Adiciona `sales.gross_amount`, `sales.fee_amount`, `sales.net_amount`, `sales.card_machine_id`, `sales.installments`
+- Trigger `sync_sale_to_cash_flow` passa a registrar 2 entradas quando houver taxa: receita líquida (categoria Serviço) + despesa (categoria "Taxa de cartão") — mantém compatibilidade
 
-**Cadastro de Serviços (UI):**
-- Três campos numéricos (%) no formulário do serviço.
+---
 
-**Cálculo de comissão na venda:**
-- Para cada profissional vinculado à venda, aplicar `services.commission_*` correspondente ao `role`.
-- Salvar `commission_percentage` e `commission_amount` em `sale_professionals` (snapshot).
-- Dashboard "Comissão a pagar" passa a somar `sale_professionals.commission_amount` em vez de `sales.amount * professionals.commission_percentage`.
+### 2. Agendamento com Cliente Obrigatório
 
-### Resumo técnico
-- **Migração**: adicionar `clients.acquisition_source`; adicionar 3 colunas de comissão em `services`; criar tabela `sale_professionals` com RLS.
-- **UI**:
-  - `src/pages/Clients.tsx` — campo "Como chegou".
-  - `src/pages/Services.tsx` — três campos de comissão (%).
-  - `src/pages/Sales.tsx` — seleção multi-profissional com papel por profissional; calcular e gravar `sale_professionals`.
-  - Dashboard/relatórios de comissão — ler de `sale_professionals`.
-- **Compatibilidade**: vendas antigas continuam funcionando; cálculo legado usa `professionals.commission_percentage` quando não houver `sale_professionals`.
+- Substituir o `Select` de cliente por **Combobox com busca** (nome/telefone) em `AgendaContent.tsx` e em `PublicBooking.tsx` interno
+- Se nada encontrado → CTA "➕ Cadastrar novo cliente" abre **modal rápido** (nome + telefone + origem) sem fechar o modal de agendamento
+- Após salvar → cliente fica automaticamente selecionado
+- Validação: bloqueia submit sem `client_id`
 
-Após aprovação, executo a migração e em seguida as alterações de UI.
+---
+
+### 3. Taxas de Cartão (Financeiro)
+
+**Novas tabelas:**
+- `card_machines` (id, establishment_id, name, active)
+- `card_machine_fees` (machine_id, payment_type: `debit`/`credit`/`credit_installment`, installments INT NULL, fee_percentage NUMERIC)
+
+**UI:**
+- Nova aba em **Configurações** → "Maquininhas & Taxas"
+- CRUD de maquininhas + tabela de taxas por modalidade/parcelas
+- Usada pela Comanda na hora de finalizar pagamento
+
+---
+
+### 4. Tipos de Comissão por Colaborador
+
+**Schema (`professionals`):**
+- `commission_type` TEXT default `'per_service'` → `per_service` | `fixed_daily` | `custom_percentage`
+- `custom_percentage` NUMERIC (usado se `custom_percentage`)
+- `daily_amount` NUMERIC (usado se `fixed_daily`)
+
+**Cálculo na comanda:**
+- `per_service` → usa `services.commission_solo` (% do serviço) ÷ nº de profissionais
+- `custom_percentage` → usa o % próprio do colaborador sobre o valor do item
+- `fixed_daily` → não gera comissão por venda; aparece como custo fixo do dia (futuro: relatório separado)
+
+**UI:** novo bloco no cadastro do profissional em `Settings`.
+
+---
+
+### 5. Comissão Automática por Serviço
+
+Já temos `services.commission_solo`. Vou:
+- Simplificar a UI do serviço para 1 campo "% de comissão" (mantém colunas legadas no banco)
+- Na comanda: comissão total = `valor × %` ÷ `nº profissionais` (divisão igualitária automática)
+- Grava snapshot em `sale_professionals` (já existe)
+
+---
+
+### Arquivos principais a tocar
+**Backend (migration única):**
+- `sales`: novos campos financeiros
+- `professionals`: tipo de comissão
+- novas tabelas `card_machines`, `card_machine_fees`
+- atualiza trigger `sync_sale_to_cash_flow` para lançar taxa como despesa
+
+**Frontend:**
+- `src/pages/Sales.tsx` → reescrita como **Comanda** (com lista de itens, taxa, finalização)
+- `src/components/ClientCombobox.tsx` (novo) — busca + criar inline, reutilizado em Agenda e Comanda
+- `src/pages/components/AgendaContent.tsx` → trocar Select por Combobox
+- `src/pages/Services.tsx` → simplificar comissão para 1 campo
+- `src/pages/Settings.tsx` → novas abas "Maquininhas" e bloco "Tipo de comissão" em profissionais
+- `src/pages/PublicBooking.tsx` → ajustes mínimos
+
+---
+
+### Riscos / compatibilidade
+- Vendas antigas continuam funcionando (campos novos são opcionais)
+- Sem `card_machine_id` → sem taxa (comportamento atual)
+- Triggers de fluxo de caixa preservam o que já existe
+
+Posso seguir? Se quiser, começo só pela **Comanda + Cliente obrigatório** (itens 1 e 2) nesta primeira leva e fazemos Taxas/Comissão depois — me diz qual escopo libera.

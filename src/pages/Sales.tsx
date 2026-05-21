@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ClientCombobox } from "@/components/ClientCombobox";
 
 interface SimpleClient { id: string; name: string }
 interface SimpleService {
@@ -40,16 +41,22 @@ interface SimpleService {
   name: string;
   price: number;
   commission_solo: number;
-  commission_with_assistants: number;
-  commission_as_assistant: number;
 }
-interface SimpleProfessional { id: string; name: string }
+interface SimpleProfessional {
+  id: string;
+  name: string;
+  commission_type: 'per_service' | 'custom_percentage' | 'fixed_daily';
+  custom_percentage: number;
+}
+interface Machine { id: string; name: string }
+interface MachineFee { card_machine_id: string; payment_type: string; installments: number | null; fee_percentage: number }
 
 type CommissionRole = "solo" | "with_assistants" | "as_assistant";
 
 interface CartItem {
   service: SimpleService;
   qty: number;
+  customPrice?: number;
 }
 
 interface ProfessionalEntry {
@@ -60,10 +67,14 @@ interface ProfessionalEntry {
 type AdjustmentMode = "discount" | "surcharge";
 type AdjustmentType = "value" | "percent";
 
-const paymentMethods = [
+type PaymentMethodKey = "Dinheiro" | "Pix" | "Débito" | "Crédito" | "Crédito parcelado" | "Transferência";
+
+const paymentMethods: { value: PaymentMethodKey; label: string; icon: any; isCard?: boolean; cardType?: 'debit' | 'credit' | 'credit_installment' }[] = [
   { value: "Dinheiro", label: "Dinheiro", icon: Banknote },
-  { value: "Cartão", label: "Cartão", icon: CreditCard },
   { value: "Pix", label: "Pix", icon: Smartphone },
+  { value: "Débito", label: "Débito", icon: CreditCard, isCard: true, cardType: 'debit' },
+  { value: "Crédito", label: "Crédito", icon: CreditCard, isCard: true, cardType: 'credit' },
+  { value: "Crédito parcelado", label: "Parcelado", icon: CreditCard, isCard: true, cardType: 'credit_installment' },
   { value: "Transferência", label: "Transf.", icon: ArrowLeftRight },
 ];
 
@@ -84,28 +95,15 @@ export default function Sales() {
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [clientId, setClientId] = useState<string>("");
-  const [clientSearch, setClientSearch] = useState("");
   const [professionalEntries, setProfessionalEntries] = useState<ProfessionalEntry[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<string>("Dinheiro");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodKey>("Dinheiro");
+  const [cardMachineId, setCardMachineId] = useState<string>("");
+  const [installments, setInstallments] = useState<string>("2");
   const [notes, setNotes] = useState<string>("");
   const [adjMode, setAdjMode] = useState<AdjustmentMode>("discount");
   const [adjType, setAdjType] = useState<AdjustmentType>("value");
   const [adjValue, setAdjValue] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
-
-  const { data: clients } = useQuery<SimpleClient[]>({
-    queryKey: ["clients", profile?.id],
-    queryFn: async () => {
-      if (!profile?.id) return [];
-      const { data } = await supabase
-        .from("clients")
-        .select("id, name")
-        .eq("establishment_id", profile.id)
-        .order("name");
-      return (data ?? []) as SimpleClient[];
-    },
-    enabled: !!profile?.id,
-  });
 
   const { data: services } = useQuery<SimpleService[]>({
     queryKey: ["services", profile?.id],
@@ -113,7 +111,7 @@ export default function Sales() {
       if (!profile?.id) return [];
       const { data } = await supabase
         .from("services")
-        .select("id, name, price, commission_solo, commission_with_assistants, commission_as_assistant")
+        .select("id, name, price, commission_solo")
         .eq("establishment_id", profile.id)
         .eq("active", true)
         .order("name");
@@ -122,24 +120,47 @@ export default function Sales() {
         name: s.name,
         price: Number(s.price),
         commission_solo: Number(s.commission_solo ?? 0),
-        commission_with_assistants: Number(s.commission_with_assistants ?? 0),
-        commission_as_assistant: Number(s.commission_as_assistant ?? 0),
       }));
     },
     enabled: !!profile?.id,
   });
 
   const { data: professionals } = useQuery<SimpleProfessional[]>({
-    queryKey: ["professionals", profile?.id],
+    queryKey: ["professionals-full", profile?.id],
     queryFn: async () => {
       if (!profile?.id) return [];
       const { data } = await supabase
         .from("professionals")
-        .select("id, name")
+        .select("id, name, commission_type, custom_percentage")
         .eq("establishment_id", profile.id)
         .eq("active", true)
         .order("name");
-      return (data ?? []) as SimpleProfessional[];
+      return ((data ?? []) as any[]).map((p) => ({
+        id: p.id,
+        name: p.name,
+        commission_type: (p.commission_type ?? 'per_service') as SimpleProfessional['commission_type'],
+        custom_percentage: Number(p.custom_percentage ?? 0),
+      }));
+    },
+    enabled: !!profile?.id,
+  });
+
+  const { data: machines } = useQuery<Machine[]>({
+    queryKey: ["card_machines", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      const { data } = await supabase.from("card_machines").select("id, name").eq("establishment_id", profile.id).eq("active", true).order("name");
+      return (data ?? []) as Machine[];
+    },
+    enabled: !!profile?.id,
+  });
+
+  const { data: machineFees } = useQuery<MachineFee[]>({
+    queryKey: ["card_machine_fees-all", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      const { data } = await supabase.from("card_machine_fees").select("card_machine_id, payment_type, installments, fee_percentage").eq("establishment_id", profile.id);
+      return (data ?? []) as MachineFee[];
     },
     enabled: !!profile?.id,
   });
@@ -150,16 +171,8 @@ export default function Sales() {
     return (services ?? []).filter((s) => s.name.toLowerCase().includes(q));
   }, [services, search]);
 
-  const filteredClients = useMemo(() => {
-    const q = clientSearch.trim().toLowerCase();
-    if (!q) return clients ?? [];
-    return (clients ?? []).filter((c) => c.name.toLowerCase().includes(q));
-  }, [clients, clientSearch]);
-
-  const selectedClient = clients?.find((c) => c.id === clientId);
-
   const subtotal = useMemo(
-    () => cart.reduce((s, item) => s + item.service.price * item.qty, 0),
+    () => cart.reduce((s, item) => s + (item.customPrice ?? item.service.price) * item.qty, 0),
     [cart]
   );
 
@@ -170,7 +183,25 @@ export default function Sales() {
     return adjMode === "discount" ? -Math.min(base, subtotal) : base;
   }, [adjValue, adjType, adjMode, subtotal]);
 
-  const total = Math.max(0, subtotal + adjustmentAmount);
+  const grossTotal = Math.max(0, subtotal + adjustmentAmount);
+
+  // Card fee calculation
+  const currentPaymentMeta = paymentMethods.find(m => m.value === paymentMethod);
+  const isCard = !!currentPaymentMeta?.isCard;
+  const feePercentage = useMemo(() => {
+    if (!isCard || !cardMachineId) return 0;
+    const cardType = currentPaymentMeta?.cardType;
+    if (!cardType) return 0;
+    const fee = (machineFees ?? []).find(f =>
+      f.card_machine_id === cardMachineId &&
+      f.payment_type === cardType &&
+      (cardType !== 'credit_installment' || f.installments === parseInt(installments, 10))
+    );
+    return fee ? Number(fee.fee_percentage) : 0;
+  }, [isCard, cardMachineId, currentPaymentMeta, machineFees, installments]);
+
+  const feeAmount = (grossTotal * feePercentage) / 100;
+  const netTotal = grossTotal - feeAmount;
 
   const addToCart = (svc: SimpleService) => {
     setCart((prev) => {
@@ -190,14 +221,13 @@ export default function Sales() {
     );
   };
 
-  const removeFromCart = (id: string) => {
-    setCart((prev) => prev.filter((i) => i.service.id !== id));
+  const updateItemPrice = (id: string, price: string) => {
+    const v = Number(price);
+    setCart(prev => prev.map(i => i.service.id === id ? { ...i, customPrice: isNaN(v) || v < 0 ? undefined : v } : i));
   };
 
-  const getCommissionPct = (svc: SimpleService, role: CommissionRole) => {
-    if (role === "solo") return svc.commission_solo;
-    if (role === "with_assistants") return svc.commission_with_assistants;
-    return svc.commission_as_assistant;
+  const removeFromCart = (id: string) => {
+    setCart((prev) => prev.filter((i) => i.service.id !== id));
   };
 
   const addProfessionalEntry = (id: string) => {
@@ -219,12 +249,13 @@ export default function Sales() {
     setCart([]);
     setProfessionalEntries([]);
     setClientId("");
-    setClientSearch("");
     setAdjValue("");
     setAdjMode("discount");
     setAdjType("value");
     setNotes("");
     setPaymentMethod("Dinheiro");
+    setCardMachineId("");
+    setInstallments("2");
   };
 
   const onFinalize = async () => {
@@ -232,30 +263,42 @@ export default function Sales() {
     if (!clientId) { toast.error("Selecione o cliente."); return; }
     if (cart.length === 0) { toast.error("Adicione ao menos um serviço."); return; }
     if (professionalEntries.length === 0) { toast.error("Selecione ao menos um profissional."); return; }
+    if (isCard && !cardMachineId) { toast.error("Selecione a maquininha."); return; }
 
     setSubmitting(true);
     try {
       const principal = professionalEntries[0].professional_id;
-      // Expand cart by qty into individual sales, apply proportional adjustment
       const flatItems: { svc: SimpleService; baseAmount: number }[] = [];
       cart.forEach((item) => {
+        const price = item.customPrice ?? item.service.price;
         for (let i = 0; i < item.qty; i++) {
-          flatItems.push({ svc: item.service, baseAmount: item.service.price });
+          flatItems.push({ svc: item.service, baseAmount: price });
         }
       });
 
-      const factor = subtotal > 0 ? total / subtotal : 1;
+      const factor = subtotal > 0 ? grossTotal / subtotal : 1;
+      const feePct = feePercentage / 100;
+      const instNum = (isCard && currentPaymentMeta?.cardType === 'credit_installment') ? parseInt(installments, 10) : null;
 
-      const salesPayload = flatItems.map(({ svc, baseAmount }) => ({
-        establishment_id: profile.id,
-        client_id: clientId,
-        service_id: svc.id,
-        professional_id: principal,
-        amount: Number((baseAmount * factor).toFixed(2)),
-        sale_date: new Date().toISOString(),
-        payment_method: paymentMethod,
-        notes: notes || null,
-      }));
+      const salesPayload = flatItems.map(({ svc, baseAmount }) => {
+        const itemGross = Number((baseAmount * factor).toFixed(2));
+        const itemFee = Number((itemGross * feePct).toFixed(2));
+        return {
+          establishment_id: profile.id,
+          client_id: clientId,
+          service_id: svc.id,
+          professional_id: principal,
+          amount: itemGross,
+          gross_amount: itemGross,
+          fee_amount: itemFee,
+          net_amount: Number((itemGross - itemFee).toFixed(2)),
+          card_machine_id: isCard ? cardMachineId : null,
+          installments: instNum,
+          sale_date: new Date().toISOString(),
+          payment_method: paymentMethod,
+          notes: notes || null,
+        };
+      });
 
       const { data: insertedSales, error } = await supabase
         .from("sales")
@@ -263,13 +306,17 @@ export default function Sales() {
         .select("id, service_id, amount");
       if (error) throw error;
 
+      const numPros = professionalEntries.length;
       const spRows: any[] = [];
       (insertedSales || []).forEach((sale: any) => {
         const svc = flatItems.find(f => f.svc.id === sale.service_id)?.svc;
         if (!svc) return;
+        const share = Number(sale.amount) / numPros;
         professionalEntries.forEach((entry) => {
-          const pct = getCommissionPct(svc, entry.role);
-          const commission_amount = Number(sale.amount) * (Number(pct) / 100);
+          const pro = professionals?.find(p => p.id === entry.professional_id);
+          if (!pro || pro.commission_type === 'fixed_daily') return;
+          const pct = pro.commission_type === 'custom_percentage' ? pro.custom_percentage : svc.commission_solo;
+          const commission_amount = share * (pct / 100);
           spRows.push({
             establishment_id: profile.id,
             sale_id: sale.id,
@@ -286,7 +333,7 @@ export default function Sales() {
         if (spError) throw spError;
       }
 
-      toast.success(`Venda finalizada • R$ ${total.toFixed(2)}`);
+      toast.success(`Venda finalizada • R$ ${grossTotal.toFixed(2)}${feeAmount > 0 ? ` (líquido R$ ${netTotal.toFixed(2)})` : ''}`);
       resetSale();
     } catch (err: any) {
       toast.error(err?.message ?? "Não foi possível finalizar a venda.");
@@ -294,6 +341,7 @@ export default function Sales() {
       setSubmitting(false);
     }
   };
+
 
   if (!user) {
     return (
@@ -325,49 +373,17 @@ export default function Sales() {
       <main className="container mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4">
         {/* LEFT: Catalog */}
         <section className="space-y-4">
-          {/* Client picker */}
           <div className="rounded-xl border bg-card p-3">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cliente</Label>
-            {selectedClient ? (
-              <div className="mt-2 flex items-center justify-between rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <UserCircle2 className="h-5 w-5 text-primary" />
-                  <span className="font-semibold">{selectedClient.name}</span>
-                </div>
-                <Button size="sm" variant="ghost" onClick={() => setClientId("")}>
-                  Trocar
-                </Button>
-              </div>
-            ) : (
-              <div className="mt-2 space-y-2">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    value={clientSearch}
-                    onChange={(e) => setClientSearch(e.target.value)}
-                    placeholder="Buscar cliente por nome..."
-                    className="pl-8"
-                  />
-                </div>
-                {clientSearch && (
-                  <div className="max-h-40 overflow-y-auto rounded-md border bg-background">
-                    {filteredClients.slice(0, 6).map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => { setClientId(c.id); setClientSearch(""); }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted text-sm border-b last:border-0"
-                      >
-                        {c.name}
-                      </button>
-                    ))}
-                    {filteredClients.length === 0 && (
-                      <div className="px-3 py-2 text-sm text-muted-foreground">Nenhum cliente encontrado</div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cliente *</Label>
+            <div className="mt-2">
+              {profile?.id && (
+                <ClientCombobox
+                  establishmentId={profile.id}
+                  value={clientId}
+                  onChange={(id) => setClientId(id)}
+                />
+              )}
+            </div>
           </div>
 
           {/* Services catalog */}
@@ -571,15 +587,27 @@ export default function Sales() {
                 </div>
               )}
               <div className="flex justify-between items-baseline pt-1.5 border-t">
-                <span className="font-semibold">Total</span>
-                <span className="text-2xl font-bold text-primary">R$ {total.toFixed(2)}</span>
+                <span className="font-semibold">Total bruto</span>
+                <span className="text-xl font-bold">R$ {grossTotal.toFixed(2)}</span>
               </div>
+              {feeAmount > 0 && (
+                <>
+                  <div className="flex justify-between text-amber-600">
+                    <span>Taxa ({feePercentage.toFixed(2)}%)</span>
+                    <span>- R$ {feeAmount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline pt-1.5 border-t">
+                    <span className="font-semibold">Líquido</span>
+                    <span className="text-2xl font-bold text-primary">R$ {netTotal.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Payment */}
             <div className="px-3 py-3 border-t bg-muted/20 space-y-2">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Forma de pagamento</Label>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 {paymentMethods.map((m) => {
                   const Icon = m.icon;
                   const active = paymentMethod === m.value;
@@ -599,6 +627,32 @@ export default function Sales() {
                   );
                 })}
               </div>
+              {isCard && (
+                <div className="space-y-2 pt-2">
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                    value={cardMachineId}
+                    onChange={(e) => setCardMachineId(e.target.value)}
+                  >
+                    <option value="">Selecione a maquininha...</option>
+                    {(machines ?? []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                  {currentPaymentMeta?.cardType === 'credit_installment' && (
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                      value={installments}
+                      onChange={(e) => setInstallments(e.target.value)}
+                    >
+                      {Array.from({ length: 11 }, (_, i) => i + 2).map(n => (
+                        <option key={n} value={n}>{n}x</option>
+                      ))}
+                    </select>
+                  )}
+                  {isCard && cardMachineId && feePercentage === 0 && (
+                    <p className="text-xs text-amber-600">⚠ Sem taxa cadastrada para esta modalidade. Configure em Configurações → Maquininhas.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="px-3 py-3 border-t">
@@ -619,7 +673,7 @@ export default function Sales() {
                 disabled={submitting || cart.length === 0}
               >
                 <Check className="h-5 w-5 mr-2" />
-                {submitting ? "Finalizando..." : `Finalizar • R$ ${total.toFixed(2)}`}
+                {submitting ? "Finalizando..." : `Finalizar • R$ ${(feeAmount > 0 ? netTotal : grossTotal).toFixed(2)}`}
               </Button>
             </div>
           </div>
