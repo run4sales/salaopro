@@ -243,31 +243,19 @@ export default function Sales() {
     setProfessionalEntries(professionalEntries.map(e => e.professional_id === id ? { ...e, role } : e));
   };
 
-  const addProfessionalEntry = (id: string) => {
-    if (!id || professionalEntries.some(e => e.professional_id === id)) return;
-    setProfessionalEntries([...professionalEntries, { professional_id: id, role: professionalEntries.length === 0 ? "solo" : "with_assistants" }]);
-  };
-
-  const removeProfessionalEntry = (id: string) => {
-    setProfessionalEntries(professionalEntries.filter(e => e.professional_id !== id));
-  };
-
-  const updateRole = (id: string, role: CommissionRole) => {
-    setProfessionalEntries(professionalEntries.map(e => e.professional_id === id ? { ...e, role } : e));
-  };
-
   const availableProfessionals = (professionals || []).filter(p => !professionalEntries.some(e => e.professional_id === p.id));
 
   const resetSale = () => {
     setCart([]);
     setProfessionalEntries([]);
     setClientId("");
-    setClientSearch("");
     setAdjValue("");
     setAdjMode("discount");
     setAdjType("value");
     setNotes("");
     setPaymentMethod("Dinheiro");
+    setCardMachineId("");
+    setInstallments("2");
   };
 
   const onFinalize = async () => {
@@ -275,30 +263,42 @@ export default function Sales() {
     if (!clientId) { toast.error("Selecione o cliente."); return; }
     if (cart.length === 0) { toast.error("Adicione ao menos um serviço."); return; }
     if (professionalEntries.length === 0) { toast.error("Selecione ao menos um profissional."); return; }
+    if (isCard && !cardMachineId) { toast.error("Selecione a maquininha."); return; }
 
     setSubmitting(true);
     try {
       const principal = professionalEntries[0].professional_id;
-      // Expand cart by qty into individual sales, apply proportional adjustment
       const flatItems: { svc: SimpleService; baseAmount: number }[] = [];
       cart.forEach((item) => {
+        const price = item.customPrice ?? item.service.price;
         for (let i = 0; i < item.qty; i++) {
-          flatItems.push({ svc: item.service, baseAmount: item.service.price });
+          flatItems.push({ svc: item.service, baseAmount: price });
         }
       });
 
-      const factor = subtotal > 0 ? total / subtotal : 1;
+      const factor = subtotal > 0 ? grossTotal / subtotal : 1;
+      const feePct = feePercentage / 100;
+      const instNum = (isCard && currentPaymentMeta?.cardType === 'credit_installment') ? parseInt(installments, 10) : null;
 
-      const salesPayload = flatItems.map(({ svc, baseAmount }) => ({
-        establishment_id: profile.id,
-        client_id: clientId,
-        service_id: svc.id,
-        professional_id: principal,
-        amount: Number((baseAmount * factor).toFixed(2)),
-        sale_date: new Date().toISOString(),
-        payment_method: paymentMethod,
-        notes: notes || null,
-      }));
+      const salesPayload = flatItems.map(({ svc, baseAmount }) => {
+        const itemGross = Number((baseAmount * factor).toFixed(2));
+        const itemFee = Number((itemGross * feePct).toFixed(2));
+        return {
+          establishment_id: profile.id,
+          client_id: clientId,
+          service_id: svc.id,
+          professional_id: principal,
+          amount: itemGross,
+          gross_amount: itemGross,
+          fee_amount: itemFee,
+          net_amount: Number((itemGross - itemFee).toFixed(2)),
+          card_machine_id: isCard ? cardMachineId : null,
+          installments: instNum,
+          sale_date: new Date().toISOString(),
+          payment_method: paymentMethod,
+          notes: notes || null,
+        };
+      });
 
       const { data: insertedSales, error } = await supabase
         .from("sales")
@@ -306,13 +306,17 @@ export default function Sales() {
         .select("id, service_id, amount");
       if (error) throw error;
 
+      const numPros = professionalEntries.length;
       const spRows: any[] = [];
       (insertedSales || []).forEach((sale: any) => {
         const svc = flatItems.find(f => f.svc.id === sale.service_id)?.svc;
         if (!svc) return;
+        const share = Number(sale.amount) / numPros;
         professionalEntries.forEach((entry) => {
-          const pct = getCommissionPct(svc, entry.role);
-          const commission_amount = Number(sale.amount) * (Number(pct) / 100);
+          const pro = professionals?.find(p => p.id === entry.professional_id);
+          if (!pro || pro.commission_type === 'fixed_daily') return;
+          const pct = pro.commission_type === 'custom_percentage' ? pro.custom_percentage : svc.commission_solo;
+          const commission_amount = share * (pct / 100);
           spRows.push({
             establishment_id: profile.id,
             sale_id: sale.id,
@@ -329,7 +333,7 @@ export default function Sales() {
         if (spError) throw spError;
       }
 
-      toast.success(`Venda finalizada • R$ ${total.toFixed(2)}`);
+      toast.success(`Venda finalizada • R$ ${grossTotal.toFixed(2)}${feeAmount > 0 ? ` (líquido R$ ${netTotal.toFixed(2)})` : ''}`);
       resetSale();
     } catch (err: any) {
       toast.error(err?.message ?? "Não foi possível finalizar a venda.");
@@ -337,6 +341,7 @@ export default function Sales() {
       setSubmitting(false);
     }
   };
+
 
   if (!user) {
     return (
