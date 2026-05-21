@@ -95,28 +95,15 @@ export default function Sales() {
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [clientId, setClientId] = useState<string>("");
-  const [clientSearch, setClientSearch] = useState("");
   const [professionalEntries, setProfessionalEntries] = useState<ProfessionalEntry[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<string>("Dinheiro");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodKey>("Dinheiro");
+  const [cardMachineId, setCardMachineId] = useState<string>("");
+  const [installments, setInstallments] = useState<string>("2");
   const [notes, setNotes] = useState<string>("");
   const [adjMode, setAdjMode] = useState<AdjustmentMode>("discount");
   const [adjType, setAdjType] = useState<AdjustmentType>("value");
   const [adjValue, setAdjValue] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
-
-  const { data: clients } = useQuery<SimpleClient[]>({
-    queryKey: ["clients", profile?.id],
-    queryFn: async () => {
-      if (!profile?.id) return [];
-      const { data } = await supabase
-        .from("clients")
-        .select("id, name")
-        .eq("establishment_id", profile.id)
-        .order("name");
-      return (data ?? []) as SimpleClient[];
-    },
-    enabled: !!profile?.id,
-  });
 
   const { data: services } = useQuery<SimpleService[]>({
     queryKey: ["services", profile?.id],
@@ -124,7 +111,7 @@ export default function Sales() {
       if (!profile?.id) return [];
       const { data } = await supabase
         .from("services")
-        .select("id, name, price, commission_solo, commission_with_assistants, commission_as_assistant")
+        .select("id, name, price, commission_solo")
         .eq("establishment_id", profile.id)
         .eq("active", true)
         .order("name");
@@ -133,24 +120,47 @@ export default function Sales() {
         name: s.name,
         price: Number(s.price),
         commission_solo: Number(s.commission_solo ?? 0),
-        commission_with_assistants: Number(s.commission_with_assistants ?? 0),
-        commission_as_assistant: Number(s.commission_as_assistant ?? 0),
       }));
     },
     enabled: !!profile?.id,
   });
 
   const { data: professionals } = useQuery<SimpleProfessional[]>({
-    queryKey: ["professionals", profile?.id],
+    queryKey: ["professionals-full", profile?.id],
     queryFn: async () => {
       if (!profile?.id) return [];
       const { data } = await supabase
         .from("professionals")
-        .select("id, name")
+        .select("id, name, commission_type, custom_percentage")
         .eq("establishment_id", profile.id)
         .eq("active", true)
         .order("name");
-      return (data ?? []) as SimpleProfessional[];
+      return ((data ?? []) as any[]).map((p) => ({
+        id: p.id,
+        name: p.name,
+        commission_type: (p.commission_type ?? 'per_service') as SimpleProfessional['commission_type'],
+        custom_percentage: Number(p.custom_percentage ?? 0),
+      }));
+    },
+    enabled: !!profile?.id,
+  });
+
+  const { data: machines } = useQuery<Machine[]>({
+    queryKey: ["card_machines", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      const { data } = await supabase.from("card_machines").select("id, name").eq("establishment_id", profile.id).eq("active", true).order("name");
+      return (data ?? []) as Machine[];
+    },
+    enabled: !!profile?.id,
+  });
+
+  const { data: machineFees } = useQuery<MachineFee[]>({
+    queryKey: ["card_machine_fees-all", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      const { data } = await supabase.from("card_machine_fees").select("card_machine_id, payment_type, installments, fee_percentage").eq("establishment_id", profile.id);
+      return (data ?? []) as MachineFee[];
     },
     enabled: !!profile?.id,
   });
