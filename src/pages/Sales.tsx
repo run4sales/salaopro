@@ -673,7 +673,7 @@ export default function Sales() {
                 disabled={submitting || cart.length === 0}
               >
                 <Check className="h-5 w-5 mr-2" />
-                {submitting ? "Finalizando..." : `Finalizar • R$ ${total.toFixed(2)}`}
+                {submitting ? "Finalizando..." : `Finalizar • R$ ${(feeAmount > 0 ? netTotal : grossTotal).toFixed(2)}`}
               </Button>
             </div>
           </div>
