@@ -41,16 +41,22 @@ interface SimpleService {
   name: string;
   price: number;
   commission_solo: number;
-  commission_with_assistants: number;
-  commission_as_assistant: number;
 }
-interface SimpleProfessional { id: string; name: string }
+interface SimpleProfessional {
+  id: string;
+  name: string;
+  commission_type: 'per_service' | 'custom_percentage' | 'fixed_daily';
+  custom_percentage: number;
+}
+interface Machine { id: string; name: string }
+interface MachineFee { card_machine_id: string; payment_type: string; installments: number | null; fee_percentage: number }
 
 type CommissionRole = "solo" | "with_assistants" | "as_assistant";
 
 interface CartItem {
   service: SimpleService;
   qty: number;
+  customPrice?: number;
 }
 
 interface ProfessionalEntry {
@@ -61,10 +67,14 @@ interface ProfessionalEntry {
 type AdjustmentMode = "discount" | "surcharge";
 type AdjustmentType = "value" | "percent";
 
-const paymentMethods = [
+type PaymentMethodKey = "Dinheiro" | "Pix" | "Débito" | "Crédito" | "Crédito parcelado" | "Transferência";
+
+const paymentMethods: { value: PaymentMethodKey; label: string; icon: any; isCard?: boolean; cardType?: 'debit' | 'credit' | 'credit_installment' }[] = [
   { value: "Dinheiro", label: "Dinheiro", icon: Banknote },
-  { value: "Cartão", label: "Cartão", icon: CreditCard },
   { value: "Pix", label: "Pix", icon: Smartphone },
+  { value: "Débito", label: "Débito", icon: CreditCard, isCard: true, cardType: 'debit' },
+  { value: "Crédito", label: "Crédito", icon: CreditCard, isCard: true, cardType: 'credit' },
+  { value: "Crédito parcelado", label: "Parcelado", icon: CreditCard, isCard: true, cardType: 'credit_installment' },
   { value: "Transferência", label: "Transf.", icon: ArrowLeftRight },
 ];
 
