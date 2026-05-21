@@ -241,20 +241,12 @@ const Services = () => {
               </div>
               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 border rounded-md p-4 bg-muted/30">
                 <div className="md:col-span-3 -mb-2">
-                  <Label className="text-sm font-semibold">Comissões (%)</Label>
-                  <p className="text-xs text-muted-foreground">Definição manual da comissão deste serviço para cada cenário.</p>
+                  <Label className="text-sm font-semibold">Comissão</Label>
+                  <p className="text-xs text-muted-foreground">% pago aos profissionais. Quando 2+ profissionais atendem juntos, o sistema divide igualmente.</p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="c-solo">Sozinho</Label>
+                <div className="space-y-2 md:col-span-3 md:max-w-xs">
+                  <Label htmlFor="c-solo">% de comissão</Label>
                   <Input id="c-solo" type="number" min="0" max="100" step="0.01" value={newService.commission_solo} onChange={(e) => setNewService({ ...newService, commission_solo: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="c-with">Com assistentes</Label>
-                  <Input id="c-with" type="number" min="0" max="100" step="0.01" value={newService.commission_with_assistants} onChange={(e) => setNewService({ ...newService, commission_with_assistants: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="c-as">Como assistente</Label>
-                  <Input id="c-as" type="number" min="0" max="100" step="0.01" value={newService.commission_as_assistant} onChange={(e) => setNewService({ ...newService, commission_as_assistant: e.target.value })} />
                 </div>
               </div>
               <div className="flex items-center gap-3">
