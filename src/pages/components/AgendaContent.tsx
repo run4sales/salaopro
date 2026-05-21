@@ -131,11 +131,14 @@ export default function AgendaContent() {
               <DialogHeader><DialogTitle>Novo agendamento</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm text-muted-foreground">Cliente</label>
-                  <Select value={form.client_id} onValueChange={(v) => setForm(f => ({ ...f, client_id: v }))}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>{data?.clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <label className="text-sm text-muted-foreground">Cliente *</label>
+                  <div className="mt-1">
+                    <ClientCombobox
+                      establishmentId={establishmentId}
+                      value={form.client_id}
+                      onChange={(id) => setForm(f => ({ ...f, client_id: id }))}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground">Serviço</label>
