@@ -171,16 +171,8 @@ export default function Sales() {
     return (services ?? []).filter((s) => s.name.toLowerCase().includes(q));
   }, [services, search]);
 
-  const filteredClients = useMemo(() => {
-    const q = clientSearch.trim().toLowerCase();
-    if (!q) return clients ?? [];
-    return (clients ?? []).filter((c) => c.name.toLowerCase().includes(q));
-  }, [clients, clientSearch]);
-
-  const selectedClient = clients?.find((c) => c.id === clientId);
-
   const subtotal = useMemo(
-    () => cart.reduce((s, item) => s + item.service.price * item.qty, 0),
+    () => cart.reduce((s, item) => s + (item.customPrice ?? item.service.price) * item.qty, 0),
     [cart]
   );
 
@@ -191,7 +183,25 @@ export default function Sales() {
     return adjMode === "discount" ? -Math.min(base, subtotal) : base;
   }, [adjValue, adjType, adjMode, subtotal]);
 
-  const total = Math.max(0, subtotal + adjustmentAmount);
+  const grossTotal = Math.max(0, subtotal + adjustmentAmount);
+
+  // Card fee calculation
+  const currentPaymentMeta = paymentMethods.find(m => m.value === paymentMethod);
+  const isCard = !!currentPaymentMeta?.isCard;
+  const feePercentage = useMemo(() => {
+    if (!isCard || !cardMachineId) return 0;
+    const cardType = currentPaymentMeta?.cardType;
+    if (!cardType) return 0;
+    const fee = (machineFees ?? []).find(f =>
+      f.card_machine_id === cardMachineId &&
+      f.payment_type === cardType &&
+      (cardType !== 'credit_installment' || f.installments === parseInt(installments, 10))
+    );
+    return fee ? Number(fee.fee_percentage) : 0;
+  }, [isCard, cardMachineId, currentPaymentMeta, machineFees, installments]);
+
+  const feeAmount = (grossTotal * feePercentage) / 100;
+  const netTotal = grossTotal - feeAmount;
 
   const addToCart = (svc: SimpleService) => {
     setCart((prev) => {
@@ -211,14 +221,26 @@ export default function Sales() {
     );
   };
 
+  const updateItemPrice = (id: string, price: string) => {
+    const v = Number(price);
+    setCart(prev => prev.map(i => i.service.id === id ? { ...i, customPrice: isNaN(v) || v < 0 ? undefined : v } : i));
+  };
+
   const removeFromCart = (id: string) => {
     setCart((prev) => prev.filter((i) => i.service.id !== id));
   };
 
-  const getCommissionPct = (svc: SimpleService, role: CommissionRole) => {
-    if (role === "solo") return svc.commission_solo;
-    if (role === "with_assistants") return svc.commission_with_assistants;
-    return svc.commission_as_assistant;
+  const addProfessionalEntry = (id: string) => {
+    if (!id || professionalEntries.some(e => e.professional_id === id)) return;
+    setProfessionalEntries([...professionalEntries, { professional_id: id, role: professionalEntries.length === 0 ? "solo" : "with_assistants" }]);
+  };
+
+  const removeProfessionalEntry = (id: string) => {
+    setProfessionalEntries(professionalEntries.filter(e => e.professional_id !== id));
+  };
+
+  const updateRole = (id: string, role: CommissionRole) => {
+    setProfessionalEntries(professionalEntries.map(e => e.professional_id === id ? { ...e, role } : e));
   };
 
   const addProfessionalEntry = (id: string) => {
