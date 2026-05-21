@@ -95,14 +95,15 @@ const Services = () => {
 
   const addServiceMutation = useMutation({
     mutationFn: async (payload: typeof newService) => {
+      const pct = Number(payload.commission_solo) || 0;
       const insertData = {
         name: payload.name,
         price: Number(payload.price),
         duration_minutes: Number(payload.duration_minutes),
         description: payload.description || null,
-        commission_solo: Number(payload.commission_solo) || 0,
-        commission_with_assistants: Number(payload.commission_with_assistants) || 0,
-        commission_as_assistant: Number(payload.commission_as_assistant) || 0,
+        commission_solo: pct,
+        commission_with_assistants: pct,
+        commission_as_assistant: pct,
         active: payload.active,
         establishment_id: profile?.id,
       };
@@ -116,7 +117,7 @@ const Services = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services'] });
-      setNewService({ name: '', price: '', duration_minutes: '', description: '', commission_solo: '40', commission_with_assistants: '0', commission_as_assistant: '0', active: true });
+      setNewService({ name: '', price: '', duration_minutes: '', description: '', commission_solo: '40', active: true });
       toast({ title: 'Serviço cadastrado!', description: 'Novo serviço adicionado com sucesso.' });
     },
     onError: () => {
@@ -125,10 +126,13 @@ const Services = () => {
   });
 
   const addProfessionalMutation = useMutation({
-    mutationFn: async (payload: { name: string; active: boolean }) => {
+    mutationFn: async (payload: typeof newProfessional) => {
       const insertData = {
         name: payload.name,
         active: payload.active,
+        commission_type: payload.commission_type,
+        custom_percentage: Number(payload.custom_percentage) || 0,
+        daily_amount: Number(payload.daily_amount) || 0,
         establishment_id: profile?.id,
       } as any;
       const { data, error } = await supabase
@@ -141,7 +145,7 @@ const Services = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['professionals'] });
-      setNewProfessional({ name: '', active: true });
+      setNewProfessional({ name: '', active: true, commission_type: 'per_service', custom_percentage: '40', daily_amount: '0' });
       toast({ title: 'Profissional cadastrado!', description: 'Novo profissional adicionado.' });
     },
     onError: () => {
