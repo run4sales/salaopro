@@ -278,7 +278,7 @@ const Services = () => {
                     <TableHead>Nome</TableHead>
                     <TableHead>Preço</TableHead>
                     <TableHead>Duração</TableHead>
-                    <TableHead>Comissão (Sozinho / C/ Assist. / Como Assist.)</TableHead>
+                    <TableHead>Comissão</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
