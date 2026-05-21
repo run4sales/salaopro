@@ -25,12 +25,16 @@ const Services = () => {
     duration_minutes: '',
     description: '',
     commission_solo: '40',
-    commission_with_assistants: '0',
-    commission_as_assistant: '0',
     active: true,
   });
 
-  const [newProfessional, setNewProfessional] = useState({ name: '', active: true });
+  const [newProfessional, setNewProfessional] = useState({
+    name: '',
+    active: true,
+    commission_type: 'per_service' as 'per_service' | 'custom_percentage' | 'fixed_daily',
+    custom_percentage: '40',
+    daily_amount: '0',
+  });
   const [linkServiceId, setLinkServiceId] = useState('');
   const [linkProfessionalId, setLinkProfessionalId] = useState('');
 
