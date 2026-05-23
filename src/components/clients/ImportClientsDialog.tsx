@@ -157,7 +157,7 @@ export default function ImportClientsDialog({ open, onOpenChange, establishmentI
         if (r.balance !== 0 || !existing) base.balance = r.balance;
 
         if (existing) {
-          const { error } = await supabase.from("clients").update(base).eq("id", existing.id);
+          const { error } = await (supabase as any).from("clients").update(base).eq("id", existing.id);
           if (error) throw error;
           updated++;
         } else {
