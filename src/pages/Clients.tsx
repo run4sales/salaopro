@@ -739,6 +739,15 @@ const Clients = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {profile && (
+        <ImportClientsDialog
+          open={isImportOpen}
+          onOpenChange={setIsImportOpen}
+          establishmentId={profile.id}
+          onImported={() => queryClient.invalidateQueries({ queryKey: ['clients'] })}
+        />
+      )}
     </div>
   );
 };
