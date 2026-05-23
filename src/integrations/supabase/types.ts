@@ -224,14 +224,21 @@ export type Database = {
       clients: {
         Row: {
           acquisition_source: string | null
+          balance: number
           birth_date: string | null
+          birth_day: number | null
+          birth_month: number | null
           created_at: string
           email: string | null
           establishment_id: string
           gender: string | null
           id: string
+          import_source: string | null
+          imported_at: string | null
+          instagram: string | null
           last_service_date: string | null
           name: string
+          nickname: string | null
           notes: string | null
           phone: string
           total_spent: number | null
@@ -240,14 +247,21 @@ export type Database = {
         }
         Insert: {
           acquisition_source?: string | null
+          balance?: number
           birth_date?: string | null
+          birth_day?: number | null
+          birth_month?: number | null
           created_at?: string
           email?: string | null
           establishment_id: string
           gender?: string | null
           id?: string
+          import_source?: string | null
+          imported_at?: string | null
+          instagram?: string | null
           last_service_date?: string | null
           name: string
+          nickname?: string | null
           notes?: string | null
           phone: string
           total_spent?: number | null
@@ -256,14 +270,21 @@ export type Database = {
         }
         Update: {
           acquisition_source?: string | null
+          balance?: number
           birth_date?: string | null
+          birth_day?: number | null
+          birth_month?: number | null
           created_at?: string
           email?: string | null
           establishment_id?: string
           gender?: string | null
           id?: string
+          import_source?: string | null
+          imported_at?: string | null
+          instagram?: string | null
           last_service_date?: string | null
           name?: string
+          nickname?: string | null
           notes?: string | null
           phone?: string
           total_spent?: number | null
