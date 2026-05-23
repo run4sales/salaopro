@@ -14,10 +14,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MessageCircle, Plus, Search, Edit, CalendarIcon, Settings } from 'lucide-react';
+import { MessageCircle, Plus, Search, Edit, CalendarIcon, Settings, Upload, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import ImportClientsDialog from '@/components/clients/ImportClientsDialog';
+import { exportClientsToXlsx, exportClientsToCsv } from '@/lib/clientImportExport';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const Clients = () => {
   const { user, profile } = useAuth();
@@ -32,6 +35,7 @@ const Clients = () => {
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<any>(null);
   const [inactiveDaysConfig, setInactiveDaysConfig] = useState(20);
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   const [newClient, setNewClient] = useState({
     name: '',
@@ -325,7 +329,27 @@ const Clients = () => {
               }
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={() => setIsImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Importar
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={!allClients?.length}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => exportClientsToXlsx(allClients ?? [])}>
+                  Baixar XLSX
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportClientsToCsv(allClients ?? [])}>
+                  Baixar CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="outline" size="sm" onClick={() => setIsSettingsDialogOpen(true)}>
               <Settings className="h-4 w-4 mr-2" />
               Configurações
@@ -715,6 +739,15 @@ const Clients = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {profile && (
+        <ImportClientsDialog
+          open={isImportOpen}
+          onOpenChange={setIsImportOpen}
+          establishmentId={profile.id}
+          onImported={() => queryClient.invalidateQueries({ queryKey: ['clients'] })}
+        />
+      )}
     </div>
   );
 };
