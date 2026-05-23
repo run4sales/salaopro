@@ -35,6 +35,7 @@ const Clients = () => {
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<any>(null);
   const [inactiveDaysConfig, setInactiveDaysConfig] = useState(20);
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   const [newClient, setNewClient] = useState({
     name: '',
