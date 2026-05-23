@@ -164,7 +164,7 @@ export default function ImportClientsDialog({ open, onOpenChange, establishmentI
           // phone is NOT NULL — fallback to placeholder if missing
           if (!base.phone) base.phone = "";
           if (!base.name) base.name = "(sem nome)";
-          const { error } = await supabase.from("clients").insert(base);
+          const { error } = await supabase.from("clients").insert(base as any);
           if (error) throw error;
           created++;
         }
