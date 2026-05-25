@@ -145,3 +145,28 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* react-big-calendar overrides → design tokens */
+.rbc-calendar { font-family: inherit; }
+.rbc-toolbar button {
+  color: hsl(var(--foreground));
+  background: transparent;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.75rem;
+}
+.rbc-toolbar button:hover { background: hsl(var(--accent) / 0.15); }
+.rbc-toolbar button.rbc-active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
+.rbc-off-range-bg { background: hsl(var(--muted) / 0.4); }
+.rbc-today { background-color: hsl(var(--primary) / 0.06); }
+.rbc-time-slot, .rbc-day-bg, .rbc-month-row, .rbc-header,
+.rbc-time-header-content, .rbc-time-content, .rbc-time-view,
+.rbc-month-view, .rbc-time-gutter, .rbc-timeslot-group { border-color: hsl(var(--border)) !important; }
+.rbc-current-time-indicator { background-color: hsl(var(--primary)); height: 2px; }
+.rbc-event { outline: none; }
+.rbc-event.rbc-selected { box-shadow: 0 0 0 2px hsl(var(--primary) / 0.5); }
+.rbc-show-more { color: hsl(var(--primary)); font-weight: 600; }
