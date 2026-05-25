@@ -1,97 +1,129 @@
-## Ajustes Prioritários — Beauty Core
+# Módulo Agenda + Atendimento + PDV (Beauty Core)
 
-Vou implementar em 5 frentes, na ordem de prioridade que você definiu. Como envolve mudanças de schema + várias telas, peço aprovação antes de começar para não quebrar fluxos já em uso.
-
----
-
-### 1. Comanda Inteligente (PRIORIDADE MÁXIMA)
-
-Hoje "Vendas (PDV)" registra apenas 1 serviço + 1 profissional por linha. Vou transformar em **comanda multi-item**:
-
-**Novo fluxo:**
-- Botão "Abrir Comanda" → seleciona cliente (obrigatório) e, se vier de agendamento, pré-carrega serviços/profissionais
-- Tela da comanda lista itens, cada item com:
-  - Serviço (editável)
-  - Profissional(is) — 1 ou vários, divide comissão igualmente
-  - Valor (editável — sobrescreve preço padrão)
-  - Comissão calculada e exibida em tempo real
-- Ações: ➕ adicionar serviço, 🗑 remover, ✏️ editar valor/profissionais
-- **Finalização:** escolhe forma de pagamento (Dinheiro / Pix / Débito / Crédito à vista / Crédito parcelado) → aplica taxa → gera venda + entradas no fluxo de caixa (receita bruta + despesa "Taxa de cartão" automática) + comissões em `sale_professionals`
-
-**Schema:**
-- Reaproveita `sales` (1 linha por item da comanda) + `sale_professionals` já existente
-- Adiciona `sales.gross_amount`, `sales.fee_amount`, `sales.net_amount`, `sales.card_machine_id`, `sales.installments`
-- Trigger `sync_sale_to_cash_flow` passa a registrar 2 entradas quando houver taxa: receita líquida (categoria Serviço) + despesa (categoria "Taxa de cartão") — mantém compatibilidade
+Escopo grande. Proposta de entrega **em 3 ondas** para reduzir risco e validar cada parte antes da próxima.
 
 ---
 
-### 2. Agendamento com Cliente Obrigatório
+## 🌊 Onda 1 — Agenda visual estilo Google Calendar
 
-- Substituir o `Select` de cliente por **Combobox com busca** (nome/telefone) em `AgendaContent.tsx` e em `PublicBooking.tsx` interno
-- Se nada encontrado → CTA "➕ Cadastrar novo cliente" abre **modal rápido** (nome + telefone + origem) sem fechar o modal de agendamento
-- Após salvar → cliente fica automaticamente selecionado
-- Validação: bloqueia submit sem `client_id`
+**Objetivo:** transformar a tela `Agenda` (hoje só tabela) num calendário visual com 3 visões.
 
----
+### UI
+- Nova lib: `react-big-calendar` (leve, integra bem com shadcn/Tailwind).
+- Visões: **Dia / Semana (default) / Mês**.
+- Cada evento = bloco colorido por status:
+  - 🟡 `scheduled` (Agendado)
+  - 🔵 `confirmed` (Confirmado)
+  - 🟢 `in_service` (Em atendimento) — **novo status**
+  - ⚫ `completed` (Finalizado)
+  - 🔴 `canceled` (Cancelado)
+- Bloco mostra: hora · cliente · serviço.
+- Toggle "Calendário / Lista" no topo (mantém a tabela atual como fallback).
 
-### 3. Taxas de Cartão (Financeiro)
+### Interações
+- Clique em horário vazio → modal **Novo agendamento** (reaproveita o existente, pré-preenchendo data/hora).
+- Clique em evento → **Popover de detalhes** com: cliente, serviço, profissional, valor estimado e botões:
+  - ✏️ Editar  · ▶️ Iniciar atendimento  · ❌ Cancelar
+- Clique no dia (visão Mês) → drill-down para visão Dia.
+- (Extra Onda 1) Drag-and-drop para reagendar (mover bloco no grid).
 
-**Novas tabelas:**
-- `card_machines` (id, establishment_id, name, active)
-- `card_machine_fees` (machine_id, payment_type: `debit`/`credit`/`credit_installment`, installments INT NULL, fee_percentage NUMERIC)
+### Banco
+- Migração: adicionar `'in_service'` como valor aceito de `appointments.status` (já é text livre, só formalizar nas constantes do front).
 
-**UI:**
-- Nova aba em **Configurações** → "Maquininhas & Taxas"
-- CRUD de maquininhas + tabela de taxas por modalidade/parcelas
-- Usada pela Comanda na hora de finalizar pagamento
-
----
-
-### 4. Tipos de Comissão por Colaborador
-
-**Schema (`professionals`):**
-- `commission_type` TEXT default `'per_service'` → `per_service` | `fixed_daily` | `custom_percentage`
-- `custom_percentage` NUMERIC (usado se `custom_percentage`)
-- `daily_amount` NUMERIC (usado se `fixed_daily`)
-
-**Cálculo na comanda:**
-- `per_service` → usa `services.commission_solo` (% do serviço) ÷ nº de profissionais
-- `custom_percentage` → usa o % próprio do colaborador sobre o valor do item
-- `fixed_daily` → não gera comissão por venda; aparece como custo fixo do dia (futuro: relatório separado)
-
-**UI:** novo bloco no cadastro do profissional em `Settings`.
+### Arquivos
+- `src/pages/components/AgendaContent.tsx` — refactor: dividir em `AgendaCalendar.tsx` + `AgendaList.tsx`.
+- `src/components/agenda/AppointmentDetailsPopover.tsx` — novo.
+- `src/components/agenda/AppointmentFormDialog.tsx` — extrair modal atual.
+- `src/index.css` — estilos do `react-big-calendar` mapeados nos tokens.
 
 ---
 
-### 5. Comissão Automática por Serviço
+## 🌊 Onda 2 — Importação / Exportação de Agendamentos
 
-Já temos `services.commission_solo`. Vou:
-- Simplificar a UI do serviço para 1 campo "% de comissão" (mantém colunas legadas no banco)
-- Na comanda: comissão total = `valor × %` ÷ `nº profissionais` (divisão igualitária automática)
-- Grava snapshot em `sale_professionals` (já existe)
+**Reaproveita** a infra de `src/lib/clientImportExport.ts` e `ImportClientsDialog.tsx`.
+
+### Importação (CSV/XLSX)
+Colunas esperadas (auto-mapeamento heurístico):
+`Data` · `Hora` · `Cliente` · `Telefone` · `Serviço` · `Profissional` · `Valor` · `Status` · `Observações`
+
+Regras:
+- Cliente inexistente → cria automaticamente (match por telefone → nome).
+- Serviço inexistente → cria com preço da planilha e `duration_minutes` default 30.
+- Profissional inexistente → cria inativo + aviso.
+- Data + Hora combinadas em `appointment_date` (timezone do salão).
+- Deduplicação: mesmo cliente+profissional+horário não duplica.
+
+UI: wizard reaproveitando `ImportClientsDialog` (Upload → Mapping → Preview → Result com falhas).
+
+### Exportação
+Botão no topo da Agenda com filtros: período (date range), profissional, status. Gera `.xlsx` e `.csv`.
+
+### Arquivos
+- `src/lib/appointmentImportExport.ts` — novo (espelha clientes).
+- `src/components/agenda/ImportAppointmentsDialog.tsx` — novo.
+- Botões "Importar" / "Exportar" no header da Agenda.
 
 ---
 
-### Arquivos principais a tocar
-**Backend (migration única):**
-- `sales`: novos campos financeiros
-- `professionals`: tipo de comissão
-- novas tabelas `card_machines`, `card_machine_fees`
-- atualiza trigger `sync_sale_to_cash_flow` para lançar taxa como despesa
+## 🌊 Onda 3 — Atendimentos em tempo real + Comanda + PDV
 
-**Frontend:**
-- `src/pages/Sales.tsx` → reescrita como **Comanda** (com lista de itens, taxa, finalização)
-- `src/components/ClientCombobox.tsx` (novo) — busca + criar inline, reutilizado em Agenda e Comanda
-- `src/pages/components/AgendaContent.tsx` → trocar Select por Combobox
-- `src/pages/Services.tsx` → simplificar comissão para 1 campo
-- `src/pages/Settings.tsx` → novas abas "Maquininhas" e bloco "Tipo de comissão" em profissionais
-- `src/pages/PublicBooking.tsx` → ajustes mínimos
+### 3a. Tela "Atendimentos em andamento"
+- Nova rota `/atendimentos` no menu.
+- Lista cards de appointments com `status='in_service'` ou `status='awaiting_payment'`.
+- Card: cliente · serviço · profissional · início · **cronômetro** (tempo decorrido).
+- Ações: ➕ Adicionar item · 🧾 Abrir comanda · 💰 Finalizar.
+
+### 3b. Fluxo Comanda
+- Tabela nova `comandas` (header) + `comanda_items` (linhas) **OU** reaproveitar `sales` já estruturada como comanda (cada `sales` row = 1 item). Proposta: **criar `comandas`** para separar "comanda em aberto" de "venda confirmada":
+  ```
+  comandas(id, establishment_id, appointment_id?, client_id, status[open|paid|canceled],
+           subtotal, discount, total, opened_at, closed_at)
+  comanda_items(id, comanda_id, kind[service|product], service_id?, name, qty,
+                unit_price, total, professional_id, commission_percentage, commission_amount)
+  ```
+- "Iniciar atendimento" no appointment:
+  1. Muda status do appointment → `in_service`.
+  2. Cria `comanda` (open) com 1 item do serviço agendado.
+- Tela de comanda: add/remover item, editar valor, desconto, trocar profissional.
+
+### 3c. PDV (Finalização)
+- Botão "Finalizar" na comanda → abre **modal PDV** (reaproveita parte do `Sales.tsx` atual):
+  - Lista itens (read-only com conferência).
+  - Forma de pagamento (Dinheiro/Pix/Débito/Crédito) + parcelas + maquininha (já existe `card_machines`).
+  - Cálculo automático de taxa e líquido.
+- Ao confirmar:
+  - Cria N rows em `sales` (uma por item) com `fee_amount` rateado.
+  - Marca `comanda.status='paid'`, `appointment.status='completed'`.
+  - Triggers existentes já sincronizam cash flow + comissão.
+
+### Arquivos
+- Migração: nova tabela `comandas` + `comanda_items` (com RLS por establishment, índices por status).
+- `src/pages/Attendances.tsx` — nova rota lista de atendimentos ativos.
+- `src/components/comanda/ComandaDrawer.tsx` — drawer/sheet da comanda aberta.
+- `src/components/comanda/PdvDialog.tsx` — modal de pagamento.
+- `src/App.tsx` + `AppSidebar.tsx` — nova rota "Atendimentos".
+- `Sales.tsx` — passa a listar **comandas pagas** (histórico) + ainda permite venda avulsa que cria comanda+fecha na hora.
 
 ---
 
-### Riscos / compatibilidade
-- Vendas antigas continuam funcionando (campos novos são opcionais)
-- Sem `card_machine_id` → sem taxa (comportamento atual)
-- Triggers de fluxo de caixa preservam o que já existe
+## ⚙️ Detalhes técnicos transversais
 
-Posso seguir? Se quiser, começo só pela **Comanda + Cliente obrigatório** (itens 1 e 2) nesta primeira leva e fazemos Taxas/Comissão depois — me diz qual escopo libera.
+- **Realtime:** habilitar `supabase_realtime` em `appointments` e `comandas` para refletir mudanças sem reload.
+- **Performance da agenda:** query por janela visível (start/end do range), índice em `(establishment_id, appointment_date)`.
+- **Status novo `in_service`/`awaiting_payment`:** centralizar em `src/lib/appointmentStatus.ts` (labels, cores, variants).
+- **Tokens de cor:** adicionar `--status-scheduled`, `--status-confirmed`, `--status-in-service`, `--status-completed`, `--status-canceled` em `index.css`.
+
+---
+
+## 🚦 Sugestão de execução
+
+Recomendo **começar pela Onda 1 (agenda visual)** isolada, pois é o que o usuário vê primeiro e desbloqueia o "Iniciar atendimento" da Onda 3. Posso entregar nesta ordem:
+
+1. **Onda 1** completa (agenda visual + popover + drag-drop básico).
+2. **Onda 3** (atendimentos + comanda + PDV) — maior valor operacional.
+3. **Onda 2** (import/export) — quick win por reaproveitar infra de clientes.
+
+**Me confirma:**
+- (a) Pode seguir nessa ordem (1 → 3 → 2)?
+- (b) Para a comanda, prefere **nova tabela `comandas`** (separação limpa, recomendado) ou **reaproveitar `sales`** como hoje (mais simples, menos migração)?
+- (c) Libera adicionar a lib `react-big-calendar` (~30kb gzip) para a visão calendário?
