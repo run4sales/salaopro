@@ -23,6 +23,7 @@ import {
   Settings,
   Receipt,
   TrendingUp,
+  PlayCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -32,6 +33,7 @@ const groups = [
     items: [
       { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
       { title: "Agenda Inteligente", url: "/agenda", icon: Calendar },
+      { title: "Atendimentos", url: "/atendimentos", icon: PlayCircle },
       { title: "Gestão de Clientes", url: "/clients", icon: Users },
     ],
   },
