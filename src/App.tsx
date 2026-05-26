@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 import PublicBooking from "./pages/PublicBooking";
 import AppLayout from "./components/AppLayout";
 import SuperAdmin from "./pages/SuperAdmin";
+import Attendances from "./pages/Attendances";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/sales" element={<Sales />} />
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/agenda" element={<Agenda />} />
+              <Route path="/atendimentos" element={<Attendances />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/metrics" element={<Metrics />} />
               <Route path="/settings" element={<Settings />} />
