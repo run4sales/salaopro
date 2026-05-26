@@ -37,7 +37,7 @@ export default function AgendaContent() {
     enabled: !!establishmentId,
     queryFn: async () => {
       const [apptRes, servicesRes, profRes, clientsRes] = await Promise.all([
-        supabase.from("appointments").select("id, appointment_date, status, notes, client_id, service_id, professional_id")
+        supabase.from("appointments").select("id, establishment_id, appointment_date, status, notes, client_id, service_id, professional_id")
           .eq("establishment_id", establishmentId)
           .gte("appointment_date", range.start.toISOString())
           .lte("appointment_date", range.end.toISOString())
