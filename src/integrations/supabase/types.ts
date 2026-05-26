@@ -301,6 +301,113 @@ export type Database = {
           },
         ]
       }
+      comanda_items: {
+        Row: {
+          comanda_id: string
+          commission_amount: number
+          commission_percentage: number
+          created_at: string
+          establishment_id: string
+          id: string
+          kind: string
+          name: string
+          professional_id: string | null
+          qty: number
+          service_id: string | null
+          total: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          comanda_id: string
+          commission_amount?: number
+          commission_percentage?: number
+          created_at?: string
+          establishment_id: string
+          id?: string
+          kind?: string
+          name: string
+          professional_id?: string | null
+          qty?: number
+          service_id?: string | null
+          total?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          comanda_id?: string
+          commission_amount?: number
+          commission_percentage?: number
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          kind?: string
+          name?: string
+          professional_id?: string | null
+          qty?: number
+          service_id?: string | null
+          total?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comanda_items_comanda_id_fkey"
+            columns: ["comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comandas: {
+        Row: {
+          appointment_id: string | null
+          client_id: string
+          closed_at: string | null
+          created_at: string
+          discount: number
+          establishment_id: string
+          id: string
+          notes: string | null
+          opened_at: string
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          client_id: string
+          closed_at?: string | null
+          created_at?: string
+          discount?: number
+          establishment_id: string
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          client_id?: string
+          closed_at?: string | null
+          created_at?: string
+          discount?: number
+          establishment_id?: string
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
