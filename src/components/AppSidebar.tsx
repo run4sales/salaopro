@@ -65,6 +65,7 @@ const groups = [
 export default function AppSidebar() {
   const location = useLocation();
   const { signOut, establishmentRole } = useAuth();
+
   const isEmployee = establishmentRole === "employee";
   const isAdmin = establishmentRole === "owner" || establishmentRole === "admin";
 
@@ -94,39 +95,41 @@ export default function AppSidebar() {
             if (item.url === "/users") return isAdmin;
             return !isEmployee || ["/agenda", "/atendimentos", "/sales"].includes(item.url);
           });
+
           if (!filteredItems.length) return null;
+
           return (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider font-semibold text-sidebar-foreground/40">
-              {group.label}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {filteredItems.map((item) => {
-                  const active = isActive(item.url);
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={active}
-                        className={
-                          active
-                            ? "bg-sidebar-accent text-sidebar-accent-foreground border border-primary/30 shadow-[0_0_18px_hsl(var(--primary)/0.25)] hover:bg-sidebar-accent"
-                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground transition-colors"
-                        }
-                      >
-                        <NavLink to={item.url} end>
-                          <item.icon className={active ? "text-primary-glow" : ""} />
-                          <span>{item.title}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        );
+            <SidebarGroup key={group.label}>
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-wider font-semibold text-sidebar-foreground/40">
+                {group.label}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {filteredItems.map((item) => {
+                    const active = isActive(item.url);
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={active}
+                          className={
+                            active
+                              ? "bg-sidebar-accent text-sidebar-accent-foreground border border-primary/30 shadow-[0_0_18px_hsl(var(--primary)/0.25)] hover:bg-sidebar-accent"
+                              : "text-sidebar-foreground/80 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground transition-colors"
+                          }
+                        >
+                          <NavLink to={item.url} end>
+                            <item.icon className={active ? "text-primary-glow" : ""} />
+                            <span>{item.title}</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
         })}
       </SidebarContent>
 
