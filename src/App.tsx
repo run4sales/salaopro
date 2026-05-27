@@ -20,6 +20,7 @@ import PublicBooking from "./pages/PublicBooking";
 import AppLayout from "./components/AppLayout";
 import SuperAdmin from "./pages/SuperAdmin";
 import Attendances from "./pages/Attendances";
+import Users from "./pages/Users";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/reports" element={<Reports />} />
               <Route path="/metrics" element={<Metrics />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/users" element={<Users />} />
               <Route path="/admin" element={<SuperAdmin />} />
               <Route path="/super-admin" element={<SuperAdmin />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
