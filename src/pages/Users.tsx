@@ -67,12 +67,14 @@ export default function Users() {
     }
     setSaving(true);
     try {
-      const { data: created, error } = await (supabase as any).rpc("create_establishment_user", {
-        p_establishment_id: establishmentId,
-        p_email: email.trim().toLowerCase(),
-        p_name: name.trim(),
-        p_password: password.trim(),
-        p_role: role,
+      const { data: created, error } = await supabase.functions.invoke("create-staff-user", {
+        body: {
+          establishment_id: establishmentId,
+          email: email.trim().toLowerCase(),
+          password: password.trim(),
+          name: name.trim(),
+          role,
+        },
       });
       if (error) throw error;
 
