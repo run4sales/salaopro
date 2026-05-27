@@ -21,6 +21,8 @@ import AppLayout from "./components/AppLayout";
 import SuperAdmin from "./pages/SuperAdmin";
 import Attendances from "./pages/Attendances";
 import Users from "./pages/Users";
+import SelectPlan from "./pages/SelectPlan";
+import Checkout from "./pages/Checkout";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +50,8 @@ const App = () => (
               <Route path="/metrics" element={<Metrics />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/users" element={<Users />} />
+              <Route path="/escolher-plano" element={<SelectPlan />} />
+              <Route path="/checkout" element={<Checkout />} />
               <Route path="/admin" element={<SuperAdmin />} />
               <Route path="/super-admin" element={<SuperAdmin />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
