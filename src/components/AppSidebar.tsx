@@ -24,6 +24,7 @@ import {
   Receipt,
   TrendingUp,
   PlayCircle,
+  UserCog,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -56,13 +57,16 @@ const groups = [
     items: [
       { title: "Serviços", url: "/services", icon: Scissors },
       { title: "Configurações", url: "/settings", icon: Settings },
+      { title: "Usuários", url: "/users", icon: UserCog },
     ],
   },
 ];
 
 export default function AppSidebar() {
   const location = useLocation();
-  const { signOut } = useAuth();
+  const { signOut, establishmentRole } = useAuth();
+  const isEmployee = establishmentRole === "employee";
+  const isAdmin = establishmentRole === "owner" || establishmentRole === "admin";
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -85,14 +89,20 @@ export default function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {groups.map((group) => (
+        {groups.map((group) => {
+          const filteredItems = group.items.filter((item) => {
+            if (item.url === "/users") return isAdmin;
+            return !isEmployee || ["/agenda", "/atendimentos", "/sales"].includes(item.url);
+          });
+          if (!filteredItems.length) return null;
+          return (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel className="text-[10px] uppercase tracking-wider font-semibold text-sidebar-foreground/40">
               {group.label}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items.map((item) => {
+                {filteredItems.map((item) => {
                   const active = isActive(item.url);
                   return (
                     <SidebarMenuItem key={item.title}>
@@ -116,7 +126,8 @@ export default function AppSidebar() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        ))}
+        );
+        })}
       </SidebarContent>
 
       <SidebarSeparator />
