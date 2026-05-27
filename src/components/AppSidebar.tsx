@@ -65,7 +65,6 @@ const groups = [
 export default function AppSidebar() {
   const location = useLocation();
   const { signOut, establishmentRole } = useAuth();
-
   const isEmployee = establishmentRole === "employee";
   const isAdmin = establishmentRole === "owner" || establishmentRole === "admin";
 

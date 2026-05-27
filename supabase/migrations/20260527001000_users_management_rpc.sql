@@ -2,6 +2,7 @@ CREATE OR REPLACE FUNCTION public.create_establishment_user(
   p_establishment_id uuid,
   p_email text,
   p_name text,
+  p_password text,
   p_role public.establishment_access_role
 )
 RETURNS jsonb
@@ -28,7 +29,7 @@ BEGIN
 
   SELECT id INTO v_user_id FROM auth.users WHERE lower(email) = lower(trim(p_email)) LIMIT 1;
   IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'Usuário não encontrado. O colaborador precisa criar a conta primeiro com este e-mail.';
+    RAISE EXCEPTION 'Usuário não encontrado. Cadastre a conta do colaborador primeiro e depois vincule aqui. Senha informada no formulário é validada no front.';
   END IF;
 
   INSERT INTO public.professionals (establishment_id, name, active)
@@ -44,4 +45,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.create_establishment_user(uuid, text, text, public.establishment_access_role) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_establishment_user(uuid, text, text, text, public.establishment_access_role) TO authenticated;
