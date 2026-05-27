@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
+  establishmentRole: "owner" | "admin" | "employee" | null;
+  professionalId: string | null;
   user: User | null;
   session: Session | null;
   profile: any | null;
@@ -28,19 +30,50 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [establishmentRole, setEstablishmentRole] = useState<"owner" | "admin" | "employee" | null>(null);
+  const [professionalId, setProfessionalId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data: profileData } = await supabase
+      const { data: ownerProfile } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
-        .single();
-      setProfile(profileData);
+        .maybeSingle();
+      if (ownerProfile) {
+        setProfile(ownerProfile);
+        setEstablishmentRole("owner");
+        setProfessionalId(null);
+        return;
+      }
+
+      const { data: membership } = await supabase
+        .from('establishment_users' as any)
+        .select('role, professional_id, establishment_id')
+        .eq('user_id', userId)
+        .eq('active', true)
+        .maybeSingle();
+      if (!membership?.establishment_id) {
+        setProfile(null);
+        setEstablishmentRole(null);
+        setProfessionalId(null);
+        return;
+      }
+
+      const { data: linkedProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', membership.establishment_id)
+        .maybeSingle();
+      setProfile(linkedProfile ?? null);
+      setEstablishmentRole((membership.role as any) ?? null);
+      setProfessionalId(membership.professional_id ?? null);
     } catch (error) {
       console.error('Error fetching profile:', error);
       setProfile(null);
+      setEstablishmentRole(null);
+      setProfessionalId(null);
     }
   };
 
@@ -58,6 +91,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }, 0);
         } else {
           setProfile(null);
+          setEstablishmentRole(null);
+          setProfessionalId(null);
         }
         
         setLoading(false);
@@ -127,6 +162,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
     setSession(null);
     setProfile(null);
+    setEstablishmentRole(null);
+    setProfessionalId(null);
     toast({
       title: "Logout realizado",
       description: "Você foi desconectado com sucesso.",
@@ -141,6 +178,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signIn,
     signOut,
     loading,
+    establishmentRole,
+    professionalId,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
