@@ -953,6 +953,7 @@ export type Database = {
         }
         Returns: string
       }
+      get_my_subscription: { Args: never; Returns: Json }
       get_public_availability: {
         Args: { day: string; establishment: string; professional: string }
         Returns: Json
@@ -963,6 +964,14 @@ export type Database = {
       get_public_service_professionals: {
         Args: { establishment: string; service: string }
         Returns: Json
+      }
+      get_subscription_state: {
+        Args: { _establishment_id: string }
+        Returns: string
+      }
+      has_active_subscription: {
+        Args: { _establishment_id: string }
+        Returns: boolean
       }
       has_role: {
         Args: {
