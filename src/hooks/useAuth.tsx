@@ -48,12 +48,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      const { data: membership } = await supabase
+      const { data: membershipData } = await supabase
         .from('establishment_users' as any)
         .select('role, professional_id, establishment_id')
         .eq('user_id', userId)
         .eq('active', true)
         .maybeSingle();
+      const membership = membershipData as any;
       if (!membership?.establishment_id) {
         setProfile(null);
         setEstablishmentRole(null);
