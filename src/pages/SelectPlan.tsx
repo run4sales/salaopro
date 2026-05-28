@@ -54,6 +54,21 @@ export default function SelectPlan() {
     navigate("/dashboard");
   }
 
+  const autoPickedRef = useRef(false);
+  useEffect(() => {
+    if (autoPickedRef.current) return;
+    if (!profile?.id || !plans.data?.length) return;
+    let desired: string | null = null;
+    try { desired = localStorage.getItem("signup_plan_slug"); } catch {}
+    if (!desired) return;
+    const match = plans.data.find((p) => p.slug === desired);
+    if (!match) return;
+    autoPickedRef.current = true;
+    try { localStorage.removeItem("signup_plan_slug"); } catch {}
+    selectPlan(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, plans.data]);
+
   return (
     <div className="min-h-screen bg-background text-foreground p-6 flex flex-col items-center justify-center">
       <div className="max-w-4xl w-full">
