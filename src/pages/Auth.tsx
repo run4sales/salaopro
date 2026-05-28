@@ -120,6 +120,35 @@ const Auth = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
+                  <Label>Escolha seu plano</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { slug: 'individual', name: 'Individual', price: 'R$ 59,90', sub: 'Até 1.000 clientes • 1 usuário' },
+                      { slug: 'empresa', name: 'Empresa', price: 'R$ 109,90', sub: 'Clientes ilimitados • até 20 usuários' },
+                    ].map((p) => {
+                      const active = selectedPlan === p.slug;
+                      return (
+                        <button
+                          type="button"
+                          key={p.slug}
+                          onClick={() => setSelectedPlan(p.slug as 'individual' | 'empresa')}
+                          className={`text-left rounded-lg border p-3 transition ${
+                            active
+                              ? 'border-primary bg-primary/10 shadow-[0_0_18px_hsl(var(--primary)/0.25)]'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="text-sm font-semibold">{p.name}</div>
+                          <div className="text-base font-bold text-primary">{p.price}<span className="text-xs text-muted-foreground font-normal">/mês</span></div>
+                          <div className="text-[11px] text-muted-foreground mt-1">{p.sub}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">10 dias grátis • sem cartão de crédito</p>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="business-name">Nome do Estabelecimento</Label>
                   <Input
                     id="business-name"
