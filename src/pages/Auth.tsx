@@ -148,9 +148,7 @@ const Auth = () => {
                     })}
                   </div>
 
-                      );
-                    })}
-                  </div>
+
                   <p className="text-xs text-muted-foreground">10 dias grátis • sem cartão de crédito</p>
                 </div>
 
