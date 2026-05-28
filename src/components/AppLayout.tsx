@@ -2,6 +2,7 @@ import { Outlet, Navigate, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
+import TrialCountdownBanner from "@/components/TrialCountdownBanner";
 import { useSubscription, isFullyBlocked } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -42,6 +43,7 @@ export default function AppLayout() {
 
   return (
     <div className="dark">
+      <TrialCountdownBanner />
       <SidebarProvider>
         <header className="h-12 flex items-center border-b border-border bg-background md:hidden">
           <SidebarTrigger className="ml-2 text-foreground" />
