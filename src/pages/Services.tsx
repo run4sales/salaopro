@@ -136,6 +136,37 @@ const Services = () => {
     },
   });
 
+  const updateServiceMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const pct = Number(payload.commission_solo) || 0;
+      const { data, error } = await supabase
+        .from('services')
+        .update({
+          name: payload.name,
+          price: Number(payload.price),
+          duration_minutes: Number(payload.duration_minutes),
+          description: payload.description || null,
+          commission_solo: pct,
+          commission_with_assistants: pct,
+          commission_as_assistant: pct,
+          active: payload.active,
+        })
+        .eq('id', payload.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+      setEditingService(null);
+      toast({ title: 'Serviço atualizado!', description: 'As alterações foram salvas com sucesso.' });
+    },
+    onError: () => {
+      toast({ title: 'Erro ao atualizar serviço', description: 'Tente novamente em instantes.', variant: 'destructive' });
+    },
+  });
+
   const addProfessionalMutation = useMutation({
     mutationFn: async (payload: typeof newProfessional) => {
       const insertData = {
@@ -291,6 +322,15 @@ const Services = () => {
                     <TableHead>Duração</TableHead>
                     <TableHead>Comissão</TableHead>
                     <TableHead>Status</TableHead>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Preço</TableHead>
+                    <TableHead>Duração</TableHead>
+                    <TableHead>Comissão</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -301,9 +341,15 @@ const Services = () => {
                       <TableCell>{s.duration_minutes} min</TableCell>
                       <TableCell>{Number(s.commission_solo ?? 0)}%</TableCell>
                       <TableCell>{s.active ? 'Ativo' : 'Inativo'}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => setEditingService(s)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
+              </Table>
               </Table>
             )}
           </CardContent>
