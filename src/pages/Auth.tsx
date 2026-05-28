@@ -121,7 +121,11 @@ const Auth = () => {
             </TabsContent>
             
             <TabsContent value="signup">
+              <form onSubmit={handleSignup} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Escolha seu plano</Label>
                   <div className="grid grid-cols-3 gap-2">
+
                     {[
                       { slug: 'individual', name: 'Individual', price: 'R$ 29,90', sub: '300 clientes • 1 usuário' },
                       { slug: 'profissional', name: 'Profissional', price: 'R$ 69,90', sub: 'Ilimitado • 4 usuários', star: true },
