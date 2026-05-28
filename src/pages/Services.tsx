@@ -19,14 +19,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+  const [newService, setNewService] = useState({
+    name: '',
+    price: '',
+    duration_minutes: '',
+    description: '',
+    commission_solo: '40',
+    active: true,
+  });
 
+  const [editingService, setEditingService] = useState<any>(null);
 
-const Services = () => {
-  const { user, profile } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const [newService, setNewService] = useState({
     name: '',
