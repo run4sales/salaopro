@@ -434,42 +434,37 @@ const LandingPage = () => {
             <p className="text-white/60">Escolha o nível de crescimento do seu negócio.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {[
               {
-                name: "Essencial",
-                price: "R$ 29",
-                desc: "Para profissionais autônomos começando.",
-                features: ["Até 200 clientes", "Agenda básica", "WhatsApp integrado", "Relatórios básicos"],
+                slug: "individual",
+                name: "Individual",
+                price: "R$ 59,90",
+                desc: "Para profissionais autônomos e salões pequenos.",
+                features: [
+                  "Até 1.000 clientes",
+                  "1 usuário",
+                  "Agenda avançada",
+                  "Comissões automáticas",
+                  "Relatórios avançados",
+                ],
                 featured: false,
               },
               {
-                name: "Crescimento",
-                price: "R$ 59",
-                desc: "Para salões que querem profissionalizar.",
+                slug: "empresa",
+                name: "Empresa",
+                price: "R$ 109,90",
+                desc: "Para salões em crescimento e equipes.",
                 features: [
-                  "Até 1000 clientes",
+                  "Clientes ilimitados",
+                  "Até 20 usuários",
                   "Agenda avançada",
-                  "Financeiro completo",
                   "Comissões automáticas",
                   "Relatórios avançados",
                   "Suporte prioritário",
+                  "Integração com WhatsApp",
                 ],
                 featured: true,
-              },
-              {
-                name: "Escala",
-                price: "R$ 99",
-                desc: "Para salões grandes e redes.",
-                features: [
-                  "Clientes ilimitados",
-                  "Múltiplos usuários",
-                  "BI financeiro completo",
-                  "API integração",
-                  "Onboarding dedicado",
-                  "Suporte premium",
-                ],
-                featured: false,
               },
             ].map((plan) => (
               <div
@@ -509,11 +504,12 @@ const LandingPage = () => {
                   }`}
                   asChild
                 >
-                  <a href="/auth?tab=signup">Começar teste grátis</a>
+                  <a href={`/auth?tab=signup&plan=${plan.slug}`}>Começar 10 dias grátis</a>
                 </Button>
               </div>
             ))}
           </div>
+
         </div>
       </section>
 
