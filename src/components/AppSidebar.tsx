@@ -15,9 +15,6 @@ import {
 import {
   LayoutDashboard,
   Users,
-import {
-  LayoutDashboard,
-  Users,
   Scissors,
   DollarSign,
   LogOut,
@@ -30,6 +27,7 @@ import {
   UserCog,
   CreditCard,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const groups = [
   {
@@ -55,9 +53,6 @@ const groups = [
       { title: "Relatórios Inteligentes", url: "/reports", icon: BarChart3 },
     ],
   },
-  {
-    label: "Configuração",
-    items: [
   {
     label: "Configuração",
     items: [
@@ -98,16 +93,15 @@ export default function AppSidebar() {
       <SidebarContent>
         {groups.map((group) => {
           const filteredItems = group.items.filter((item) => {
-            if (item.url === "/users") return isAdmin;
-            return !isEmployee || ["/agenda", "/atendimentos", "/sales"].includes(item.url);
-          });
-
-          if (!filteredItems.length) return null;
-          const filteredItems = group.items.filter((item) => {
             if (item.url === "/users" || item.url === "/planos") return isAdmin;
             return !isEmployee || ["/agenda", "/atendimentos", "/sales"].includes(item.url);
           });
 
+          if (!filteredItems.length) return null;
+
+          return (
+            <SidebarGroup key={group.label}>
+              <SidebarGroupLabel className="text-[10px] uppercase tracking-wider font-semibold text-sidebar-foreground/40">
                 {group.label}
               </SidebarGroupLabel>
               <SidebarGroupContent>
