@@ -178,8 +178,6 @@ export default function AdminCompanies() {
   }
 
 
-  }
-
   async function saveEdit() {
     if (!editTarget?.subscription || !editPlan) return;
     const plan = plansQuery.data?.find((p) => p.id === editPlan);
