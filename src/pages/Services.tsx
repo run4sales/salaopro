@@ -500,6 +500,95 @@ const Services = () => {
             </div>
           </CardContent>
         </Card>
+        {/* Edit Service Dialog */}
+        <Dialog open={!!editingService} onOpenChange={(open) => { if (!open) setEditingService(null); }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Editar Serviço</DialogTitle>
+              <DialogDescription>Altere os dados do serviço e salve as mudanças.</DialogDescription>
+            </DialogHeader>
+            {editingService && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  updateServiceMutation.mutate(editingService);
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name">Nome *</Label>
+                  <Input
+                    id="edit-name"
+                    value={editingService.name}
+                    onChange={(e) => setEditingService({ ...editingService, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-price">Preço (R$) *</Label>
+                    <Input
+                      id="edit-price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editingService.price}
+                      onChange={(e) => setEditingService({ ...editingService, price: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-duration">Duração (min) *</Label>
+                    <Input
+                      id="edit-duration"
+                      type="number"
+                      min="0"
+                      value={editingService.duration_minutes}
+                      onChange={(e) => setEditingService({ ...editingService, duration_minutes: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-description">Descrição</Label>
+                  <Textarea
+                    id="edit-description"
+                    value={editingService.description || ''}
+                    onChange={(e) => setEditingService({ ...editingService, description: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-commission">% de comissão</Label>
+                  <Input
+                    id="edit-commission"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={editingService.commission_solo}
+                    onChange={(e) => setEditingService({ ...editingService, commission_solo: e.target.value })}
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    id="edit-active"
+                    checked={editingService.active}
+                    onCheckedChange={(checked) => setEditingService({ ...editingService, active: checked })}
+                  />
+                  <Label htmlFor="edit-active">Ativo</Label>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setEditingService(null)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={updateServiceMutation.isPending}>
+                    {updateServiceMutation.isPending ? 'Salvando...' : 'Salvar'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
