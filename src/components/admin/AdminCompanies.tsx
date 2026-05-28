@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Ban, CheckCircle2, RefreshCw } from "lucide-react";
+import { Search, Ban, CheckCircle2, RefreshCw, Wallet } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE, logAdminAction } from "./shared";
+
 
 type Row = {
   id: string;
@@ -25,8 +27,11 @@ type Row = {
     status: string;
     plan_id: string | null;
     monthly_amount: number;
+    next_billing_at: string | null;
+    asaas_subscription_id: string | null;
     plan?: { name: string };
   };
+
 };
 
 export default function AdminCompanies() {
@@ -37,6 +42,11 @@ export default function AdminCompanies() {
   const [planFilter, setPlanFilter] = useState<string>("all");
   const [editTarget, setEditTarget] = useState<Row | null>(null);
   const [editPlan, setEditPlan] = useState<string>("");
+  const [billingTarget, setBillingTarget] = useState<Row | null>(null);
+  const [billingStatus, setBillingStatus] = useState<string>("active");
+  const [billingAmount, setBillingAmount] = useState<string>("");
+  const [billingNextDate, setBillingNextDate] = useState<string>("");
+
 
   const profilesQuery = useQuery({
     queryKey: ["admin-companies"],
@@ -49,7 +59,7 @@ export default function AdminCompanies() {
 
       const { data: subs } = await (supabase as any)
         .from("subscriptions")
-        .select("id, establishment_id, status, plan_id, monthly_amount, subscription_plans(name)");
+        .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, asaas_subscription_id, subscription_plans(name)");
       const subsMap = new Map<string, any>();
       (subs ?? []).forEach((s: any) => {
         subsMap.set(s.establishment_id, {
@@ -57,9 +67,12 @@ export default function AdminCompanies() {
           status: s.status,
           plan_id: s.plan_id,
           monthly_amount: Number(s.monthly_amount || 0),
+          next_billing_at: s.next_billing_at,
+          asaas_subscription_id: s.asaas_subscription_id,
           plan: s.subscription_plans ? { name: s.subscription_plans.name } : undefined,
         });
       });
+
       return (profiles ?? []).map((p: any) => ({ ...p, subscription: subsMap.get(p.id) })) as Row[];
     },
   });
@@ -93,11 +106,10 @@ export default function AdminCompanies() {
       return true;
     });
   }, [profilesQuery.data, search, statusFilter, planFilter]);
-
   async function changeStatus(row: Row, status: string, action: string) {
     if (!row.subscription) return;
     const updates: any = { status };
-    if (status === "canceled") updates.canceled_at = new Date().toISOString();
+    if (status === "canceled" || status === "blocked") updates.canceled_at = new Date().toISOString();
     const { error } = await (supabase as any)
       .from("subscriptions")
       .update(updates)
@@ -106,11 +118,65 @@ export default function AdminCompanies() {
       toast.error("Não foi possível atualizar. Tente novamente.");
       return;
     }
+
+    // Ao bloquear, cancela também no Asaas (se existir assinatura lá)
+    if (status === "blocked" && row.subscription.asaas_subscription_id) {
+      try {
+        await supabase.functions.invoke("asaas-cancel-subscription", {
+          body: { establishment_id: row.id },
+        });
+      } catch (e) {
+        console.error("asaas-cancel-subscription invoke error", e);
+        toast.warning("Status atualizado, mas a assinatura no Asaas pode não ter sido cancelada.");
+      }
+    }
+
     await logAdminAction(user!.id, action, row.id, { new_status: status, business: row.business_name });
     toast.success("Status atualizado");
     qc.invalidateQueries({ queryKey: ["admin-companies"] });
     qc.invalidateQueries({ queryKey: ["admin-subs"] });
   }
+
+  function openBilling(row: Row) {
+    if (!row.subscription) return;
+    setBillingTarget(row);
+    setBillingStatus(row.subscription.status || "active");
+    setBillingAmount(String(row.subscription.monthly_amount || ""));
+    setBillingNextDate(
+      row.subscription.next_billing_at
+        ? new Date(row.subscription.next_billing_at).toISOString().slice(0, 10)
+        : ""
+    );
+  }
+
+  async function saveBilling() {
+    if (!billingTarget?.subscription) return;
+    const updates: any = {
+      status: billingStatus,
+      monthly_amount: Number(billingAmount) || 0,
+    };
+    if (billingNextDate) {
+      updates.next_billing_at = new Date(billingNextDate + "T12:00:00").toISOString();
+    } else {
+      updates.next_billing_at = null;
+    }
+    if (billingStatus === "active") updates.last_payment_at = new Date().toISOString();
+
+    const { error } = await (supabase as any)
+      .from("subscriptions")
+      .update(updates)
+      .eq("id", billingTarget.subscription.id);
+    if (error) {
+      toast.error("Não foi possível salvar a cobrança.");
+      return;
+    }
+    await logAdminAction(user!.id, "manual_billing_update", billingTarget.id, updates);
+    toast.success("Cobrança atualizada");
+    setBillingTarget(null);
+    qc.invalidateQueries({ queryKey: ["admin-companies"] });
+    qc.invalidateQueries({ queryKey: ["admin-subs"] });
+  }
+
 
   async function saveEdit() {
     if (!editTarget?.subscription || !editPlan) return;
@@ -217,13 +283,16 @@ export default function AdminCompanies() {
                       <TableCell className="text-xs text-muted-foreground">{fmtDate(r.created_at)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{fmtDate(r.last_access_at)}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-1 flex-wrap">
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => { setEditTarget(r); setEditPlan(r.subscription?.plan_id ?? ""); }}
                           >
                             <RefreshCw className="h-3.5 w-3.5" /> Plano
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => openBilling(r)} disabled={!r.subscription}>
+                            <Wallet className="h-3.5 w-3.5" /> Cobrança
                           </Button>
                           {status === "blocked" ? (
                             <Button size="sm" variant="ghost" className="text-success" onClick={() => changeStatus(r, "active", "unblock")}>
@@ -235,6 +304,7 @@ export default function AdminCompanies() {
                             </Button>
                           )}
                         </div>
+
                       </TableCell>
                     </TableRow>
                   );
@@ -275,6 +345,56 @@ export default function AdminCompanies() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+
+      <Dialog open={!!billingTarget} onOpenChange={(o) => !o && setBillingTarget(null)}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Editar cobrança — {billingTarget?.business_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">Status</Label>
+              <Select value={billingStatus} onValueChange={setBillingStatus}>
+                <SelectTrigger className="bg-background border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="trial">Em teste</SelectItem>
+                  <SelectItem value="past_due">Pendente</SelectItem>
+                  <SelectItem value="active">Ativo (pago)</SelectItem>
+                  <SelectItem value="blocked">Bloqueado</SelectItem>
+                  <SelectItem value="canceled">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Valor mensal (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={billingAmount}
+                onChange={(e) => setBillingAmount(e.target.value)}
+                className="bg-background border-border"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Data da próxima fatura</Label>
+              <Input
+                type="date"
+                value={billingNextDate}
+                onChange={(e) => setBillingNextDate(e.target.value)}
+                className="bg-background border-border"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBillingTarget(null)}>Cancelar</Button>
+            <Button onClick={saveBilling}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
