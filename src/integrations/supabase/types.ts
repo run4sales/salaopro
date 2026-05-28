@@ -102,6 +102,39 @@ export type Database = {
           },
         ]
       }
+      asaas_webhook_logs: {
+        Row: {
+          asaas_payment_id: string | null
+          asaas_subscription_id: string | null
+          created_at: string
+          error: string | null
+          event: string | null
+          id: string
+          payload: Json
+          processed: boolean
+        }
+        Insert: {
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          created_at?: string
+          error?: string | null
+          event?: string | null
+          id?: string
+          payload: Json
+          processed?: boolean
+        }
+        Update: {
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          created_at?: string
+          error?: string | null
+          event?: string | null
+          id?: string
+          payload?: Json
+          processed?: boolean
+        }
+        Relationships: []
+      }
       card_machine_fees: {
         Row: {
           card_machine_id: string
@@ -859,6 +892,66 @@ export type Database = {
           },
         ]
       }
+      subscription_payments: {
+        Row: {
+          asaas_payment_id: string | null
+          asaas_subscription_id: string | null
+          bank_slip_url: string | null
+          billing_type: string | null
+          created_at: string
+          due_date: string | null
+          establishment_id: string
+          id: string
+          invoice_url: string | null
+          net_value: number | null
+          payment_date: string | null
+          pix_qr_code: string | null
+          raw: Json | null
+          status: string
+          subscription_id: string | null
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          bank_slip_url?: string | null
+          billing_type?: string | null
+          created_at?: string
+          due_date?: string | null
+          establishment_id: string
+          id?: string
+          invoice_url?: string | null
+          net_value?: number | null
+          payment_date?: string | null
+          pix_qr_code?: string | null
+          raw?: Json | null
+          status: string
+          subscription_id?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          bank_slip_url?: string | null
+          billing_type?: string | null
+          created_at?: string
+          due_date?: string | null
+          establishment_id?: string
+          id?: string
+          invoice_url?: string | null
+          net_value?: number | null
+          payment_date?: string | null
+          pix_qr_code?: string | null
+          raw?: Json | null
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
       subscription_plans: {
         Row: {
           active: boolean
@@ -903,12 +996,20 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          asaas_customer_id: string | null
+          asaas_subscription_id: string | null
+          billing_cpf_cnpj: string | null
+          billing_email: string | null
+          billing_name: string | null
+          billing_type: string | null
           canceled_at: string | null
           created_at: string
           establishment_id: string
           id: string
+          last_payment_at: string | null
           monthly_amount: number
           next_billing_at: string | null
+          payment_link: string | null
           plan_id: string | null
           started_at: string
           status: string
@@ -916,12 +1017,20 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
+          billing_cpf_cnpj?: string | null
+          billing_email?: string | null
+          billing_name?: string | null
+          billing_type?: string | null
           canceled_at?: string | null
           created_at?: string
           establishment_id: string
           id?: string
+          last_payment_at?: string | null
           monthly_amount?: number
           next_billing_at?: string | null
+          payment_link?: string | null
           plan_id?: string | null
           started_at?: string
           status?: string
@@ -929,12 +1038,20 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
+          billing_cpf_cnpj?: string | null
+          billing_email?: string | null
+          billing_name?: string | null
+          billing_type?: string | null
           canceled_at?: string | null
           created_at?: string
           establishment_id?: string
           id?: string
+          last_payment_at?: string | null
           monthly_amount?: number
           next_billing_at?: string | null
+          payment_link?: string | null
           plan_id?: string | null
           started_at?: string
           status?: string
