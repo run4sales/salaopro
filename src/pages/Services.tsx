@@ -12,7 +12,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Plus } from 'lucide-react';
+import { Plus, Pencil } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 const Services = () => {
   const { user, profile } = useAuth();
@@ -27,6 +35,9 @@ const Services = () => {
     commission_solo: '40',
     active: true,
   });
+
+  const [editingService, setEditingService] = useState<any>(null);
+
 
   const [newProfessional, setNewProfessional] = useState({
     name: '',
@@ -122,6 +133,37 @@ const Services = () => {
     },
     onError: () => {
       toast({ title: 'Erro ao cadastrar serviço', description: 'Tente novamente em instantes.', variant: 'destructive' });
+    },
+  });
+
+  const updateServiceMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const pct = Number(payload.commission_solo) || 0;
+      const { data, error } = await supabase
+        .from('services')
+        .update({
+          name: payload.name,
+          price: Number(payload.price),
+          duration_minutes: Number(payload.duration_minutes),
+          description: payload.description || null,
+          commission_solo: pct,
+          commission_with_assistants: pct,
+          commission_as_assistant: pct,
+          active: payload.active,
+        })
+        .eq('id', payload.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+      setEditingService(null);
+      toast({ title: 'Serviço atualizado!', description: 'As alterações foram salvas com sucesso.' });
+    },
+    onError: () => {
+      toast({ title: 'Erro ao atualizar serviço', description: 'Tente novamente em instantes.', variant: 'destructive' });
     },
   });
 
@@ -280,6 +322,7 @@ const Services = () => {
                     <TableHead>Duração</TableHead>
                     <TableHead>Comissão</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -290,6 +333,11 @@ const Services = () => {
                       <TableCell>{s.duration_minutes} min</TableCell>
                       <TableCell>{Number(s.commission_solo ?? 0)}%</TableCell>
                       <TableCell>{s.active ? 'Ativo' : 'Inativo'}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => setEditingService(s)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -452,6 +500,95 @@ const Services = () => {
             </div>
           </CardContent>
         </Card>
+        {/* Edit Service Dialog */}
+        <Dialog open={!!editingService} onOpenChange={(open) => { if (!open) setEditingService(null); }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Editar Serviço</DialogTitle>
+              <DialogDescription>Altere os dados do serviço e salve as mudanças.</DialogDescription>
+            </DialogHeader>
+            {editingService && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  updateServiceMutation.mutate(editingService);
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name">Nome *</Label>
+                  <Input
+                    id="edit-name"
+                    value={editingService.name}
+                    onChange={(e) => setEditingService({ ...editingService, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-price">Preço (R$) *</Label>
+                    <Input
+                      id="edit-price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editingService.price}
+                      onChange={(e) => setEditingService({ ...editingService, price: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-duration">Duração (min) *</Label>
+                    <Input
+                      id="edit-duration"
+                      type="number"
+                      min="0"
+                      value={editingService.duration_minutes}
+                      onChange={(e) => setEditingService({ ...editingService, duration_minutes: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-description">Descrição</Label>
+                  <Textarea
+                    id="edit-description"
+                    value={editingService.description || ''}
+                    onChange={(e) => setEditingService({ ...editingService, description: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-commission">% de comissão</Label>
+                  <Input
+                    id="edit-commission"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={editingService.commission_solo}
+                    onChange={(e) => setEditingService({ ...editingService, commission_solo: e.target.value })}
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    id="edit-active"
+                    checked={editingService.active}
+                    onCheckedChange={(checked) => setEditingService({ ...editingService, active: checked })}
+                  />
+                  <Label htmlFor="edit-active">Ativo</Label>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setEditingService(null)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={updateServiceMutation.isPending}>
+                    {updateServiceMutation.isPending ? 'Salvando...' : 'Salvar'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
