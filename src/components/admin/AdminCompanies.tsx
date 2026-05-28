@@ -396,3 +396,5 @@ export default function AdminCompanies() {
       </Dialog>
     </div>
   );
+}
+
