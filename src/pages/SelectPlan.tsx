@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Check, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Plan = {
   id: string;
