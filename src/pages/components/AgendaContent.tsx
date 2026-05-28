@@ -32,7 +32,6 @@ export default function AgendaContent() {
   const [importOpen, setImportOpen] = useState(false);
   const [selectedAppt, setSelectedAppt] = useState<any | null>(null);
   const [initialSlot, setInitialSlot] = useState<Date | null>(null);
-  const [initialSlot, setInitialSlot] = useState<Date | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["agenda", establishmentId, range.start.toISOString(), range.end.toISOString()],
