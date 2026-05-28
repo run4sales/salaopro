@@ -2,6 +2,7 @@ import { Outlet, Navigate, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
+import TrialCountdownBanner from "@/components/TrialCountdownBanner";
 import { useSubscription, isFullyBlocked } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
 
