@@ -106,11 +106,10 @@ export default function AdminCompanies() {
       return true;
     });
   }, [profilesQuery.data, search, statusFilter, planFilter]);
-
   async function changeStatus(row: Row, status: string, action: string) {
     if (!row.subscription) return;
     const updates: any = { status };
-    if (status === "canceled") updates.canceled_at = new Date().toISOString();
+    if (status === "canceled" || status === "blocked") updates.canceled_at = new Date().toISOString();
     const { error } = await (supabase as any)
       .from("subscriptions")
       .update(updates)
@@ -119,10 +118,66 @@ export default function AdminCompanies() {
       toast.error("Não foi possível atualizar. Tente novamente.");
       return;
     }
+
+    // Ao bloquear, cancela também no Asaas (se existir assinatura lá)
+    if (status === "blocked" && row.subscription.asaas_subscription_id) {
+      try {
+        await supabase.functions.invoke("asaas-cancel-subscription", {
+          body: { establishment_id: row.id },
+        });
+      } catch (e) {
+        console.error("asaas-cancel-subscription invoke error", e);
+        toast.warning("Status atualizado, mas a assinatura no Asaas pode não ter sido cancelada.");
+      }
+    }
+
     await logAdminAction(user!.id, action, row.id, { new_status: status, business: row.business_name });
     toast.success("Status atualizado");
     qc.invalidateQueries({ queryKey: ["admin-companies"] });
     qc.invalidateQueries({ queryKey: ["admin-subs"] });
+  }
+
+  function openBilling(row: Row) {
+    if (!row.subscription) return;
+    setBillingTarget(row);
+    setBillingStatus(row.subscription.status || "active");
+    setBillingAmount(String(row.subscription.monthly_amount || ""));
+    setBillingNextDate(
+      row.subscription.next_billing_at
+        ? new Date(row.subscription.next_billing_at).toISOString().slice(0, 10)
+        : ""
+    );
+  }
+
+  async function saveBilling() {
+    if (!billingTarget?.subscription) return;
+    const updates: any = {
+      status: billingStatus,
+      monthly_amount: Number(billingAmount) || 0,
+    };
+    if (billingNextDate) {
+      updates.next_billing_at = new Date(billingNextDate + "T12:00:00").toISOString();
+    } else {
+      updates.next_billing_at = null;
+    }
+    if (billingStatus === "active") updates.last_payment_at = new Date().toISOString();
+
+    const { error } = await (supabase as any)
+      .from("subscriptions")
+      .update(updates)
+      .eq("id", billingTarget.subscription.id);
+    if (error) {
+      toast.error("Não foi possível salvar a cobrança.");
+      return;
+    }
+    await logAdminAction(user!.id, "manual_billing_update", billingTarget.id, updates);
+    toast.success("Cobrança atualizada");
+    setBillingTarget(null);
+    qc.invalidateQueries({ queryKey: ["admin-companies"] });
+    qc.invalidateQueries({ queryKey: ["admin-subs"] });
+  }
+
+
   }
 
   async function saveEdit() {
