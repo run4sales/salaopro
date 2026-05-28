@@ -185,6 +185,15 @@ export default function AgendaContent() {
         onEdit={() => { setDetailsOpen(false); setFormOpen(true); }}
         onChanged={refresh}
       />
+
+      {establishmentId && (
+        <ImportAppointmentsDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          establishmentId={establishmentId}
+          onImported={refresh}
+        />
+      )}
     </div>
   );
 }
