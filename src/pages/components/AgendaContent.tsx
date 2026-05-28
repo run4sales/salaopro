@@ -7,11 +7,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, CalendarDays, List } from "lucide-react";
+import { Plus, CalendarDays, List, Upload } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { AgendaCalendar, AgendaEvent } from "@/components/agenda/AgendaCalendar";
 import { AppointmentFormDialog } from "@/components/agenda/AppointmentFormDialog";
 import { AppointmentDetailsDialog } from "@/components/agenda/AppointmentDetailsDialog";
+import ImportAppointmentsDialog from "@/components/agenda/ImportAppointmentsDialog";
 import { STATUS_LABELS, STATUS_VARIANTS, STATUS_OPTIONS, normalizeStatus } from "@/lib/appointmentStatus";
 
 export default function AgendaContent() {
@@ -26,9 +27,9 @@ export default function AgendaContent() {
     const e = new Date(s); e.setDate(e.getDate() + 6); e.setHours(23, 59, 59, 999);
     return { start: s, end: e };
   });
-
   const [formOpen, setFormOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [selectedAppt, setSelectedAppt] = useState<any | null>(null);
   const [initialSlot, setInitialSlot] = useState<Date | null>(null);
 
@@ -106,6 +107,7 @@ export default function AgendaContent() {
             <ToggleGroupItem value="list" aria-label="Lista"><List className="h-4 w-4 mr-1" />Lista</ToggleGroupItem>
           </ToggleGroup>
           <Button onClick={copyLink} variant="outline">Copiar link</Button>
+          <Button onClick={() => setImportOpen(true)} variant="outline"><Upload className="h-4 w-4 mr-1" /> Importar</Button>
           <Button onClick={handleNew}><Plus className="h-4 w-4 mr-1" /> Novo agendamento</Button>
         </div>
       </div>
@@ -183,6 +185,15 @@ export default function AgendaContent() {
         onEdit={() => { setDetailsOpen(false); setFormOpen(true); }}
         onChanged={refresh}
       />
+
+      {establishmentId && (
+        <ImportAppointmentsDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          establishmentId={establishmentId}
+          onImported={refresh}
+        />
+      )}
     </div>
   );
 }
