@@ -15,6 +15,9 @@ import {
 import {
   LayoutDashboard,
   Users,
+import {
+  LayoutDashboard,
+  Users,
   Scissors,
   DollarSign,
   LogOut,
@@ -25,8 +28,8 @@ import {
   TrendingUp,
   PlayCircle,
   UserCog,
+  CreditCard,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 
 const groups = [
   {
@@ -55,9 +58,13 @@ const groups = [
   {
     label: "Configuração",
     items: [
+  {
+    label: "Configuração",
+    items: [
       { title: "Serviços", url: "/services", icon: Scissors },
       { title: "Configurações", url: "/settings", icon: Settings },
       { title: "Usuários", url: "/users", icon: UserCog },
+      { title: "Planos", url: "/planos", icon: CreditCard },
     ],
   },
 ];
@@ -96,10 +103,11 @@ export default function AppSidebar() {
           });
 
           if (!filteredItems.length) return null;
+          const filteredItems = group.items.filter((item) => {
+            if (item.url === "/users" || item.url === "/planos") return isAdmin;
+            return !isEmployee || ["/agenda", "/atendimentos", "/sales"].includes(item.url);
+          });
 
-          return (
-            <SidebarGroup key={group.label}>
-              <SidebarGroupLabel className="text-[10px] uppercase tracking-wider font-semibold text-sidebar-foreground/40">
                 {group.label}
               </SidebarGroupLabel>
               <SidebarGroupContent>
