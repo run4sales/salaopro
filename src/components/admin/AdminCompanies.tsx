@@ -283,13 +283,16 @@ export default function AdminCompanies() {
                       <TableCell className="text-xs text-muted-foreground">{fmtDate(r.created_at)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{fmtDate(r.last_access_at)}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-1 flex-wrap">
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => { setEditTarget(r); setEditPlan(r.subscription?.plan_id ?? ""); }}
                           >
                             <RefreshCw className="h-3.5 w-3.5" /> Plano
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => openBilling(r)} disabled={!r.subscription}>
+                            <Wallet className="h-3.5 w-3.5" /> Cobrança
                           </Button>
                           {status === "blocked" ? (
                             <Button size="sm" variant="ghost" className="text-success" onClick={() => changeStatus(r, "active", "unblock")}>
@@ -301,6 +304,7 @@ export default function AdminCompanies() {
                             </Button>
                           )}
                         </div>
+
                       </TableCell>
                     </TableRow>
                   );
