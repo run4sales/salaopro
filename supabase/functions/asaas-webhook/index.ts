@@ -65,15 +65,29 @@ Deno.serve(async (req) => {
 
       // Update subscription state based on event
       const updates: Record<string, unknown> = {};
+      const updates: Record<string, unknown> = {};
       switch (event) {
         case 'PAYMENT_CONFIRMED':
         case 'PAYMENT_RECEIVED': {
           updates.status = 'active';
           updates.last_payment_at = new Date().toISOString();
-          // next billing = current dueDate + 30d (or use payment.dueDate as base)
           const base = payment.dueDate ? new Date(payment.dueDate) : new Date();
           base.setDate(base.getDate() + 30);
           updates.next_billing_at = base.toISOString();
+
+          // Apply pending plan change (downgrade scheduled for next cycle)
+          const { data: fullSub } = await admin.from('subscriptions')
+            .select('pending_plan_id').eq('establishment_id', establishmentId).maybeSingle();
+          if (fullSub?.pending_plan_id) {
+            const { data: pp } = await admin.from('subscription_plans')
+              .select('id, monthly_price').eq('id', fullSub.pending_plan_id).maybeSingle();
+            if (pp) {
+              updates.plan_id = pp.id;
+              updates.monthly_amount = pp.monthly_price;
+              updates.pending_plan_id = null;
+              updates.pending_plan_effective_at = null;
+            }
+          }
           break;
         }
         case 'PAYMENT_OVERDUE':
@@ -88,6 +102,7 @@ Deno.serve(async (req) => {
         await admin.from('subscriptions').update(updates)
           .eq('establishment_id', establishmentId);
       }
+
     }
 
     if (log?.id) {
