@@ -72,8 +72,20 @@ export default function Users() {
     },
   });
 
+  const maxUsers = subscription.data?.plan?.max_users ?? null;
+  const activeUserCount = (usersQuery.data ?? []).filter((u: any) => u.active).length;
+  const reachedUserLimit = maxUsers != null && activeUserCount >= maxUsers;
+
   const onCreate = async () => {
     if (!establishmentId || !email.trim() || !name.trim()) return;
+    if (reachedUserLimit) {
+      toast({
+        title: "Limite de usuários atingido",
+        description: `Seu plano permite até ${maxUsers} usuário${maxUsers! > 1 ? "s" : ""}. Faça upgrade para adicionar mais.`,
+        variant: "destructive",
+      });
+      return;
+    }
     if (password.trim().length < 6) {
       toast({
         title: "Senha inválida",
@@ -82,6 +94,7 @@ export default function Users() {
       });
       return;
     }
+
 
     setSaving(true);
     try {
@@ -113,7 +126,17 @@ export default function Users() {
       setSelectedServices([]);
       qc.invalidateQueries({ queryKey: ["establishment-users"] });
     } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+      const msg = e?.message ?? "";
+      if (/Limite de .* usu/i.test(msg)) {
+        toast({
+          title: "Limite de usuários atingido",
+          description: "Faça upgrade do seu plano para adicionar mais usuários.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Erro", description: msg, variant: "destructive" });
+      }
+
     } finally {
       setSaving(false);
     }
