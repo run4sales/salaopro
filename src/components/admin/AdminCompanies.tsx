@@ -343,7 +343,9 @@ export default function AdminCompanies() {
             <Button variant="outline" onClick={() => setEditTarget(null)}>Cancelar</Button>
             <Button onClick={saveEdit} disabled={!editPlan}>Confirmar</Button>
           </DialogFooter>
+        </DialogContent>
       </Dialog>
+
 
       <Dialog open={!!billingTarget} onOpenChange={(o) => !o && setBillingTarget(null)}>
         <DialogContent className="bg-card border-border">
