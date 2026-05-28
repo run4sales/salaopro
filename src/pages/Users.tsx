@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,14 +10,20 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
+import { AlertCircle, ArrowUpRight } from "lucide-react";
+
 
 export default function Users() {
   const { profile, establishmentRole } = useAuth();
+export default function Users() {
+  const { profile, establishmentRole } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const qc = useQueryClient();
+  const subscription = useSubscription();
   const establishmentId = profile?.id;
 
-  const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "employee">("employee");
