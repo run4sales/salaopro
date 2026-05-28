@@ -36,8 +36,13 @@ export default function AdminCompanies() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [planFilter, setPlanFilter] = useState<string>("all");
   const [editTarget, setEditTarget] = useState<Row | null>(null);
+  const [editPlan, setEditPlan] = useState<string>("");
+  const [billingTarget, setBillingTarget] = useState<Row | null>(null);
+  const [billingStatus, setBillingStatus] = useState<string>("active");
+  const [billingAmount, setBillingAmount] = useState<string>("");
+  const [billingNextDate, setBillingNextDate] = useState<string>("");
+
   const [editPlan, setEditPlan] = useState<string>("");
 
   const profilesQuery = useQuery({
