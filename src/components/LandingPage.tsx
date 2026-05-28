@@ -434,51 +434,64 @@ const LandingPage = () => {
             <p className="text-white/60">Escolha o nível de crescimento do seu negócio.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {[
               {
                 slug: "individual",
                 name: "Individual",
-                price: "R$ 59,90",
-                desc: "Para profissionais autônomos e salões pequenos.",
+                price: "R$ 29,90",
+                desc: "Para profissionais autônomos.",
                 features: [
-                  "Até 1.000 clientes",
-                  "1 usuário",
-                  "Agenda avançada",
+                  "Até 300 clientes",
+                  "1 usuário (administrador)",
+                  "Agenda inteligente",
+                  "Comissões automáticas",
+                  "Relatórios completos",
+                ],
+                featured: false,
+              },
+              {
+                slug: "profissional",
+                name: "Profissional",
+                price: "R$ 69,90",
+                desc: "Para salões em crescimento.",
+                features: [
+                  "Clientes ilimitados",
+                  "Até 4 usuários",
+                  "Agenda inteligente",
                   "Comissões automáticas",
                   "Relatórios avançados",
                 ],
-                featured: false,
+                featured: true,
               },
               {
                 slug: "empresa",
                 name: "Empresa",
                 price: "R$ 109,90",
-                desc: "Para salões em crescimento e equipes.",
+                desc: "Para equipes maiores e operações multi-cadeira.",
                 features: [
                   "Clientes ilimitados",
                   "Até 20 usuários",
-                  "Agenda avançada",
+                  "Agenda inteligente",
                   "Comissões automáticas",
                   "Relatórios avançados",
                   "Suporte prioritário",
-                  "Integração com WhatsApp",
                 ],
-                featured: true,
+                featured: false,
               },
             ].map((plan) => (
               <div
                 key={plan.name}
                 className={`relative rounded-2xl border p-7 ${
                   plan.featured
-                    ? "border-[hsl(45_93%_60%/0.5)] bg-gradient-to-br from-[hsl(267_84%_55%/0.15)] to-[hsl(45_93%_60%/0.08)] shadow-[0_0_40px_hsl(267_84%_55%/0.3)]"
+                    ? "border-[hsl(45_93%_60%/0.5)] bg-gradient-to-br from-[hsl(267_84%_55%/0.15)] to-[hsl(45_93%_60%/0.08)] shadow-[0_0_40px_hsl(267_84%_55%/0.3)] md:scale-105"
                     : "border-white/10 bg-white/[0.02]"
                 }`}
               >
                 {plan.featured && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <Badge className="bg-gradient-to-r from-[hsl(267_84%_55%)] to-[hsl(45_93%_60%)] text-white border-0">
-                      Mais escolhido
+                      ⭐ Mais popular
                     </Badge>
                   </div>
                 )}
