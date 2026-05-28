@@ -7,11 +7,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, CalendarDays, List } from "lucide-react";
+import { Plus, CalendarDays, List, Upload } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { AgendaCalendar, AgendaEvent } from "@/components/agenda/AgendaCalendar";
 import { AppointmentFormDialog } from "@/components/agenda/AppointmentFormDialog";
 import { AppointmentDetailsDialog } from "@/components/agenda/AppointmentDetailsDialog";
+import ImportAppointmentsDialog from "@/components/agenda/ImportAppointmentsDialog";
 import { STATUS_LABELS, STATUS_VARIANTS, STATUS_OPTIONS, normalizeStatus } from "@/lib/appointmentStatus";
 
 export default function AgendaContent() {
