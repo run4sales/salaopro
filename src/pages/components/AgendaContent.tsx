@@ -107,6 +107,7 @@ export default function AgendaContent() {
             <ToggleGroupItem value="list" aria-label="Lista"><List className="h-4 w-4 mr-1" />Lista</ToggleGroupItem>
           </ToggleGroup>
           <Button onClick={copyLink} variant="outline">Copiar link</Button>
+          <Button onClick={() => setImportOpen(true)} variant="outline"><Upload className="h-4 w-4 mr-1" /> Importar</Button>
           <Button onClick={handleNew}><Plus className="h-4 w-4 mr-1" /> Novo agendamento</Button>
         </div>
       </div>
