@@ -27,10 +27,11 @@ export default function AgendaContent() {
     const e = new Date(s); e.setDate(e.getDate() + 6); e.setHours(23, 59, 59, 999);
     return { start: s, end: e };
   });
-
   const [formOpen, setFormOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [selectedAppt, setSelectedAppt] = useState<any | null>(null);
+  const [initialSlot, setInitialSlot] = useState<Date | null>(null);
   const [initialSlot, setInitialSlot] = useState<Date | null>(null);
 
   const { data, isLoading, error } = useQuery({
