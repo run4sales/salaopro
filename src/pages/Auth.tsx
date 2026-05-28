@@ -18,9 +18,12 @@ const Auth = () => {
 
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'login';
-  const initialPlan = (searchParams.get('plan') === 'empresa' ? 'empresa' : 'individual') as 'individual' | 'empresa';
+  const planParam = searchParams.get('plan');
+  const initialPlan = (planParam === 'empresa' || planParam === 'individual' || planParam === 'profissional'
+    ? planParam : 'profissional') as 'individual' | 'profissional' | 'empresa';
   const [tab, setTab] = useState<'login' | 'signup'>(initialTab);
-  const [selectedPlan, setSelectedPlan] = useState<'individual' | 'empresa'>(initialPlan);
+  const [selectedPlan, setSelectedPlan] = useState<'individual' | 'profissional' | 'empresa'>(initialPlan);
+
 
   const [signupData, setSignupData] = useState({
     email: '',
@@ -121,30 +124,35 @@ const Auth = () => {
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Escolha seu plano</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
+
                     {[
-                      { slug: 'individual', name: 'Individual', price: 'R$ 59,90', sub: 'Até 1.000 clientes • 1 usuário' },
-                      { slug: 'empresa', name: 'Empresa', price: 'R$ 109,90', sub: 'Clientes ilimitados • até 20 usuários' },
+                      { slug: 'individual', name: 'Individual', price: 'R$ 29,90', sub: '300 clientes • 1 usuário' },
+                      { slug: 'profissional', name: 'Profissional', price: 'R$ 69,90', sub: 'Ilimitado • 4 usuários', star: true },
+                      { slug: 'empresa', name: 'Empresa', price: 'R$ 109,90', sub: 'Ilimitado • 20 usuários' },
                     ].map((p) => {
                       const active = selectedPlan === p.slug;
                       return (
                         <button
                           type="button"
                           key={p.slug}
-                          onClick={() => setSelectedPlan(p.slug as 'individual' | 'empresa')}
-                          className={`text-left rounded-lg border p-3 transition ${
+                          onClick={() => setSelectedPlan(p.slug as any)}
+                          className={`relative text-left rounded-lg border p-3 transition ${
                             active
                               ? 'border-primary bg-primary/10 shadow-[0_0_18px_hsl(var(--primary)/0.25)]'
                               : 'border-border hover:border-primary/50'
                           }`}
                         >
+                          {p.star && <span className="absolute -top-2 right-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded">⭐</span>}
                           <div className="text-sm font-semibold">{p.name}</div>
-                          <div className="text-base font-bold text-primary">{p.price}<span className="text-xs text-muted-foreground font-normal">/mês</span></div>
-                          <div className="text-[11px] text-muted-foreground mt-1">{p.sub}</div>
+                          <div className="text-sm font-bold text-primary">{p.price}<span className="text-[10px] text-muted-foreground font-normal">/mês</span></div>
+                          <div className="text-[10px] text-muted-foreground mt-1">{p.sub}</div>
                         </button>
                       );
                     })}
                   </div>
+
+
                   <p className="text-xs text-muted-foreground">10 dias grátis • sem cartão de crédito</p>
                 </div>
 

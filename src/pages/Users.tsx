@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,14 +10,19 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
+import { AlertCircle, ArrowUpRight } from "lucide-react";
 
 export default function Users() {
   const { profile, establishmentRole } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const qc = useQueryClient();
+  const subscription = useSubscription();
   const establishmentId = profile?.id;
 
   const [email, setEmail] = useState("");
+
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "employee">("employee");
@@ -67,8 +72,20 @@ export default function Users() {
     },
   });
 
+  const maxUsers = subscription.data?.plan?.max_users ?? null;
+  const activeUserCount = (usersQuery.data ?? []).filter((u: any) => u.active).length;
+  const reachedUserLimit = maxUsers != null && activeUserCount >= maxUsers;
+
   const onCreate = async () => {
     if (!establishmentId || !email.trim() || !name.trim()) return;
+    if (reachedUserLimit) {
+      toast({
+        title: "Limite de usuários atingido",
+        description: `Seu plano permite até ${maxUsers} usuário${maxUsers! > 1 ? "s" : ""}. Faça upgrade para adicionar mais.`,
+        variant: "destructive",
+      });
+      return;
+    }
     if (password.trim().length < 6) {
       toast({
         title: "Senha inválida",
@@ -77,6 +94,7 @@ export default function Users() {
       });
       return;
     }
+
 
     setSaving(true);
     try {
@@ -108,7 +126,17 @@ export default function Users() {
       setSelectedServices([]);
       qc.invalidateQueries({ queryKey: ["establishment-users"] });
     } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+      const msg = e?.message ?? "";
+      if (/Limite de .* usu/i.test(msg)) {
+        toast({
+          title: "Limite de usuários atingido",
+          description: "Faça upgrade do seu plano para adicionar mais usuários.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Erro", description: msg, variant: "destructive" });
+      }
+
     } finally {
       setSaving(false);
     }
@@ -134,10 +162,33 @@ export default function Users() {
 
   return (
     <div className="space-y-6">
+      {reachedUserLimit && (
+        <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4">
+          <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-medium text-foreground">Limite de usuários atingido</p>
+            <p className="text-sm text-muted-foreground">
+              Você atingiu o limite de {maxUsers} usuário{maxUsers! > 1 ? "s" : ""} do seu plano. Faça upgrade para adicionar mais.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => navigate("/planos")}>
+            Fazer upgrade <ArrowUpRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>Usuários</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Usuários</span>
+            {maxUsers != null && (
+              <span className="text-xs font-normal text-muted-foreground">
+                {activeUserCount} / {maxUsers}
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
+
         <CardContent className="grid md:grid-cols-2 gap-3">
           <div>
             <Label>Email do usuário</Label>

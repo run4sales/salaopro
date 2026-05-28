@@ -188,12 +188,21 @@ const Clients = () => {
         description: 'O cliente foi cadastrado com sucesso.',
       });
     },
-    onError: (error) => {
-      toast({
-        title: 'Erro ao adicionar cliente',
-        description: 'Tente novamente em alguns instantes.',
-        variant: 'destructive',
-      });
+    onError: (error: any) => {
+      const msg: string = error?.message ?? "";
+      if (/Limite de \d+ clientes/i.test(msg)) {
+        toast({
+          title: "Limite de clientes atingido",
+          description: msg + " Acesse Planos para fazer upgrade.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro ao adicionar cliente",
+          description: "Tente novamente em alguns instantes.",
+          variant: "destructive",
+        });
+      }
     },
   });
 

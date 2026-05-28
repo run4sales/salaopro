@@ -1010,6 +1010,8 @@ export type Database = {
           monthly_amount: number
           next_billing_at: string | null
           payment_link: string | null
+          pending_plan_effective_at: string | null
+          pending_plan_id: string | null
           plan_id: string | null
           started_at: string
           status: string
@@ -1031,6 +1033,8 @@ export type Database = {
           monthly_amount?: number
           next_billing_at?: string | null
           payment_link?: string | null
+          pending_plan_effective_at?: string | null
+          pending_plan_id?: string | null
           plan_id?: string | null
           started_at?: string
           status?: string
@@ -1052,6 +1056,8 @@ export type Database = {
           monthly_amount?: number
           next_billing_at?: string | null
           payment_link?: string | null
+          pending_plan_effective_at?: string | null
+          pending_plan_id?: string | null
           plan_id?: string | null
           started_at?: string
           status?: string
@@ -1059,6 +1065,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "subscriptions_pending_plan_id_fkey"
+            columns: ["pending_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "subscriptions_plan_id_fkey"
             columns: ["plan_id"]
