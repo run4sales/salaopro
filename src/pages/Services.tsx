@@ -322,14 +322,6 @@ const Services = () => {
                     <TableHead>Duração</TableHead>
                     <TableHead>Comissão</TableHead>
                     <TableHead>Status</TableHead>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Preço</TableHead>
-                    <TableHead>Duração</TableHead>
-                    <TableHead>Comissão</TableHead>
-                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -349,7 +341,6 @@ const Services = () => {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
               </Table>
             )}
           </CardContent>
