@@ -16,8 +16,7 @@ function getRemaining(target: string) {
 
 export default function TrialCountdownBanner() {
   const { data } = useSubscription();
-export default function TrialCountdownBanner() {
-  const { data } = useSubscription();
+
   const { establishmentRole } = useAuth();
   const [closed, setClosed] = useState(false);
   const [remaining, setRemaining] = useState<ReturnType<typeof getRemaining>>(null);
