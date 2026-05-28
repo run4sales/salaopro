@@ -16,19 +16,22 @@ function getRemaining(target: string) {
 
 export default function TrialCountdownBanner() {
   const { data } = useSubscription();
+export default function TrialCountdownBanner() {
+  const { data } = useSubscription();
   const { establishmentRole } = useAuth();
   const [closed, setClosed] = useState(false);
   const [remaining, setRemaining] = useState<ReturnType<typeof getRemaining>>(null);
 
   const isOwner = establishmentRole === "owner" || establishmentRole === null;
   const trialEndsAt = data?.trial_ends_at;
-  const inTrial =
-    !!trialEndsAt &&
-    (data?.state === "trial_active" || data?.state === "trial_expiring") &&
-    (data?.status === "trial" || !data?.status);
+  // Mostra para QUALQUER loja com status "trial" (sem assinatura criada no Asaas).
+  const inTrial = data?.status === "trial";
 
   useEffect(() => {
-    if (!inTrial || !trialEndsAt) return;
+    if (!inTrial || !trialEndsAt) {
+      setRemaining(null);
+      return;
+    }
     const tick = () => setRemaining(getRemaining(trialEndsAt));
     tick();
     const id = setInterval(tick, 30_000);
@@ -36,23 +39,28 @@ export default function TrialCountdownBanner() {
   }, [inTrial, trialEndsAt]);
 
   useEffect(() => {
-    if (!trialEndsAt) return;
+    const key = trialEndsAt ?? "no-trial-end";
     try {
       const stored = sessionStorage.getItem("trial_banner_closed_for");
-      if (stored === trialEndsAt) setClosed(true);
+      if (stored === key) setClosed(true);
     } catch {}
   }, [trialEndsAt]);
 
-  if (!isOwner || !inTrial || closed || !remaining) return null;
-
-  const { days, hours, minutes } = remaining;
+  if (!isOwner || !inTrial || closed) return null;
 
   const handleClose = () => {
     setClosed(true);
     try {
-      if (trialEndsAt) sessionStorage.setItem("trial_banner_closed_for", trialEndsAt);
+      sessionStorage.setItem("trial_banner_closed_for", trialEndsAt ?? "no-trial-end");
     } catch {}
   };
+
+  const countdown = remaining ? (
+    <strong>
+      {remaining.days}d {String(remaining.hours).padStart(2, "0")}h{" "}
+      {String(remaining.minutes).padStart(2, "0")}m
+    </strong>
+  ) : null;
 
   return (
     <div className="fixed top-0 inset-x-0 z-[60] bg-gradient-to-r from-primary via-accent to-primary text-primary-foreground shadow-lg">
@@ -61,11 +69,7 @@ export default function TrialCountdownBanner() {
         <div className="flex-1 min-w-0">
           <span className="font-medium">Você está em período de teste.</span>{" "}
           <span className="opacity-90">
-            Faltam{" "}
-            <strong>
-              {days}d {String(hours).padStart(2, "0")}h {String(minutes).padStart(2, "0")}m
-            </strong>{" "}
-            para encerrar.
+            {countdown ? <>Faltam {countdown} para encerrar.</> : <>Contrate um plano para liberar o acesso completo.</>}
           </span>
         </div>
         <Button asChild size="sm" variant="secondary" className="shrink-0">
@@ -80,5 +84,8 @@ export default function TrialCountdownBanner() {
         </button>
       </div>
     </div>
+  );
+}
+
   );
 }
