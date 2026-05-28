@@ -1013,6 +1013,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_establishment_member: {
+        Args: { _establishment_id: string; _user_id: string }
+        Returns: boolean
+      }
       slugify: { Args: { input: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
     }
