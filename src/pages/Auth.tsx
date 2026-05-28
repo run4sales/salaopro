@@ -50,6 +50,7 @@ const Auth = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    try { localStorage.setItem('signup_plan_slug', selectedPlan); } catch {}
     await signUp(signupData.email, signupData.password, {
       business_name: signupData.businessName,
       document: signupData.document,
@@ -60,6 +61,7 @@ const Auth = () => {
       neighborhood: signupData.neighborhood,
       city: signupData.city,
       business_type: signupData.businessType,
+      selected_plan: selectedPlan,
     });
     setIsLoading(false);
   };
