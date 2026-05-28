@@ -59,7 +59,7 @@ export default function AdminCompanies() {
 
       const { data: subs } = await (supabase as any)
         .from("subscriptions")
-        .select("id, establishment_id, status, plan_id, monthly_amount, subscription_plans(name)");
+        .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, asaas_subscription_id, subscription_plans(name)");
       const subsMap = new Map<string, any>();
       (subs ?? []).forEach((s: any) => {
         subsMap.set(s.establishment_id, {
@@ -67,9 +67,12 @@ export default function AdminCompanies() {
           status: s.status,
           plan_id: s.plan_id,
           monthly_amount: Number(s.monthly_amount || 0),
+          next_billing_at: s.next_billing_at,
+          asaas_subscription_id: s.asaas_subscription_id,
           plan: s.subscription_plans ? { name: s.subscription_plans.name } : undefined,
         });
       });
+
       return (profiles ?? []).map((p: any) => ({ ...p, subscription: subsMap.get(p.id) })) as Row[];
     },
   });
