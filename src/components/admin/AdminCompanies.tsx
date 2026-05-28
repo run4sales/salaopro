@@ -343,8 +343,59 @@ export default function AdminCompanies() {
             <Button variant="outline" onClick={() => setEditTarget(null)}>Cancelar</Button>
             <Button onClick={saveEdit} disabled={!editPlan}>Confirmar</Button>
           </DialogFooter>
+      </Dialog>
+
+      <Dialog open={!!billingTarget} onOpenChange={(o) => !o && setBillingTarget(null)}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Editar cobrança — {billingTarget?.business_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">Status</Label>
+              <Select value={billingStatus} onValueChange={setBillingStatus}>
+                <SelectTrigger className="bg-background border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="trial">Em teste</SelectItem>
+                  <SelectItem value="past_due">Pendente</SelectItem>
+                  <SelectItem value="active">Ativo (pago)</SelectItem>
+                  <SelectItem value="blocked">Bloqueado</SelectItem>
+                  <SelectItem value="canceled">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Valor mensal (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={billingAmount}
+                onChange={(e) => setBillingAmount(e.target.value)}
+                className="bg-background border-border"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Data da próxima fatura</Label>
+              <Input
+                type="date"
+                value={billingNextDate}
+                onChange={(e) => setBillingNextDate(e.target.value)}
+                className="bg-background border-border"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBillingTarget(null)}>Cancelar</Button>
+            <Button onClick={saveBilling}>Salvar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
     </div>
   );
 }
