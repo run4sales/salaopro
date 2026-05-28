@@ -50,7 +50,12 @@ Deno.serve(async (req) => {
       email: normalizedEmail,
       password: String(password),
       email_confirm: true,
-      user_metadata: { full_name: String(name).trim() },
+      user_metadata: {
+        full_name: String(name).trim(),
+        is_staff: true,
+        establishment_id,
+        staff_role: role,
+      },
     });
 
     if (createErr) {
