@@ -18,9 +18,12 @@ const Auth = () => {
 
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'login';
-  const initialPlan = (searchParams.get('plan') === 'empresa' ? 'empresa' : 'individual') as 'individual' | 'empresa';
+  const planParam = searchParams.get('plan');
+  const initialPlan = (planParam === 'empresa' || planParam === 'individual' || planParam === 'profissional'
+    ? planParam : 'profissional') as 'individual' | 'profissional' | 'empresa';
   const [tab, setTab] = useState<'login' | 'signup'>(initialTab);
-  const [selectedPlan, setSelectedPlan] = useState<'individual' | 'empresa'>(initialPlan);
+  const [selectedPlan, setSelectedPlan] = useState<'individual' | 'profissional' | 'empresa'>(initialPlan);
+
 
   const [signupData, setSignupData] = useState({
     email: '',
