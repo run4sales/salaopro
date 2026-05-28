@@ -16,6 +16,12 @@ const Auth = () => {
     password: '',
   });
 
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'login';
+  const initialPlan = (searchParams.get('plan') === 'empresa' ? 'empresa' : 'individual') as 'individual' | 'empresa';
+  const [tab, setTab] = useState<'login' | 'signup'>(initialTab);
+  const [selectedPlan, setSelectedPlan] = useState<'individual' | 'empresa'>(initialPlan);
+
   const [signupData, setSignupData] = useState({
     email: '',
     password: '',
@@ -29,10 +35,6 @@ const Auth = () => {
     city: '',
     businessType: '',
   });
-
-  const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'login';
-  const [tab, setTab] = useState<'login' | 'signup'>(initialTab);
 
   // Redirect if user is already logged in
   if (user) {
