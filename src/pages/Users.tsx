@@ -162,10 +162,33 @@ export default function Users() {
 
   return (
     <div className="space-y-6">
+      {reachedUserLimit && (
+        <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4">
+          <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-medium text-foreground">Limite de usuários atingido</p>
+            <p className="text-sm text-muted-foreground">
+              Você atingiu o limite de {maxUsers} usuário{maxUsers! > 1 ? "s" : ""} do seu plano. Faça upgrade para adicionar mais.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => navigate("/planos")}>
+            Fazer upgrade <ArrowUpRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>Usuários</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Usuários</span>
+            {maxUsers != null && (
+              <span className="text-xs font-normal text-muted-foreground">
+                {activeUserCount} / {maxUsers}
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
+
         <CardContent className="grid md:grid-cols-2 gap-3">
           <div>
             <Label>Email do usuário</Label>
