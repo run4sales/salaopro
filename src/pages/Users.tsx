@@ -13,9 +13,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { AlertCircle, ArrowUpRight } from "lucide-react";
 
-
-export default function Users() {
-  const { profile, establishmentRole } = useAuth();
 export default function Users() {
   const { profile, establishmentRole } = useAuth();
   const { toast } = useToast();
@@ -23,6 +20,8 @@ export default function Users() {
   const qc = useQueryClient();
   const subscription = useSubscription();
   const establishmentId = profile?.id;
+
+  const [email, setEmail] = useState("");
 
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
