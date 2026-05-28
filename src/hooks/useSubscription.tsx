@@ -29,6 +29,7 @@ export interface SubscriptionInfo {
   trial_ends_at: string | null;
   next_billing_at: string | null;
   monthly_amount: number;
+  payment_link?: string | null;
 }
 
 export function useSubscription() {
