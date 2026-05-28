@@ -27,8 +27,11 @@ type Row = {
     status: string;
     plan_id: string | null;
     monthly_amount: number;
+    next_billing_at: string | null;
+    asaas_subscription_id: string | null;
     plan?: { name: string };
   };
+
 };
 
 export default function AdminCompanies() {
