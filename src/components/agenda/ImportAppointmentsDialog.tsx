@@ -276,6 +276,8 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
                       <TableHead>Data</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Serviço</TableHead>
+                      <TableHead>Profissional</TableHead>
+                      <TableHead>Situação</TableHead>
                       <TableHead>Valor</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
