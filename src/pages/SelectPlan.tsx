@@ -40,12 +40,18 @@ export default function SelectPlan() {
   async function selectPlan(plan: Plan) {
     if (!profile?.id) return;
     setSaving(plan.id);
-    const { error } = await (supabase as any)
-      .from("subscriptions")
-      .update({ plan_id: plan.id, monthly_amount: plan.monthly_price })
-      .eq("establishment_id", profile.id);
+    const [{ error }, { error: profileError }] = await Promise.all([
+      (supabase as any)
+        .from("subscriptions")
+        .update({ plan_id: plan.id, monthly_amount: plan.monthly_price })
+        .eq("establishment_id", profile.id),
+      (supabase as any)
+        .from("profiles")
+        .update({ selected_plan_slug: plan.slug })
+        .eq("id", profile.id),
+    ]);
     setSaving(null);
-    if (error) {
+    if (error || profileError) {
       toast.error("Não foi possível selecionar o plano");
       return;
     }
