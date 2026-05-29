@@ -299,8 +299,6 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
                         <TableCell className="text-xs">
                           {r.price != null ? `R$ ${r.price.toFixed(2)}` : "—"}
                         </TableCell>
-                          {r.price != null ? `R$ ${r.price.toFixed(2)}` : "—"}
-                        </TableCell>
                         <TableCell className="text-xs">
                           {r.errors.length ? (
                             <span className="text-destructive">{r.errors.join(", ")}</span>
