@@ -22,7 +22,7 @@ type Row = {
   phone: string;
   created_at: string;
   last_access_at: string | null;
-  selected_plan_slug?: string | null;
+  plan?: string | null;
   subscription?: {
     id: string;
     status: string;
@@ -55,7 +55,7 @@ export default function AdminCompanies() {
     queryFn: async () => {
       const { data: profiles, error } = await (supabase as any)
         .from("profiles")
-        .select("id, business_name, owner_name, email, phone, created_at, last_access_at, selected_plan_slug")
+        .select("id, business_name, owner_name, email, phone, created_at, last_access_at, plan")
         .order("created_at", { ascending: false });
       if (error) throw error;
 
@@ -86,7 +86,7 @@ export default function AdminCompanies() {
 
       return (profiles ?? []).map((p: any) => {
         const subscription = subsMap.get(p.id);
-        const chosenPlan = p.selected_plan_slug ? plansBySlug.get(p.selected_plan_slug) : undefined;
+        const chosenPlan = p.plan && p.plan !== "trial" ? plansBySlug.get(p.plan) : undefined;
         if (subscription) {
           return {
             ...p,
