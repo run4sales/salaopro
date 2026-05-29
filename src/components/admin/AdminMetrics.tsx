@@ -22,7 +22,7 @@ export default function AdminMetrics() {
       const [{ data: subs, error: subsError }, { data: profiles, error: profilesError }] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
-          .select("status, monthly_amount, started_at, canceled_at, subscription_plans(monthly_price)"),
+          .select("status, monthly_amount, started_at, canceled_at, subscription_plans!subscriptions_plan_id_fkey(monthly_price)"),
         supabase.from("profiles").select("id, created_at"),
       ]);
 

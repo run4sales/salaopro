@@ -12,7 +12,7 @@ export default function AdminSaaSFinance() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("subscriptions")
-        .select("status, monthly_amount, started_at, plan_id, subscription_plans(name)");
+        .select("status, monthly_amount, started_at, plan_id, subscription_plans!subscriptions_plan_id_fkey(name)");
       if (error) throw error;
       return (data ?? []) as { status: string; monthly_amount: number; started_at: string; plan_id: string; subscription_plans: { name: string } | null }[];
     },
