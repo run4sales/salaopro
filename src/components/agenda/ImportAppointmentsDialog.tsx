@@ -294,7 +294,11 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
                           {r.serviceName || "—"}
                           {r.category && <span className="text-muted-foreground"> · {r.category}</span>}
                         </TableCell>
+                        <TableCell className="text-xs">{r.professionalName || "—"}</TableCell>
+                        <TableCell className="text-xs">{r.statusLabel || "—"}</TableCell>
                         <TableCell className="text-xs">
+                          {r.price != null ? `R$ ${r.price.toFixed(2)}` : "—"}
+                        </TableCell>
                           {r.price != null ? `R$ ${r.price.toFixed(2)}` : "—"}
                         </TableCell>
                         <TableCell className="text-xs">
