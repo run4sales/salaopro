@@ -14,7 +14,7 @@ type Sub = {
   plan_id: string | null;
   plan?: { monthly_price: number } | null;
 };
-type Profile = { id: string; created_at: string; selected_plan_slug?: string | null };
+type Profile = { id: string; created_at: string; plan?: string | null };
 type Plan = { id: string; slug: string; monthly_price: number };
 
 export default function AdminDashboard() {
@@ -25,7 +25,7 @@ export default function AdminDashboard() {
         (supabase as any)
           .from("subscriptions")
           .select("establishment_id, status, monthly_amount, started_at, canceled_at, plan_id, subscription_plans!subscriptions_plan_id_fkey(monthly_price)"),
-        (supabase as any).from("profiles").select("id, created_at, selected_plan_slug"),
+        (supabase as any).from("profiles").select("id, created_at, plan"),
         (supabase as any).from("subscription_plans").select("id, slug, monthly_price"),
       ]);
       if (subsError) throw subsError;
@@ -50,7 +50,7 @@ export default function AdminDashboard() {
       const list = (profiles ?? []).map((p: Profile) => {
         const sub = subsByEstablishment.get(p.id);
         if (sub) return sub;
-        const chosenPlan = p.selected_plan_slug ? plansBySlug.get(p.selected_plan_slug) : undefined;
+        const chosenPlan = p.plan && p.plan !== "trial" ? plansBySlug.get(p.plan) : undefined;
         return {
           establishment_id: p.id,
           status: "trial",

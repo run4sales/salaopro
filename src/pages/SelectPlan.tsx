@@ -47,7 +47,7 @@ export default function SelectPlan() {
         .eq("establishment_id", profile.id),
       (supabase as any)
         .from("profiles")
-        .update({ selected_plan_slug: plan.slug })
+        .update({ plan: plan.slug })
         .eq("id", profile.id),
     ]);
     setSaving(null);
