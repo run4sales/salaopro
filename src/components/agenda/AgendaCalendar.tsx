@@ -16,6 +16,16 @@ const MESSAGES = {
   showMore: (n: number) => `+ ver mais (${n})`,
 };
 
+const toFullDayRange = (start: Date, end: Date) => {
+  const startDate = new Date(start);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(end);
+  endDate.setHours(23, 59, 59, 999);
+
+  return { start: startDate, end: endDate };
+};
+
 export interface AgendaEvent {
   id: string;
   title: string;
@@ -73,10 +83,10 @@ export function AgendaCalendar({ events, onSelectSlot, onSelectEvent, onRangeCha
         onSelectEvent={(e) => onSelectEvent(e as AgendaEvent)}
         onDrillDown={(d) => { setDate(d); setView("day"); }}
         onRangeChange={(range: any) => {
-          if (Array.isArray(range)) {
-            onRangeChange?.({ start: range[0], end: range[range.length - 1] });
+          if (Array.isArray(range) && range.length > 0) {
+            onRangeChange?.(toFullDayRange(range[0], range[range.length - 1]));
           } else if (range?.start && range?.end) {
-            onRangeChange?.({ start: range.start, end: range.end });
+            onRangeChange?.(toFullDayRange(range.start, range.end));
           }
         }}
         style={{ height: 680 }}
