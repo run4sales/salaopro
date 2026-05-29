@@ -245,7 +245,8 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
                 <div>
                   <div className="font-medium">Modelo da planilha</div>
                   <div className="text-xs text-muted-foreground">
-                    Colunas: Data da venda, Cliente, Categoria, Serviço e produto, Valor
+                  <div className="text-xs text-muted-foreground">
+                    Colunas: Data, Horário Início, Cliente, Serviço, Profissional, Situação, Valor (R$)
                   </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={downloadTemplate}>
