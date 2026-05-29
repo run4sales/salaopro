@@ -5,6 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE } from "./shared";
 import { AlertTriangle, Clock, Sparkles } from "lucide-react";
 
+type Plan = { id: string; name: string; slug: string; monthly_price: number };
+type Profile = { id: string; business_name: string; created_at: string; selected_plan_slug?: string | null };
 type SubRow = {
   id: string;
   establishment_id: string;
@@ -14,36 +16,77 @@ type SubRow = {
   trial_ends_at: string | null;
   next_billing_at: string | null;
   profile?: { business_name: string };
-  plan?: { name: string };
+  plan_id?: string | null;
+  plan?: { name: string; monthly_price?: number };
+  inferred?: boolean;
 };
 
 export default function AdminSubscriptions() {
   const subsQuery = useQuery({
     queryKey: ["admin-subscriptions-full"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const [{ data: plans, error: plansError }, profilesWithPlan] = await Promise.all([
+        (supabase as any).from("subscription_plans").select("id, name, slug, monthly_price"),
+        (supabase as any)
+          .from("profiles")
+          .select("id, business_name, created_at, selected_plan_slug")
+          .order("created_at", { ascending: false }),
+      ]);
+      const profilesResult = profilesWithPlan.error
+        ? await (supabase as any)
+            .from("profiles")
+            .select("id, business_name, created_at")
+            .order("created_at", { ascending: false })
+        : profilesWithPlan;
+      if (profilesResult.error) throw profilesResult.error;
+      if (plansError) throw plansError;
+      const profiles = (profilesResult.data ?? []).map((p: Profile) => ({
+        ...p,
+        selected_plan_slug: p.selected_plan_slug ?? null,
+      }));
+
+      const plansBySlug = new Map<string, Plan>();
+      (plans ?? []).forEach((p: Plan) => plansBySlug.set(p.slug, p));
+
+      const { data: subs } = await (supabase as any)
         .from("subscriptions")
-        .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, profiles!subscriptions_establishment_id_fkey(business_name), subscription_plans(name)")
+        .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, plan_id, subscription_plans(name, monthly_price)")
         .order("started_at", { ascending: false });
-      // fallback if FK alias not available
-      if (error) {
-        const { data: data2 } = await (supabase as any)
-          .from("subscriptions")
-          .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, subscription_plans(name)");
-        const { data: profs } = await supabase.from("profiles").select("id, business_name");
-        const map = new Map<string, string>();
-        (profs ?? []).forEach((p: any) => map.set(p.id, p.business_name));
-        return (data2 ?? []).map((s: any) => ({
+
+      const subsMap = new Map<string, SubRow>();
+      (subs ?? []).forEach((s: any) => {
+        subsMap.set(s.establishment_id, {
           ...s,
           plan: s.subscription_plans,
-          profile: { business_name: map.get(s.establishment_id) ?? "—" },
-        })) as SubRow[];
-      }
-      return (data ?? []).map((s: any) => ({
-        ...s,
-        plan: s.subscription_plans,
-        profile: s.profiles,
-      })) as SubRow[];
+          profile: undefined,
+        });
+      });
+
+      return (profiles ?? []).map((p: Profile) => {
+        const sub = subsMap.get(p.id);
+        const chosenPlan = p.selected_plan_slug ? plansBySlug.get(p.selected_plan_slug) : undefined;
+        if (sub) {
+          return {
+            ...sub,
+            profile: { business_name: p.business_name },
+            plan: sub.plan ?? (chosenPlan ? { name: chosenPlan.name, monthly_price: chosenPlan.monthly_price } : undefined),
+            monthly_amount: Number(sub.monthly_amount || chosenPlan?.monthly_price || 0),
+          };
+        }
+        return {
+          id: `profile-${p.id}`,
+          establishment_id: p.id,
+          status: "trial",
+          monthly_amount: Number(chosenPlan?.monthly_price || 0),
+          started_at: p.created_at,
+          trial_ends_at: null,
+          next_billing_at: null,
+          profile: { business_name: p.business_name },
+          plan_id: chosenPlan?.id ?? null,
+          plan: chosenPlan ? { name: chosenPlan.name, monthly_price: chosenPlan.monthly_price } : undefined,
+          inferred: true,
+        } satisfies SubRow;
+      }) as SubRow[];
     },
   });
 
@@ -111,8 +154,11 @@ export default function AdminSubscriptions() {
                 {all.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.profile?.business_name ?? "—"}</TableCell>
-                    <TableCell>{s.plan?.name ?? <span className="text-muted-foreground">Sem plano</span>}</TableCell>
-                    <TableCell>{fmtBRL(Number(s.monthly_amount || 0))}</TableCell>
+                    <TableCell>
+                      {s.plan?.name ?? <span className="text-muted-foreground">Sem plano</span>}
+                      {s.inferred && <div className="text-xs text-muted-foreground">Trial gerado pelo cadastro</div>}
+                    </TableCell>
+                    <TableCell>{fmtBRL(Number(s.monthly_amount || s.plan?.monthly_price || 0))}</TableCell>
                     <TableCell>
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs border ${STATUS_TONE[s.status]}`}>
                         {STATUS_LABEL[s.status] ?? s.status}

@@ -22,6 +22,7 @@ type Row = {
   phone: string;
   created_at: string;
   last_access_at: string | null;
+  selected_plan_slug?: string | null;
   subscription?: {
     id: string;
     status: string;
@@ -29,6 +30,7 @@ type Row = {
     monthly_amount: number;
     next_billing_at: string | null;
     asaas_subscription_id: string | null;
+    inferred?: boolean;
     plan?: { name: string };
   };
 
@@ -51,15 +53,31 @@ export default function AdminCompanies() {
   const profilesQuery = useQuery({
     queryKey: ["admin-companies"],
     queryFn: async () => {
-      const { data: profiles, error } = await supabase
+      const profilesWithPlan = await (supabase as any)
         .from("profiles")
-        .select("id, business_name, owner_name, email, phone, created_at, last_access_at")
+        .select("id, business_name, owner_name, email, phone, created_at, last_access_at, selected_plan_slug")
         .order("created_at", { ascending: false });
-      if (error) throw error;
+      const profilesResult = profilesWithPlan.error
+        ? await (supabase as any)
+            .from("profiles")
+            .select("id, business_name, owner_name, email, phone, created_at, last_access_at")
+            .order("created_at", { ascending: false })
+        : profilesWithPlan;
+      if (profilesResult.error) throw profilesResult.error;
+      const profiles = (profilesResult.data ?? []).map((p: any) => ({
+        ...p,
+        selected_plan_slug: p.selected_plan_slug ?? null,
+      }));
 
-      const { data: subs } = await (supabase as any)
-        .from("subscriptions")
-        .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, asaas_subscription_id, subscription_plans(name)");
+      const [{ data: subs }, { data: fetchedPlans }] = await Promise.all([
+        (supabase as any)
+          .from("subscriptions")
+          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, asaas_subscription_id, subscription_plans(name)"),
+        (supabase as any)
+          .from("subscription_plans")
+          .select("id, name, slug, monthly_price")
+          .eq("active", true),
+      ]);
       const subsMap = new Map<string, any>();
       (subs ?? []).forEach((s: any) => {
         subsMap.set(s.establishment_id, {
@@ -73,7 +91,36 @@ export default function AdminCompanies() {
         });
       });
 
-      return (profiles ?? []).map((p: any) => ({ ...p, subscription: subsMap.get(p.id) })) as Row[];
+      const plansBySlug = new Map<string, { id: string; name: string; slug: string; monthly_price: number }>();
+      (fetchedPlans ?? []).forEach((p: any) => plansBySlug.set(p.slug, p));
+
+      return (profiles ?? []).map((p: any) => {
+        const subscription = subsMap.get(p.id);
+        const chosenPlan = p.selected_plan_slug ? plansBySlug.get(p.selected_plan_slug) : undefined;
+        if (subscription) {
+          return {
+            ...p,
+            subscription: {
+              ...subscription,
+              plan: subscription.plan ?? (chosenPlan ? { name: chosenPlan.name } : undefined),
+              monthly_amount: Number(subscription.monthly_amount || chosenPlan?.monthly_price || 0),
+            },
+          };
+        }
+        return {
+          ...p,
+          subscription: {
+            id: `profile-${p.id}`,
+            status: "trial",
+            plan_id: chosenPlan?.id ?? null,
+            monthly_amount: Number(chosenPlan?.monthly_price || 0),
+            next_billing_at: null,
+            asaas_subscription_id: null,
+            inferred: true,
+            plan: chosenPlan ? { name: chosenPlan.name } : undefined,
+          },
+        };
+      }) as Row[];
     },
   });
 
@@ -82,11 +129,11 @@ export default function AdminCompanies() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("subscription_plans")
-        .select("id, name, monthly_price")
+        .select("id, name, slug, monthly_price")
         .eq("active", true)
         .order("display_order");
       if (error) throw error;
-      return data as { id: string; name: string; monthly_price: number }[];
+      return data as { id: string; name: string; slug: string; monthly_price: number }[];
     },
   });
 
@@ -107,7 +154,7 @@ export default function AdminCompanies() {
     });
   }, [profilesQuery.data, search, statusFilter, planFilter]);
   async function changeStatus(row: Row, status: string, action: string) {
-    if (!row.subscription) return;
+    if (!row.subscription || row.subscription.inferred) return;
     const updates: any = { status };
     if (status === "canceled" || status === "blocked") updates.canceled_at = new Date().toISOString();
     const { error } = await (supabase as any)
@@ -138,7 +185,7 @@ export default function AdminCompanies() {
   }
 
   function openBilling(row: Row) {
-    if (!row.subscription) return;
+    if (!row.subscription || row.subscription.inferred) return;
     setBillingTarget(row);
     setBillingStatus(row.subscription.status || "active");
     setBillingAmount(String(row.subscription.monthly_amount || ""));
@@ -182,15 +229,26 @@ export default function AdminCompanies() {
     if (!editTarget?.subscription || !editPlan) return;
     const plan = plansQuery.data?.find((p) => p.id === editPlan);
     if (!plan) return;
-    const { error } = await (supabase as any)
-      .from("subscriptions")
-      .update({
-        plan_id: plan.id,
-        monthly_amount: plan.monthly_price,
-        status: "active",
-        next_billing_at: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
-      })
-      .eq("id", editTarget.subscription.id);
+    const { error } = editTarget.subscription.inferred
+      ? await (supabase as any)
+          .from("subscriptions")
+          .insert({
+            establishment_id: editTarget.id,
+            plan_id: plan.id,
+            monthly_amount: plan.monthly_price,
+            status: "trial",
+            trial_ends_at: new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString(),
+            next_billing_at: null,
+          })
+      : await (supabase as any)
+          .from("subscriptions")
+          .update({
+            plan_id: plan.id,
+            monthly_amount: plan.monthly_price,
+            status: "active",
+            next_billing_at: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+          })
+          .eq("id", editTarget.subscription.id);
     if (error) {
       toast.error("Não foi possível alterar o plano.");
       return;
@@ -198,6 +256,7 @@ export default function AdminCompanies() {
     await logAdminAction(user!.id, "change_plan", editTarget.id, {
       new_plan: plan.name,
       monthly: plan.monthly_price,
+      created_subscription: Boolean(editTarget.subscription.inferred),
     });
     toast.success(`Plano alterado para ${plan.name}`);
     setEditTarget(null);
@@ -291,7 +350,7 @@ export default function AdminCompanies() {
                           >
                             <RefreshCw className="h-3.5 w-3.5" /> Plano
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => openBilling(r)} disabled={!r.subscription}>
+                          <Button size="sm" variant="ghost" onClick={() => openBilling(r)} disabled={!r.subscription || r.subscription.inferred}>
                             <Wallet className="h-3.5 w-3.5" /> Cobrança
                           </Button>
                           {status === "blocked" ? (

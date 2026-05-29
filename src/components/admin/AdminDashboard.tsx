@@ -1,60 +1,112 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle, Sparkles } from "lucide-react";
+import { Building2, TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle, Sparkles, Target } from "lucide-react";
 import { fmtBRL } from "./shared";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid } from "recharts";
 
-type Sub = { status: string; monthly_amount: number; started_at: string; canceled_at: string | null };
-type Profile = { id: string; created_at: string };
+type Sub = {
+  establishment_id: string;
+  status: string;
+  monthly_amount: number;
+  started_at: string;
+  canceled_at: string | null;
+  plan_id: string | null;
+  plan?: { monthly_price: number } | null;
+};
+type Profile = { id: string; created_at: string; selected_plan_slug?: string | null };
+type Plan = { id: string; slug: string; monthly_price: number };
 
 export default function AdminDashboard() {
-  const subs = useQuery({
-    queryKey: ["admin-subs"],
+  const metrics = useQuery({
+    queryKey: ["admin-metrics-with-potential"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("subscriptions")
-        .select("status, monthly_amount, started_at, canceled_at");
-      if (error) throw error;
-      return (data ?? []) as Sub[];
+      const [{ data: subs, error: subsError }, profilesWithPlan, { data: plans, error: plansError }] = await Promise.all([
+        (supabase as any)
+          .from("subscriptions")
+          .select("establishment_id, status, monthly_amount, started_at, canceled_at, plan_id, subscription_plans(monthly_price)"),
+        (supabase as any).from("profiles").select("id, created_at, selected_plan_slug"),
+        (supabase as any).from("subscription_plans").select("id, slug, monthly_price"),
+      ]);
+      const profilesResult = profilesWithPlan.error
+        ? await (supabase as any).from("profiles").select("id, created_at")
+        : profilesWithPlan;
+      if (subsError) throw subsError;
+      if (profilesResult.error) throw profilesResult.error;
+      if (plansError) throw plansError;
+      const profiles = (profilesResult.data ?? []).map((p: Profile) => ({
+        ...p,
+        selected_plan_slug: p.selected_plan_slug ?? null,
+      }));
+
+      const plansBySlug = new Map<string, Plan>();
+      (plans ?? []).forEach((p: Plan) => plansBySlug.set(p.slug, p));
+      const subsByEstablishment = new Map<string, Sub>();
+      (subs ?? []).forEach((s: any) => {
+        subsByEstablishment.set(s.establishment_id, {
+          establishment_id: s.establishment_id,
+          status: s.status,
+          monthly_amount: Number(s.monthly_amount || s.subscription_plans?.monthly_price || 0),
+          started_at: s.started_at,
+          canceled_at: s.canceled_at,
+          plan_id: s.plan_id,
+          plan: s.subscription_plans,
+        });
+      });
+
+      const list = (profiles ?? []).map((p: Profile) => {
+        const sub = subsByEstablishment.get(p.id);
+        if (sub) return sub;
+        const chosenPlan = p.selected_plan_slug ? plansBySlug.get(p.selected_plan_slug) : undefined;
+        return {
+          establishment_id: p.id,
+          status: "trial",
+          monthly_amount: Number(chosenPlan?.monthly_price || 0),
+          started_at: p.created_at,
+          canceled_at: null,
+          plan_id: chosenPlan?.id ?? null,
+          plan: chosenPlan ? { monthly_price: chosenPlan.monthly_price } : null,
+        } satisfies Sub;
+      });
+
+      return { list, profiles: (profiles ?? []) as Profile[] };
     },
   });
 
-  const profiles = useQuery({
-    queryKey: ["admin-profiles-min"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id, created_at");
-      if (error) throw error;
-      return (data ?? []) as Profile[];
-    },
-  });
-
-  const list = subs.data ?? [];
+  const list = metrics.data?.list ?? [];
+  const profiles = metrics.data?.profiles ?? [];
   const active = list.filter((s) => s.status === "active");
   const trial = list.filter((s) => s.status === "trial");
   const canceled = list.filter((s) => s.status === "canceled");
+  const billablePotential = list.filter((s) => !["canceled", "blocked"].includes(s.status));
   const mrr = active.reduce((sum, s) => sum + Number(s.monthly_amount || 0), 0);
+  const potentialMrr = billablePotential.reduce((sum, s) => sum + Number(s.monthly_amount || s.plan?.monthly_price || 0), 0);
   const arr = mrr * 12;
   const arpu = active.length > 0 ? mrr / active.length : 0;
-  const totalCompanies = profiles.data?.length ?? 0;
+  const totalCompanies = profiles.length;
 
   // MRR evolution last 6 months
   const mrrEvolution = (() => {
-    const months: { label: string; mrr: number; date: Date }[] = [];
+    const months: { label: string; mrr: number; potential: number; date: Date }[] = [];
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-      const monthMrr = list
-        .filter((s) => {
-          const started = new Date(s.started_at);
-          const canceledAt = s.canceled_at ? new Date(s.canceled_at) : null;
-          return s.status === "active" && started < end && (!canceledAt || canceledAt >= d);
-        })
+      const eligible = list.filter((s) => {
+        const started = new Date(s.started_at);
+        const canceledAt = s.canceled_at ? new Date(s.canceled_at) : null;
+        return started < end && (!canceledAt || canceledAt >= d);
+      });
+      const monthMrr = eligible
+        .filter((s) => s.status === "active")
         .reduce((sum, s) => sum + Number(s.monthly_amount || 0), 0);
+      const monthPotential = eligible
+        .filter((s) => !["canceled", "blocked"].includes(s.status))
+        .reduce((sum, s) => sum + Number(s.monthly_amount || s.plan?.monthly_price || 0), 0);
       months.push({
         label: d.toLocaleDateString("pt-BR", { month: "short" }),
         mrr: monthMrr,
+        potential: monthPotential,
         date: d,
       });
     }
@@ -68,7 +120,7 @@ export default function AdminDashboard() {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-      const novas = (profiles.data ?? []).filter((p) => {
+      const novas = profiles.filter((p) => {
         const c = new Date(p.created_at);
         return c >= d && c < end;
       }).length;
@@ -95,6 +147,7 @@ export default function AdminDashboard() {
 
   const kpis = [
     { label: "MRR", value: fmtBRL(mrr), icon: DollarSign, tone: "text-accent" },
+    { label: "Potencial de faturamento", value: fmtBRL(potentialMrr), icon: Target, tone: "text-success" },
     { label: "ARR", value: fmtBRL(arr), icon: TrendingUp, tone: "text-primary-glow" },
     { label: "Ticket médio (ARPU)", value: fmtBRL(arpu), icon: TrendingUp, tone: "text-accent" },
     { label: "Empresas ativas", value: active.length, icon: Building2, tone: "text-success" },
@@ -163,7 +216,8 @@ export default function AdminDashboard() {
                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                   formatter={(v: number) => fmtBRL(v)}
                 />
-                <Line type="monotone" dataKey="mrr" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--accent))", r: 4 }} />
+                <Line type="monotone" dataKey="mrr" name="MRR" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--accent))", r: 4 }} />
+                <Line type="monotone" dataKey="potential" name="Potencial" stroke="hsl(var(--success))" strokeWidth={2} strokeDasharray="5 5" dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
