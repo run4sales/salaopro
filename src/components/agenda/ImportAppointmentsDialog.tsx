@@ -18,6 +18,7 @@ import {
   AppointmentRow,
   buildTemplateBlob,
   detectColumns,
+  mapStatusLabel,
   parseRows,
   readFile,
 } from "@/lib/appointmentImport";
