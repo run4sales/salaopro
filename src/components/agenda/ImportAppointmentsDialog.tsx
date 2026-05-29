@@ -204,7 +204,6 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
     setStep("done");
     if (created > 0) onImported();
   };
-  };
 
   return (
     <Dialog open={open} onOpenChange={close}>
