@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fmtBRL } from "./shared";
+import { fetchAdminOverview } from "./data";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--primary-glow))", "hsl(var(--success))"];
@@ -10,11 +10,14 @@ export default function AdminSaaSFinance() {
   const subsQuery = useQuery({
     queryKey: ["admin-finance-subs"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("subscriptions")
-        .select("status, monthly_amount, started_at, plan_id, subscription_plans(name)");
-      if (error) throw error;
-      return (data ?? []) as { status: string; monthly_amount: number; started_at: string; plan_id: string; subscription_plans: { name: string } | null }[];
+      const overview = await fetchAdminOverview();
+      return overview.subscriptions.map((s) => ({
+        status: s.status,
+        monthly_amount: Number(s.monthly_amount || s.plan?.monthly_price || 0),
+        started_at: s.started_at,
+        plan_id: s.plan_id,
+        subscription_plans: s.plan ? { name: s.plan.name } : null,
+      }));
     },
   });
 

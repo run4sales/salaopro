@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE } from "./shared";
 import { AlertTriangle, Clock, Sparkles } from "lucide-react";
+import { fetchAdminOverview } from "./data";
 
 type SubRow = {
   id: string;
@@ -21,28 +21,18 @@ export default function AdminSubscriptions() {
   const subsQuery = useQuery({
     queryKey: ["admin-subscriptions-full"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("subscriptions")
-        .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, profiles!subscriptions_establishment_id_fkey(business_name), subscription_plans(name)")
-        .order("started_at", { ascending: false });
-      // fallback if FK alias not available
-      if (error) {
-        const { data: data2 } = await (supabase as any)
-          .from("subscriptions")
-          .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, subscription_plans(name)");
-        const { data: profs } = await supabase.from("profiles").select("id, business_name");
-        const map = new Map<string, string>();
-        (profs ?? []).forEach((p: any) => map.set(p.id, p.business_name));
-        return (data2 ?? []).map((s: any) => ({
-          ...s,
-          plan: s.subscription_plans,
-          profile: { business_name: map.get(s.establishment_id) ?? "—" },
-        })) as SubRow[];
-      }
-      return (data ?? []).map((s: any) => ({
-        ...s,
-        plan: s.subscription_plans,
-        profile: s.profiles,
+      const overview = await fetchAdminOverview();
+      const profilesMap = new Map(overview.profiles.map((p) => [p.id, p.business_name]));
+      return overview.subscriptions.map((s) => ({
+        id: s.id,
+        establishment_id: s.establishment_id,
+        status: s.status,
+        monthly_amount: Number(s.monthly_amount || s.plan?.monthly_price || 0),
+        started_at: s.started_at,
+        trial_ends_at: s.trial_ends_at,
+        next_billing_at: s.next_billing_at,
+        plan: s.plan ? { name: s.plan.name } : undefined,
+        profile: { business_name: profilesMap.get(s.establishment_id) ?? "—" },
       })) as SubRow[];
     },
   });

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ShieldAlert } from "lucide-react";
+import { fetchAdminOverview } from "./data";
 
 type LogRow = {
   id: string;
@@ -33,9 +34,9 @@ export default function AdminControl() {
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
-      const { data: profs } = await supabase.from("profiles").select("id, business_name");
+      const overview = await fetchAdminOverview();
       const map = new Map<string, string>();
-      (profs ?? []).forEach((p: any) => map.set(p.id, p.business_name));
+      overview.profiles.forEach((p) => map.set(p.id, p.business_name));
       return (data ?? []).map((l: any) => ({
         ...l,
         target_name: l.target_establishment_id ? map.get(l.target_establishment_id) ?? "—" : "—",

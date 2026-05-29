@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE, logAdminAction } from "./shared";
+import { fetchAdminOverview } from "./data";
 
 
 type Row = {
@@ -51,42 +52,31 @@ export default function AdminCompanies() {
   const profilesQuery = useQuery({
     queryKey: ["admin-companies"],
     queryFn: async () => {
-      const { data: profiles, error } = await supabase
-        .from("profiles")
-        .select("id, business_name, owner_name, email, phone, created_at, last_access_at")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-
-      const { data: subs } = await (supabase as any)
-        .from("subscriptions")
-        .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, asaas_subscription_id, subscription_plans(name)");
+      const overview = await fetchAdminOverview();
       const subsMap = new Map<string, any>();
-      (subs ?? []).forEach((s: any) => {
+      overview.subscriptions.forEach((s) => {
         subsMap.set(s.establishment_id, {
           id: s.id,
           status: s.status,
           plan_id: s.plan_id,
-          monthly_amount: Number(s.monthly_amount || 0),
+          monthly_amount: Number(s.monthly_amount || s.plan?.monthly_price || 0),
           next_billing_at: s.next_billing_at,
           asaas_subscription_id: s.asaas_subscription_id,
-          plan: s.subscription_plans ? { name: s.subscription_plans.name } : undefined,
+          plan: s.plan ? { name: s.plan.name } : undefined,
         });
       });
 
-      return (profiles ?? []).map((p: any) => ({ ...p, subscription: subsMap.get(p.id) })) as Row[];
+      return overview.profiles.map((p: any) => ({ ...p, subscription: subsMap.get(p.id) })) as Row[];
     },
   });
 
   const plansQuery = useQuery({
     queryKey: ["admin-plans"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("subscription_plans")
-        .select("id, name, monthly_price")
-        .eq("active", true)
-        .order("display_order");
-      if (error) throw error;
-      return data as { id: string; name: string; monthly_price: number }[];
+      const overview = await fetchAdminOverview();
+      return overview.plans
+        .filter((p) => p.active)
+        .map((p) => ({ id: p.id, name: p.name, monthly_price: p.monthly_price }));
     },
   });
 

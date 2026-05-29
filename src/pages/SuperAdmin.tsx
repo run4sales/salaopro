@@ -19,6 +19,7 @@ import AdminSubscriptions from "@/components/admin/AdminSubscriptions";
 import AdminSaaSFinance from "@/components/admin/AdminSaaSFinance";
 import AdminControl from "@/components/admin/AdminControl";
 import AdminPlans from "@/components/admin/AdminPlans";
+import AdminMetrics from "@/components/admin/AdminMetrics";
 
 type Tab = "dashboard" | "companies" | "subscriptions" | "finance" | "metrics" | "control" | "plans";
 
@@ -121,7 +122,7 @@ export default function SuperAdmin() {
       {tab === "companies" && <AdminCompanies />}
       {tab === "subscriptions" && <AdminSubscriptions />}
       {tab === "finance" && <AdminSaaSFinance />}
-      {tab === "metrics" && <AdminDashboard />}
+      {tab === "metrics" && <AdminMetrics />}
       {tab === "control" && <AdminControl />}
       {tab === "plans" && <AdminPlans />}
     </main>

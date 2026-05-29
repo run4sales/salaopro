@@ -1,59 +1,69 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle, Sparkles } from "lucide-react";
+import { AlertTriangle, Building2, DollarSign, Sparkles, Target, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { fmtBRL } from "./shared";
-import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid } from "recharts";
 import { fetchAdminOverview } from "./data";
 
-type Sub = { status: string; monthly_amount: number; started_at: string; canceled_at: string | null; plan?: { monthly_price: number } | null };
+type Sub = {
+  status: string;
+  monthly_amount: number;
+  started_at: string;
+  canceled_at: string | null;
+  plan?: { monthly_price: number } | null;
+};
+
 type Profile = { id: string; created_at: string };
 
-export default function AdminDashboard() {
-  const overview = useQuery({
-    queryKey: ["admin-dashboard-overview"],
+export default function AdminMetrics() {
+  const metrics = useQuery({
+    queryKey: ["admin-metrics"],
     queryFn: fetchAdminOverview,
   });
 
-  const list = (overview.data?.subscriptions ?? []).map((s) => ({
+  const list = (metrics.data?.subscriptions ?? []).map((s) => ({
     status: s.status,
     monthly_amount: Number(s.monthly_amount || s.plan?.monthly_price || 0),
     started_at: s.started_at,
     canceled_at: s.canceled_at,
     plan: s.plan,
   })) as Sub[];
+  const profiles = metrics.data?.profiles ?? [];
   const active = list.filter((s) => s.status === "active");
   const trial = list.filter((s) => s.status === "trial");
   const canceled = list.filter((s) => s.status === "canceled");
+  const billablePotential = list.filter((s) => !["canceled", "blocked"].includes(s.status));
   const mrr = active.reduce((sum, s) => sum + Number(s.monthly_amount || 0), 0);
+  const potentialMrr = billablePotential.reduce((sum, s) => sum + Number(s.monthly_amount || s.plan?.monthly_price || 0), 0);
   const arr = mrr * 12;
   const arpu = active.length > 0 ? mrr / active.length : 0;
-  const profiles = (overview.data?.profiles ?? []) as Profile[];
   const totalCompanies = profiles.length;
 
-  // MRR evolution last 6 months
   const mrrEvolution = (() => {
-    const months: { label: string; mrr: number; date: Date }[] = [];
+    const months: { label: string; mrr: number; potential: number; date: Date }[] = [];
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-      const monthMrr = list
-        .filter((s) => {
-          const started = new Date(s.started_at);
-          const canceledAt = s.canceled_at ? new Date(s.canceled_at) : null;
-          return s.status === "active" && started < end && (!canceledAt || canceledAt >= d);
-        })
-        .reduce((sum, s) => sum + Number(s.monthly_amount || 0), 0);
+      const eligible = list.filter((s) => {
+        const started = new Date(s.started_at);
+        const canceledAt = s.canceled_at ? new Date(s.canceled_at) : null;
+        return started < end && (!canceledAt || canceledAt >= d);
+      });
       months.push({
         label: d.toLocaleDateString("pt-BR", { month: "short" }),
-        mrr: monthMrr,
+        mrr: eligible
+          .filter((s) => s.status === "active")
+          .reduce((sum, s) => sum + Number(s.monthly_amount || 0), 0),
+        potential: eligible
+          .filter((s) => !["canceled", "blocked"].includes(s.status))
+          .reduce((sum, s) => sum + Number(s.monthly_amount || s.plan?.monthly_price || 0), 0),
         date: d,
       });
     }
     return months;
   })();
 
-  // New companies per month last 6 months
   const newPerMonth = (() => {
     const months: { label: string; novas: number; cancel: number }[] = [];
     const now = new Date();
@@ -61,20 +71,19 @@ export default function AdminDashboard() {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
       const novas = profiles.filter((p) => {
-        const c = new Date(p.created_at);
-        return c >= d && c < end;
+        const created = new Date(p.created_at);
+        return created >= d && created < end;
       }).length;
       const cancel = list.filter((s) => {
         if (!s.canceled_at) return false;
-        const c = new Date(s.canceled_at);
-        return c >= d && c < end;
+        const canceledAt = new Date(s.canceled_at);
+        return canceledAt >= d && canceledAt < end;
       }).length;
       months.push({ label: d.toLocaleDateString("pt-BR", { month: "short" }), novas, cancel });
     }
     return months;
   })();
 
-  // Insights
   const currMrr = mrrEvolution[mrrEvolution.length - 1]?.mrr ?? 0;
   const prevMrr = mrrEvolution[mrrEvolution.length - 2]?.mrr ?? 0;
   const mrrDelta = prevMrr > 0 ? ((currMrr - prevMrr) / prevMrr) * 100 : 0;
@@ -87,6 +96,7 @@ export default function AdminDashboard() {
 
   const kpis = [
     { label: "MRR", value: fmtBRL(mrr), icon: DollarSign, tone: "text-accent" },
+    { label: "Potencial de faturamento", value: fmtBRL(potentialMrr), icon: Target, tone: "text-success" },
     { label: "ARR", value: fmtBRL(arr), icon: TrendingUp, tone: "text-primary-glow" },
     { label: "Ticket médio (ARPU)", value: fmtBRL(arpu), icon: TrendingUp, tone: "text-accent" },
     { label: "Empresas ativas", value: active.length, icon: Building2, tone: "text-success" },
@@ -112,7 +122,6 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Insights */}
       <div className="grid gap-3 md:grid-cols-3">
         <Card className="bg-card/60 border-border/60">
           <CardContent className="p-4">
@@ -155,7 +164,8 @@ export default function AdminDashboard() {
                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                   formatter={(v: number) => fmtBRL(v)}
                 />
-                <Line type="monotone" dataKey="mrr" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--accent))", r: 4 }} />
+                <Line type="monotone" dataKey="mrr" name="MRR" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--accent))", r: 4 }} />
+                <Line type="monotone" dataKey="potential" name="Potencial" stroke="hsl(var(--success))" strokeWidth={2} strokeDasharray="5 5" dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
