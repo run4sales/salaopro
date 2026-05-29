@@ -24,7 +24,7 @@ export default function AdminDashboard() {
       const [{ data: subs, error: subsError }, { data: profiles, error: profilesError }, { data: plans, error: plansError }] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
-          .select("establishment_id, status, monthly_amount, started_at, canceled_at, plan_id, subscription_plans(monthly_price)"),
+          .select("establishment_id, status, monthly_amount, started_at, canceled_at, plan_id, subscription_plans!subscriptions_plan_id_fkey(monthly_price)"),
         (supabase as any).from("profiles").select("id, created_at, selected_plan_slug"),
         (supabase as any).from("subscription_plans").select("id, slug, monthly_price"),
       ]);
