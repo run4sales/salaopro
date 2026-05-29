@@ -62,7 +62,7 @@ export default function AdminCompanies() {
       const [{ data: subs }, { data: fetchedPlans }] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
-          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, asaas_subscription_id, subscription_plans(name)"),
+          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
         (supabase as any)
           .from("subscription_plans")
           .select("id, name, slug, monthly_price")

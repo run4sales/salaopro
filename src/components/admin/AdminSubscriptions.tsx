@@ -40,7 +40,7 @@ export default function AdminSubscriptions() {
 
       const { data: subs } = await (supabase as any)
         .from("subscriptions")
-        .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, plan_id, subscription_plans(name, monthly_price)")
+        .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, plan_id, subscription_plans!subscriptions_plan_id_fkey(name, monthly_price)")
         .order("started_at", { ascending: false });
 
       const subsMap = new Map<string, SubRow>();
