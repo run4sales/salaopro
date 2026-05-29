@@ -6,7 +6,7 @@ import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE } from "./shared";
 import { AlertTriangle, Clock, Sparkles } from "lucide-react";
 
 type Plan = { id: string; name: string; slug: string; monthly_price: number };
-type Profile = { id: string; business_name: string; created_at: string; selected_plan_slug?: string | null };
+type Profile = { id: string; business_name: string; created_at: string; plan?: string | null };
 type SubRow = {
   id: string;
   establishment_id: string;
@@ -28,7 +28,7 @@ export default function AdminSubscriptions() {
       const [{ data: profiles, error: profilesError }, { data: plans, error: plansError }] = await Promise.all([
         (supabase as any)
           .from("profiles")
-          .select("id, business_name, created_at, selected_plan_slug")
+          .select("id, business_name, created_at, plan")
           .order("created_at", { ascending: false }),
         (supabase as any).from("subscription_plans").select("id, name, slug, monthly_price"),
       ]);
@@ -54,7 +54,7 @@ export default function AdminSubscriptions() {
 
       return (profiles ?? []).map((p: Profile) => {
         const sub = subsMap.get(p.id);
-        const chosenPlan = p.selected_plan_slug ? plansBySlug.get(p.selected_plan_slug) : undefined;
+        const chosenPlan = p.plan && p.plan !== "trial" ? plansBySlug.get(p.plan) : undefined;
         if (sub) {
           return {
             ...sub,
