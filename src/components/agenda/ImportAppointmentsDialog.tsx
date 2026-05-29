@@ -112,16 +112,18 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
   const runImport = async () => {
     setStep("importing");
     setProgress(0);
-
-    // Pré-carrega clientes e serviços do estabelecimento
-    const [clientsRes, servicesRes] = await Promise.all([
+    // Pré-carrega clientes, serviços e profissionais do estabelecimento
+    const [clientsRes, servicesRes, profRes] = await Promise.all([
       supabase.from("clients").select("id, name").eq("establishment_id", establishmentId),
       supabase.from("services").select("id, name, price").eq("establishment_id", establishmentId),
+      supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId),
     ]);
     const clientByName = new Map<string, string>();
     (clientsRes.data ?? []).forEach((c: any) => clientByName.set(c.name.trim().toLowerCase(), c.id));
     const serviceByName = new Map<string, string>();
     (servicesRes.data ?? []).forEach((s: any) => serviceByName.set(s.name.trim().toLowerCase(), s.id));
+    const profByName = new Map<string, string>();
+    (profRes.data ?? []).forEach((p: any) => profByName.set(p.name.trim().toLowerCase(), p.id));
 
     const failed: { rowIndex: number; reason: string }[] = [];
     let created = 0;
@@ -163,13 +165,31 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
           serviceByName.set(serviceKey, serviceId);
         }
 
+        // Resolve profissional (opcional)
+        let professionalId: string | null = null;
+        if (row.professionalName) {
+          const profKey = row.professionalName.toLowerCase();
+          professionalId = profByName.get(profKey) ?? null;
+          if (!professionalId) {
+            const { data, error } = await supabase
+              .from("professionals")
+              .insert({ establishment_id: establishmentId, name: row.professionalName, active: true })
+              .select("id")
+              .single();
+            if (error) throw new Error("Profissional: " + error.message);
+            professionalId = data.id;
+            profByName.set(profKey, professionalId);
+          }
+        }
+
         // Cria agendamento
         const { error: apptErr } = await supabase.from("appointments").insert({
           establishment_id: establishmentId,
           client_id: clientId,
           service_id: serviceId,
+          professional_id: professionalId,
           appointment_date: row.date!.toISOString(),
-          status: "scheduled",
+          status: mapStatusLabel(row.statusLabel),
           notes: row.category ? `Importado · ${row.category}` : "Importado via planilha",
         });
         if (apptErr) throw new Error("Agendamento: " + apptErr.message);
@@ -183,6 +203,7 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
     setResult({ created, failed });
     setStep("done");
     if (created > 0) onImported();
+  };
   };
 
   return (
