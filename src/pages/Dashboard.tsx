@@ -195,11 +195,14 @@ const Dashboard = () => {
                   <div className="text-3xl font-bold tabular-nums">{isLoading ? '—' : totalAppts}</div>
                   <div className="text-xs uppercase tracking-wide opacity-75">Atendimentos</div>
                 </div>
-                <div>
-                  <div className="text-3xl font-bold tabular-nums">{isLoading ? '—' : currencyBRL(data?.expectedToday ?? 0)}</div>
-                  <div className="text-xs uppercase tracking-wide opacity-75">Previsto hoje</div>
-                </div>
+                {canViewFinance && (
+                  <div>
+                    <div className="text-3xl font-bold tabular-nums">{isLoading ? '—' : currencyBRL(data?.expectedToday ?? 0)}</div>
+                    <div className="text-xs uppercase tracking-wide opacity-75">Previsto hoje</div>
+                  </div>
+                )}
                 {freeSlots.length > 0 && (
+
                   <div>
                     <div className="text-3xl font-bold tabular-nums">{freeSlots.length}</div>
                     <div className="text-xs uppercase tracking-wide opacity-75">Horários livres</div>
