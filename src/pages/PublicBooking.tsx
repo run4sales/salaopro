@@ -208,30 +208,41 @@ export default function PublicBooking() {
         <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4", !acceptingBookings && "pointer-events-none opacity-60")}>
           <div className="rounded-md border bg-card p-4 space-y-3">
             <div>
-              <label className="text-sm text-muted-foreground">Serviço</label>
-              <Select value={serviceId} onValueChange={setServiceId}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Selecione o serviço" />
-                </SelectTrigger>
-                <SelectContent>
-                  {services.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name} — {priceFmt.format(Number(s.price))}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm text-muted-foreground">Serviços</label>
+              <div className="mt-1 rounded-md border max-h-44 overflow-auto divide-y">
+                {services.map(s => {
+                  const checked = serviceIds.includes(s.id);
+                  return (
+                    <label key={s.id} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent/40">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => setServiceIds(prev => checked ? prev.filter(x => x !== s.id) : [...prev, s.id])}
+                      />
+                      <span className="text-sm flex-1">{s.name}</span>
+                      <span className="text-xs text-muted-foreground">{priceFmt.format(Number(s.price))}</span>
+                    </label>
+                  );
+                })}
+                {services.length === 0 && <p className="text-sm text-muted-foreground p-2">Nenhum serviço disponível</p>}
+              </div>
             </div>
             <div>
-              <label className="text-sm text-muted-foreground">Profissional</label>
-              <Select value={professionalId} onValueChange={setProfessionalId}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Selecione o profissional" />
-                </SelectTrigger>
-                <SelectContent>
-                  {professionals.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm text-muted-foreground">Profissionais</label>
+              <div className="mt-1 rounded-md border max-h-40 overflow-auto divide-y">
+                {professionals.map(p => {
+                  const checked = professionalIds.includes(p.id);
+                  return (
+                    <label key={p.id} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent/40">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => setProfessionalIds(prev => checked ? prev.filter(x => x !== p.id) : [...prev, p.id])}
+                      />
+                      <span className="text-sm">{p.name}</span>
+                    </label>
+                  );
+                })}
+                {professionals.length === 0 && <p className="text-sm text-muted-foreground p-2">Nenhum profissional disponível</p>}
+              </div>
             </div>
             <div>
               <label className="text-sm text-muted-foreground">Data</label>
@@ -252,7 +263,7 @@ export default function PublicBooking() {
               <div className="mt-2 grid grid-cols-3 gap-2">
                 {slots.map((d) => {
                   const label = format(d, "HH:mm");
-                  const disabled = isBooked(d) || !serviceId || !professionalId;
+                  const disabled = isBooked(d) || serviceIds.length === 0 || professionalIds.length === 0;
                   const isActive = slot === label;
                   return (
                     <Button key={label} variant={isActive ? "default" : "outline"} disabled={disabled} onClick={() => setSlot(label)}>
@@ -278,13 +289,14 @@ export default function PublicBooking() {
               <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Opcional" />
             </div>
             <Button className="w-full" disabled={!canSubmit} onClick={handleSubmit}>Confirmar agendamento</Button>
-            {selectedService && (
+            {selectedServices.length > 0 && (
               <div className="space-y-1 text-xs text-muted-foreground">
-                <p>Duração estimada: {selectedService.duration} min</p>
-                <p>Valor: {priceFmt.format(Number(selectedService.price))}</p>
+                <p>Duração total: {totalDuration} min</p>
+                <p>Valor total: {priceFmt.format(totalPrice)}</p>
               </div>
             )}
           </div>
+
         </div>
       </main>
     </div>
