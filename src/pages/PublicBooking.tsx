@@ -145,18 +145,18 @@ export default function PublicBooking() {
     });
   };
 
-  const canSubmit = resolvedId && serviceId && professionalId && date && slot && clientName && phone;
+  const canSubmit = !!resolvedId && serviceIds.length > 0 && professionalIds.length > 0 && !!date && !!slot && !!clientName && !!phone;
 
   const handleSubmit = async () => {
     if (!canSubmit || !date) return;
     const [hh, mm] = slot.split(":").map(Number);
     const startTime = setMinutes(setHours(new Date(date), hh), mm);
     const { data, error } = await supabase.rpc("create_public_booking", {
-      establishment: resolvedId,
+      establishment: resolvedId!,
       client_name: clientName,
       p_phone: phone,
-      service: serviceId,
-      professional: professionalId,
+      services: serviceIds,
+      professionals: professionalIds,
       start_time: startTime.toISOString(),
       notes: notes || null,
     });
@@ -167,6 +167,7 @@ export default function PublicBooking() {
     toast({ title: "Agendamento confirmado!", description: `Código: ${data}` });
     setSlot("");
   };
+
 
   if (lookupState === "loading") {
     return (
