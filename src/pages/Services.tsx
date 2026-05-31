@@ -246,15 +246,28 @@ const Services = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-4">
             <div>
               <h1 className="text-2xl font-bold">Serviços</h1>
               <p className="text-muted-foreground">Cadastre e gerencie seus serviços e valores</p>
             </div>
           </div>
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" /> Importar XLSX/CSV
+          </Button>
         </div>
       </header>
+
+      {profile?.id && (
+        <ImportServicesDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          establishmentId={profile.id}
+          onImported={() => queryClient.invalidateQueries({ queryKey: ['services'] })}
+        />
+      )}
+
 
       {/* Content */}
       <main className="container mx-auto px-4 py-8 space-y-8">
