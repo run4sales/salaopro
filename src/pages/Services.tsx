@@ -72,6 +72,7 @@ const Services = () => {
         .from('services')
         .select('*')
         .eq('establishment_id', profile.id)
+        .eq('kind', 'service')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
