@@ -863,9 +863,10 @@ export type Database = {
           commission_with_assistants: number
           created_at: string
           description: string | null
-          duration_minutes: number
+          duration_minutes: number | null
           establishment_id: string
           id: string
+          kind: string
           name: string
           price: number
           updated_at: string
@@ -877,9 +878,10 @@ export type Database = {
           commission_with_assistants?: number
           created_at?: string
           description?: string | null
-          duration_minutes: number
+          duration_minutes?: number | null
           establishment_id: string
           id?: string
+          kind?: string
           name: string
           price: number
           updated_at?: string
@@ -891,9 +893,10 @@ export type Database = {
           commission_with_assistants?: number
           created_at?: string
           description?: string | null
-          duration_minutes?: number
+          duration_minutes?: number | null
           establishment_id?: string
           id?: string
+          kind?: string
           name?: string
           price?: number
           updated_at?: string
