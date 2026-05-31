@@ -333,13 +333,18 @@ const Dashboard = () => {
           </section>
         )}
 
-        {/* FINANCEIRO COMPACTO */}
+        {/* FINANCEIRO COMPACTO — apenas para administradores */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <MiniStat icon={<DollarSign className="h-4 w-4" />} label="Hoje" value={isLoading ? '—' : currencyBRL(data?.todayRevenue ?? 0)} />
-          <MiniStat icon={<TrendingUp className="h-4 w-4" />} label="Mês" value={isLoading ? '—' : currencyBRL(data?.monthRevenue ?? 0)} />
-          <MiniStat icon={<Target className="h-4 w-4" />} label="Meta" value={data?.goalTarget ? `${goalPct.toFixed(0)}%` : '—'} progress={data?.goalTarget ? goalPct : undefined} />
+          {canViewFinance && (
+            <>
+              <MiniStat icon={<DollarSign className="h-4 w-4" />} label="Hoje" value={isLoading ? '—' : currencyBRL(data?.todayRevenue ?? 0)} />
+              <MiniStat icon={<TrendingUp className="h-4 w-4" />} label="Mês" value={isLoading ? '—' : currencyBRL(data?.monthRevenue ?? 0)} />
+              <MiniStat icon={<Target className="h-4 w-4" />} label="Meta" value={data?.goalTarget ? `${goalPct.toFixed(0)}%` : '—'} progress={data?.goalTarget ? goalPct : undefined} />
+            </>
+          )}
           <MiniStat icon={<Users className="h-4 w-4" />} label="Inativos" value={isLoading ? '—' : String(data?.inactiveCount ?? 0)} hint="20+ dias" />
         </section>
+
 
         {/* RECUPERAÇÃO INTEGRADA */}
         {(data?.inactiveCount ?? 0) > 0 && (
