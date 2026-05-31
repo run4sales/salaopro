@@ -95,17 +95,20 @@ export default function PublicBooking() {
     })();
   }, [resolvedId, toast]);
 
-  const selectedService = useMemo(() => services.find(s => s.id === serviceId), [services, serviceId]);
+  const selectedServices = useMemo(() => services.filter(s => serviceIds.includes(s.id)), [services, serviceIds]);
+  const totalDuration = useMemo(() => selectedServices.reduce((sum, s) => sum + (Number(s.duration) || 0), 0), [selectedServices]);
+  const totalPrice = useMemo(() => selectedServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0), [selectedServices]);
   const priceFmt = useMemo(() => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }), []);
+  const primaryProfessionalId = professionalIds[0] ?? "";
 
-  // Load booked times whenever professional/date changes
+  // Load booked times for the first selected professional (used as availability reference)
   useEffect(() => {
-    if (!resolvedId || !professionalId || !date) return;
+    if (!resolvedId || !primaryProfessionalId || !date) return;
     (async () => {
       const dayStr = format(date, "yyyy-MM-dd");
       const { data: avData, error } = await supabase.rpc("get_public_availability", {
         establishment: resolvedId,
-        professional: professionalId,
+        professional: primaryProfessionalId,
         day: dayStr,
       });
       if (error) {
@@ -118,7 +121,8 @@ export default function PublicBooking() {
       setBookedTimes(booked);
       setSlot("");
     })();
-  }, [resolvedId, professionalId, date, toast]);
+  }, [resolvedId, primaryProfessionalId, date, toast]);
+
 
   const slots = useMemo(() => {
     if (!date) return [] as Date[];
