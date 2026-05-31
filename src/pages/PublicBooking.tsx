@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, addMinutes, setHours, setMinutes, isSameDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -23,11 +24,12 @@ export default function PublicBooking() {
   const [lookupState, setLookupState] = useState<"loading" | "ok" | "not_found">("loading");
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
-  const [serviceId, setServiceId] = useState<string>("");
-  const [professionalId, setProfessionalId] = useState<string>("");
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
+  const [professionalIds, setProfessionalIds] = useState<string[]>([]);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [bookedTimes, setBookedTimes] = useState<string[]>([]); // ISO strings
   const [slot, setSlot] = useState<string>(""); // HH:mm
+
   const [clientName, setClientName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
@@ -93,17 +95,20 @@ export default function PublicBooking() {
     })();
   }, [resolvedId, toast]);
 
-  const selectedService = useMemo(() => services.find(s => s.id === serviceId), [services, serviceId]);
+  const selectedServices = useMemo(() => services.filter(s => serviceIds.includes(s.id)), [services, serviceIds]);
+  const totalDuration = useMemo(() => selectedServices.reduce((sum, s) => sum + (Number(s.duration) || 0), 0), [selectedServices]);
+  const totalPrice = useMemo(() => selectedServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0), [selectedServices]);
   const priceFmt = useMemo(() => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }), []);
+  const primaryProfessionalId = professionalIds[0] ?? "";
 
-  // Load booked times whenever professional/date changes
+  // Load booked times for the first selected professional (used as availability reference)
   useEffect(() => {
-    if (!resolvedId || !professionalId || !date) return;
+    if (!resolvedId || !primaryProfessionalId || !date) return;
     (async () => {
       const dayStr = format(date, "yyyy-MM-dd");
       const { data: avData, error } = await supabase.rpc("get_public_availability", {
         establishment: resolvedId,
-        professional: professionalId,
+        professional: primaryProfessionalId,
         day: dayStr,
       });
       if (error) {
@@ -116,7 +121,8 @@ export default function PublicBooking() {
       setBookedTimes(booked);
       setSlot("");
     })();
-  }, [resolvedId, professionalId, date, toast]);
+  }, [resolvedId, primaryProfessionalId, date, toast]);
+
 
   const slots = useMemo(() => {
     if (!date) return [] as Date[];
@@ -139,18 +145,18 @@ export default function PublicBooking() {
     });
   };
 
-  const canSubmit = resolvedId && serviceId && professionalId && date && slot && clientName && phone;
+  const canSubmit = !!resolvedId && serviceIds.length > 0 && professionalIds.length > 0 && !!date && !!slot && !!clientName && !!phone;
 
   const handleSubmit = async () => {
     if (!canSubmit || !date) return;
     const [hh, mm] = slot.split(":").map(Number);
     const startTime = setMinutes(setHours(new Date(date), hh), mm);
     const { data, error } = await supabase.rpc("create_public_booking", {
-      establishment: resolvedId,
+      establishment: resolvedId!,
       client_name: clientName,
       p_phone: phone,
-      service: serviceId,
-      professional: professionalId,
+      services: serviceIds,
+      professionals: professionalIds,
       start_time: startTime.toISOString(),
       notes: notes || null,
     });
@@ -161,6 +167,7 @@ export default function PublicBooking() {
     toast({ title: "Agendamento confirmado!", description: `Código: ${data}` });
     setSlot("");
   };
+
 
   if (lookupState === "loading") {
     return (
@@ -201,30 +208,41 @@ export default function PublicBooking() {
         <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4", !acceptingBookings && "pointer-events-none opacity-60")}>
           <div className="rounded-md border bg-card p-4 space-y-3">
             <div>
-              <label className="text-sm text-muted-foreground">Serviço</label>
-              <Select value={serviceId} onValueChange={setServiceId}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Selecione o serviço" />
-                </SelectTrigger>
-                <SelectContent>
-                  {services.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name} — {priceFmt.format(Number(s.price))}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm text-muted-foreground">Serviços</label>
+              <div className="mt-1 rounded-md border max-h-44 overflow-auto divide-y">
+                {services.map(s => {
+                  const checked = serviceIds.includes(s.id);
+                  return (
+                    <label key={s.id} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent/40">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => setServiceIds(prev => checked ? prev.filter(x => x !== s.id) : [...prev, s.id])}
+                      />
+                      <span className="text-sm flex-1">{s.name}</span>
+                      <span className="text-xs text-muted-foreground">{priceFmt.format(Number(s.price))}</span>
+                    </label>
+                  );
+                })}
+                {services.length === 0 && <p className="text-sm text-muted-foreground p-2">Nenhum serviço disponível</p>}
+              </div>
             </div>
             <div>
-              <label className="text-sm text-muted-foreground">Profissional</label>
-              <Select value={professionalId} onValueChange={setProfessionalId}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Selecione o profissional" />
-                </SelectTrigger>
-                <SelectContent>
-                  {professionals.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm text-muted-foreground">Profissionais</label>
+              <div className="mt-1 rounded-md border max-h-40 overflow-auto divide-y">
+                {professionals.map(p => {
+                  const checked = professionalIds.includes(p.id);
+                  return (
+                    <label key={p.id} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent/40">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => setProfessionalIds(prev => checked ? prev.filter(x => x !== p.id) : [...prev, p.id])}
+                      />
+                      <span className="text-sm">{p.name}</span>
+                    </label>
+                  );
+                })}
+                {professionals.length === 0 && <p className="text-sm text-muted-foreground p-2">Nenhum profissional disponível</p>}
+              </div>
             </div>
             <div>
               <label className="text-sm text-muted-foreground">Data</label>
@@ -245,7 +263,7 @@ export default function PublicBooking() {
               <div className="mt-2 grid grid-cols-3 gap-2">
                 {slots.map((d) => {
                   const label = format(d, "HH:mm");
-                  const disabled = isBooked(d) || !serviceId || !professionalId;
+                  const disabled = isBooked(d) || serviceIds.length === 0 || professionalIds.length === 0;
                   const isActive = slot === label;
                   return (
                     <Button key={label} variant={isActive ? "default" : "outline"} disabled={disabled} onClick={() => setSlot(label)}>
@@ -271,13 +289,14 @@ export default function PublicBooking() {
               <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Opcional" />
             </div>
             <Button className="w-full" disabled={!canSubmit} onClick={handleSubmit}>Confirmar agendamento</Button>
-            {selectedService && (
+            {selectedServices.length > 0 && (
               <div className="space-y-1 text-xs text-muted-foreground">
-                <p>Duração estimada: {selectedService.duration} min</p>
-                <p>Valor: {priceFmt.format(Number(selectedService.price))}</p>
+                <p>Duração total: {totalDuration} min</p>
+                <p>Valor total: {priceFmt.format(totalPrice)}</p>
               </div>
             )}
           </div>
+
         </div>
       </main>
     </div>

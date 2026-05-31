@@ -41,6 +41,54 @@ export type Database = {
         }
         Relationships: []
       }
+      appointment_professionals: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          establishment_id: string
+          id: string
+          professional_id: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          establishment_id: string
+          id?: string
+          professional_id: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          professional_id?: string
+        }
+        Relationships: []
+      }
+      appointment_services: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          establishment_id: string
+          id: string
+          service_id: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          establishment_id: string
+          id?: string
+          service_id: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          service_id?: string
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           appointment_date: string
@@ -1110,8 +1158,8 @@ export type Database = {
           establishment: string
           notes?: string
           p_phone: string
-          professional: string
-          service: string
+          professionals: string[]
+          services: string[]
           start_time: string
         }
         Returns: string
