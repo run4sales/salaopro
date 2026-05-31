@@ -37,8 +37,10 @@ interface ApptRow {
 }
 
 const Dashboard = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, establishmentRole } = useAuth();
+  const canViewFinance = establishmentRole === 'owner' || establishmentRole === 'admin';
   const [view, setView] = useState<'time' | 'pro'>('time');
+
 
   if (!user) return <Navigate to="/auth" replace />;
 
