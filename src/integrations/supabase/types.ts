@@ -861,6 +861,7 @@ export type Database = {
           commission_as_assistant: number
           commission_solo: number
           commission_with_assistants: number
+          cost_price: number
           created_at: string
           description: string | null
           duration_minutes: number | null
@@ -869,6 +870,7 @@ export type Database = {
           kind: string
           name: string
           price: number
+          stock_quantity: number
           updated_at: string
         }
         Insert: {
@@ -876,6 +878,7 @@ export type Database = {
           commission_as_assistant?: number
           commission_solo?: number
           commission_with_assistants?: number
+          cost_price?: number
           created_at?: string
           description?: string | null
           duration_minutes?: number | null
@@ -884,6 +887,7 @@ export type Database = {
           kind?: string
           name: string
           price: number
+          stock_quantity?: number
           updated_at?: string
         }
         Update: {
@@ -891,6 +895,7 @@ export type Database = {
           commission_as_assistant?: number
           commission_solo?: number
           commission_with_assistants?: number
+          cost_price?: number
           created_at?: string
           description?: string | null
           duration_minutes?: number | null
@@ -899,6 +904,7 @@ export type Database = {
           kind?: string
           name?: string
           price?: number
+          stock_quantity?: number
           updated_at?: string
         }
         Relationships: [

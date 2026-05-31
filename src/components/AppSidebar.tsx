@@ -26,6 +26,7 @@ import {
   PlayCircle,
   UserCog,
   CreditCard,
+  Package,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -57,6 +58,7 @@ const groups = [
     label: "Configuração",
     items: [
       { title: "Serviços", url: "/services", icon: Scissors },
+      { title: "Produtos", url: "/products", icon: Package },
       { title: "Configurações", url: "/settings", icon: Settings },
       { title: "Usuários", url: "/users", icon: UserCog },
       { title: "Planos", url: "/planos", icon: CreditCard },
