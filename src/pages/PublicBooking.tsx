@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, addMinutes, setHours, setMinutes, isSameDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -23,11 +24,12 @@ export default function PublicBooking() {
   const [lookupState, setLookupState] = useState<"loading" | "ok" | "not_found">("loading");
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
-  const [serviceId, setServiceId] = useState<string>("");
-  const [professionalId, setProfessionalId] = useState<string>("");
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
+  const [professionalIds, setProfessionalIds] = useState<string[]>([]);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [bookedTimes, setBookedTimes] = useState<string[]>([]); // ISO strings
   const [slot, setSlot] = useState<string>(""); // HH:mm
+
   const [clientName, setClientName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
