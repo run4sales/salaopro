@@ -29,6 +29,7 @@ import {
   Package,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const groups = [
   {
@@ -139,6 +140,9 @@ export default function AppSidebar() {
       <SidebarSeparator />
 
       <SidebarFooter>
+        <div className="px-2 pb-2">
+          <ThemeToggle className="w-full border-sidebar-border bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
+        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
