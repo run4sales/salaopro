@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
-import AgendaContent from "./components/AgendaContent";
+import AgendaContent from "@/components/agenda/AgendaContent";
 
 export default function Agenda() {
   const { user } = useAuth();
