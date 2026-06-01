@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Calendar, dateFnsLocalizer, View, SlotInfo } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -37,14 +37,27 @@ export interface AgendaEvent {
 
 interface Props {
   events: AgendaEvent[];
+  view: View;
+  date: Date;
+  agendaLength?: number;
+  onViewChange: (view: View) => void;
+  onNavigate: (date: Date) => void;
   onSelectSlot: (slot: SlotInfo) => void;
   onSelectEvent: (event: AgendaEvent) => void;
   onRangeChange?: (range: { start: Date; end: Date }) => void;
 }
 
-export function AgendaCalendar({ events, onSelectSlot, onSelectEvent, onRangeChange }: Props) {
-  const [view, setView] = useState<View>("week");
-  const [date, setDate] = useState<Date>(new Date());
+export function AgendaCalendar({
+  events,
+  view,
+  date,
+  agendaLength,
+  onViewChange,
+  onNavigate,
+  onSelectSlot,
+  onSelectEvent,
+  onRangeChange,
+}: Props) {
 
   const eventPropGetter = useMemo(
     () => (event: AgendaEvent) => {
@@ -72,16 +85,17 @@ export function AgendaCalendar({ events, onSelectSlot, onSelectEvent, onRangeCha
         events={events}
         view={view}
         date={date}
-        onView={setView}
-        onNavigate={setDate}
+        onView={onViewChange}
+        onNavigate={onNavigate}
         views={["month", "week", "day", "agenda"]}
         defaultView="week"
         culture="pt-BR"
         messages={MESSAGES}
+        length={agendaLength}
         selectable
         onSelectSlot={onSelectSlot}
         onSelectEvent={(e) => onSelectEvent(e as AgendaEvent)}
-        onDrillDown={(d) => { setDate(d); setView("day"); }}
+        onDrillDown={(d) => { onNavigate(d); onViewChange("day"); }}
         onRangeChange={(range: any) => {
           if (Array.isArray(range) && range.length > 0) {
             onRangeChange?.(toFullDayRange(range[0], range[range.length - 1]));
