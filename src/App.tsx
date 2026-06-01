@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -30,42 +31,44 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={<Index />} />
-            <Route path="/agendar/:establishmentId" element={<PublicBooking />} />
-            <Route path="/:slug" element={<PublicBooking />} />
-            <Route element={<AppLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/clients" element={<Clients />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/sales" element={<Sales />} />
-              <Route path="/expenses" element={<Expenses />} />
-              <Route path="/agenda" element={<Agenda />} />
-              <Route path="/atendimentos" element={<Attendances />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/metrics" element={<Metrics />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/users" element={<Users />} />
-              <Route path="/escolher-plano" element={<SelectPlan />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/planos" element={<Plans />} />
-              <Route path="/admin" element={<SuperAdmin />} />
+    <ThemeProvider>
+      <TooltipProvider>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={<Index />} />
+              <Route path="/agendar/:establishmentId" element={<PublicBooking />} />
+              <Route path="/:slug" element={<PublicBooking />} />
+              <Route element={<AppLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/clients" element={<Clients />} />
+                <Route path="/services" element={<Services />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/sales" element={<Sales />} />
+                <Route path="/expenses" element={<Expenses />} />
+                <Route path="/agenda" element={<Agenda />} />
+                <Route path="/atendimentos" element={<Attendances />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/metrics" element={<Metrics />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/users" element={<Users />} />
+                <Route path="/escolher-plano" element={<SelectPlan />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/planos" element={<Plans />} />
+                <Route path="/admin" element={<SuperAdmin />} />
 
-              <Route path="/super-admin" element={<SuperAdmin />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </TooltipProvider>
+                <Route path="/super-admin" element={<SuperAdmin />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
