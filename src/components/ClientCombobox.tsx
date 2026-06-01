@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,40 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface ClientLite { id: string; name: string; phone?: string | null }
+
+const CLIENTS_PAGE_SIZE = 1000;
+const INITIAL_VISIBLE_CLIENTS = 50;
+const VISIBLE_CLIENTS_INCREMENT = 50;
+
+async function fetchAllClients(establishmentId: string) {
+  const allClients: ClientLite[] = [];
+  let from = 0;
+
+  while (true) {
+    const to = from + CLIENTS_PAGE_SIZE - 1;
+    const { data, error } = await supabase
+      .from("clients")
+      .select("id, name, phone")
+      .eq("establishment_id", establishmentId)
+      .order("name")
+      .range(from, to);
+
+    if (error) {
+      throw error;
+    }
+
+    const page = (data ?? []) as ClientLite[];
+    allClients.push(...page);
+
+    if (page.length < CLIENTS_PAGE_SIZE) {
+      break;
+    }
+
+    from += CLIENTS_PAGE_SIZE;
+  }
+
+  return allClients;
+}
 
 interface Props {
   establishmentId: string;
@@ -26,19 +60,17 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
   const [openCreate, setOpenCreate] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", acquisition_source: "" });
   const [saving, setSaving] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_CLIENTS);
 
-  const { data: clients } = useQuery<ClientLite[]>({
+  const { data: clients, isLoading, isError } = useQuery<ClientLite[]>({
     queryKey: ["clients-combobox", establishmentId],
     enabled: !!establishmentId,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("clients")
-        .select("id, name, phone")
-        .eq("establishment_id", establishmentId)
-        .order("name");
-      return (data ?? []) as ClientLite[];
-    },
+    queryFn: () => fetchAllClients(establishmentId),
   });
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_CLIENTS);
+  }, [search, establishmentId]);
 
   const selected = clients?.find(c => c.id === value);
 
@@ -49,6 +81,13 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
       c.name.toLowerCase().includes(q) || (c.phone ?? "").toLowerCase().includes(q)
     );
   }, [clients, search]);
+
+  const visibleClients = useMemo(
+    () => filtered.slice(0, visibleCount),
+    [filtered, visibleCount]
+  );
+
+  const hasMoreClients = filtered.length > visibleClients.length;
 
   const openWithSearch = () => {
     setForm(f => ({ ...f, name: /^[a-zA-ZÀ-ÿ\s]+$/.test(search) ? search : f.name, phone: /^[\d\s()+\-]+$/.test(search) ? search : f.phone }));
@@ -108,7 +147,17 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
       </div>
 
       <div className="max-h-48 overflow-y-auto rounded-md border bg-background">
-        {filtered.slice(0, 8).map(c => (
+        {isLoading && (
+          <div className="px-3 py-3 text-sm text-muted-foreground text-center">
+            Carregando clientes...
+          </div>
+        )}
+        {isError && (
+          <div className="px-3 py-3 text-sm text-destructive text-center">
+            Erro ao carregar clientes.
+          </div>
+        )}
+        {!isLoading && !isError && visibleClients.map(c => (
           <button
             key={c.id}
             type="button"
@@ -119,10 +168,20 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
             {c.phone && <span className="text-xs text-muted-foreground">{c.phone}</span>}
           </button>
         ))}
-        {filtered.length === 0 && (
+        {!isLoading && !isError && filtered.length === 0 && (
           <div className="px-3 py-3 text-sm text-muted-foreground text-center">
             {search ? "Nenhum cliente encontrado." : "Digite para buscar..."}
           </div>
+        )}
+        {!isLoading && !isError && hasMoreClients && (
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full rounded-none text-xs text-muted-foreground"
+            onClick={() => setVisibleCount(count => count + VISIBLE_CLIENTS_INCREMENT)}
+          >
+            Mostrar mais {Math.min(VISIBLE_CLIENTS_INCREMENT, filtered.length - visibleClients.length)} de {filtered.length} clientes
+          </Button>
         )}
       </div>
 
