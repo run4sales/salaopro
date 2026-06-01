@@ -5,6 +5,7 @@ import SubscriptionBanner from "@/components/SubscriptionBanner";
 import TrialCountdownBanner from "@/components/TrialCountdownBanner";
 import { useSubscription, isFullyBlocked } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function AppLayout() {
   const location = useLocation();
@@ -42,7 +43,7 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="dark">
+    <>
       <TrialCountdownBanner />
       <SidebarProvider>
         <header className="h-12 flex items-center border-b border-border bg-background md:hidden">
@@ -50,6 +51,7 @@ export default function AppLayout() {
           <span className="ml-2 text-sm font-bold tracking-tight">
             Beauty<span className="bg-gradient-to-r from-primary-glow to-accent bg-clip-text text-transparent">Core</span>
           </span>
+          <ThemeToggle className="ml-auto mr-2" showLabel={false} />
         </header>
 
         <div className="flex min-h-screen w-full bg-background text-foreground">
@@ -62,6 +64,6 @@ export default function AppLayout() {
           </main>
         </div>
       </SidebarProvider>
-    </div>
+    </>
   );
 }
