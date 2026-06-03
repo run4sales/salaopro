@@ -52,17 +52,22 @@ function MultiSelect({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="w-full justify-between mt-1 font-normal">
-          <span className={selected.length ? "" : "text-muted-foreground"}>{label}</span>
+        <Button variant="outline" className="mt-1 w-full min-w-0 justify-between font-normal">
+          <span className={selected.length ? "truncate" : "truncate text-muted-foreground"}>{label}</span>
           <ChevronDown className="h-4 w-4 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-2 max-h-72 overflow-auto" align="start">
+      <PopoverContent
+        align="start"
+        side="bottom"
+        collisionPadding={16}
+        className="z-[70] w-[--radix-popover-trigger-width] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain p-2 [max-height:min(var(--radix-popover-content-available-height),20rem)] [-webkit-overflow-scrolling:touch]"
+      >
         {options.length === 0 && <p className="text-sm text-muted-foreground p-2">Nenhuma opção</p>}
         {options.map(opt => (
-          <label key={opt.id} className="flex items-center gap-2 p-2 rounded hover:bg-accent cursor-pointer">
+          <label key={opt.id} className="flex min-w-0 cursor-pointer items-center gap-2 rounded p-3 hover:bg-accent sm:p-2">
             <Checkbox checked={selected.includes(opt.id)} onCheckedChange={() => toggle(opt.id)} />
-            <span className="text-sm">{opt.name}</span>
+            <span className="min-w-0 flex-1 break-words text-sm leading-snug">{opt.name}</span>
           </label>
         ))}
       </PopoverContent>
