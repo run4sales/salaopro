@@ -45,7 +45,7 @@ export default function AppLayout() {
   return (
     <>
       <TrialCountdownBanner />
-      <SidebarProvider>
+      <SidebarProvider className="flex-col md:flex-row">
         <header className="h-12 flex items-center border-b border-border bg-background md:hidden">
           <SidebarTrigger className="ml-2 text-foreground" />
           <span className="ml-2 text-sm font-bold tracking-tight">
@@ -54,11 +54,11 @@ export default function AppLayout() {
           <ThemeToggle className="ml-auto mr-2" showLabel={false} />
         </header>
 
-        <div className="flex min-h-screen w-full bg-background text-foreground">
+        <div className="flex min-h-[calc(100svh-3rem)] w-full min-w-0 bg-background text-foreground md:min-h-svh">
           <AppSidebar />
-          <main className="flex-1 flex flex-col">
+          <main className="flex min-w-0 flex-1 flex-col">
             <SubscriptionBanner />
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <Outlet />
             </div>
           </main>
