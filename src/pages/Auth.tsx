@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,22 +9,30 @@ import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 const Auth = () => {
-  const { user, signIn, signUp } = useAuth();
+  const { user, signIn, signUp, resetPassword, updatePassword } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
+
+  const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'login';
+  const initialMode = searchParams.get('mode') === 'reset-password' ? 'reset-password' : 'auth';
+  const planParam = searchParams.get('plan');
+  const initialPlan = (planParam === 'empresa' || planParam === 'individual' || planParam === 'profissional'
+    ? planParam : 'profissional') as 'individual' | 'profissional' | 'empresa';
+  const [authMode, setAuthMode] = useState<'auth' | 'forgot-password' | 'reset-password'>(initialMode);
+  const [tab, setTab] = useState<'login' | 'signup'>(initialTab);
+  const [selectedPlan, setSelectedPlan] = useState<'individual' | 'profissional' | 'empresa'>(initialPlan);
 
   const [loginData, setLoginData] = useState({
     email: '',
     password: '',
   });
 
-  const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'login';
-  const planParam = searchParams.get('plan');
-  const initialPlan = (planParam === 'empresa' || planParam === 'individual' || planParam === 'profissional'
-    ? planParam : 'profissional') as 'individual' | 'profissional' | 'empresa';
-  const [tab, setTab] = useState<'login' | 'signup'>(initialTab);
-  const [selectedPlan, setSelectedPlan] = useState<'individual' | 'profissional' | 'empresa'>(initialPlan);
-
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [newPasswordData, setNewPasswordData] = useState({
+    password: '',
+    confirmPassword: '',
+  });
 
   const [signupData, setSignupData] = useState({
     email: '',
@@ -40,10 +48,19 @@ const Auth = () => {
     businessType: '',
   });
 
-  // Redirect if user is already logged in
-  if (user) {
+  useEffect(() => {
+    if (searchParams.get('mode') === 'reset-password') {
+      setAuthMode('reset-password');
+    }
+  }, [searchParams]);
+
+  const isResetPasswordMode = authMode === 'reset-password';
+
+  // Redirect if user is already logged in, except while finishing password recovery.
+  if (user && !isResetPasswordMode) {
     return <Navigate to="/dashboard" replace />;
   }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -70,6 +87,113 @@ const Auth = () => {
     setIsLoading(false);
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    await resetPassword(forgotPasswordEmail);
+    setIsLoading(false);
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (newPasswordData.password !== newPasswordData.confirmPassword) {
+      return;
+    }
+
+    setIsLoading(true);
+    const { error } = await updatePassword(newPasswordData.password);
+    setIsLoading(false);
+
+    if (!error) {
+      setAuthMode('auth');
+      setTab('login');
+      setNewPasswordData({ password: '', confirmPassword: '' });
+      navigate('/auth', { replace: true });
+    }
+  };
+
+  const openForgotPassword = () => {
+    setForgotPasswordEmail(loginData.email);
+    setAuthMode('forgot-password');
+  };
+
+  const passwordMismatch = Boolean(
+    newPasswordData.confirmPassword && newPasswordData.password !== newPasswordData.confirmPassword,
+  );
+
+  const renderForgotPasswordContent = () => (
+    <form onSubmit={handleForgotPassword} className="space-y-4">
+      <div className="space-y-2 text-center">
+        <h2 className="text-lg font-semibold">Recuperar senha</h2>
+        <p className="text-sm text-muted-foreground">
+          Informe o email da sua conta para receber o link de redefinição de senha.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="forgot-password-email">Email</Label>
+        <Input
+          id="forgot-password-email"
+          type="email"
+          value={forgotPasswordEmail}
+          onChange={(e) => setForgotPasswordEmail(e.target.value)}
+          required
+        />
+      </div>
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? 'Enviando...' : 'Enviar link de recuperação'}
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        className="w-full"
+        onClick={() => setAuthMode('auth')}
+        disabled={isLoading}
+      >
+        Voltar para o login
+      </Button>
+    </form>
+  );
+
+  const renderResetPasswordContent = () => (
+    <form onSubmit={handleUpdatePassword} className="space-y-4">
+      <div className="space-y-2 text-center">
+        <h2 className="text-lg font-semibold">Criar nova senha</h2>
+        <p className="text-sm text-muted-foreground">
+          Digite e confirme a nova senha para concluir a recuperação da sua conta.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="new-password">Nova senha</Label>
+        <Input
+          id="new-password"
+          type="password"
+          value={newPasswordData.password}
+          onChange={(e) => setNewPasswordData({ ...newPasswordData, password: e.target.value })}
+          minLength={6}
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="confirm-new-password">Confirmar nova senha</Label>
+        <Input
+          id="confirm-new-password"
+          type="password"
+          value={newPasswordData.confirmPassword}
+          onChange={(e) => setNewPasswordData({ ...newPasswordData, confirmPassword: e.target.value })}
+          minLength={6}
+          required
+        />
+        {passwordMismatch && (
+          <p className="text-sm text-destructive">As senhas não conferem.</p>
+        )}
+      </div>
+      <Button type="submit" className="w-full" disabled={isLoading || passwordMismatch}>
+        {isLoading ? 'Atualizando...' : 'Atualizar senha'}
+      </Button>
+    </form>
+  );
+
   return (
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 relative overflow-hidden">
       <ThemeToggle className="absolute right-4 top-4 z-20" />
@@ -88,191 +212,204 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={tab} onValueChange={(v) => setTab(v as 'login' | 'signup')} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Cadastrar</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    value={loginData.email}
-                    onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Senha</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    value={loginData.password}
-                    onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Entrando...' : 'Entrar'}
-                </Button>
-              </form>
-            </TabsContent>
-            
-            <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Escolha seu plano</Label>
-                  <div className="grid grid-cols-3 gap-2">
+          {authMode === 'forgot-password' && renderForgotPasswordContent()}
+          {authMode === 'reset-password' && renderResetPasswordContent()}
+          {authMode === 'auth' && (
+            <Tabs value={tab} onValueChange={(v) => setTab(v as 'login' | 'signup')} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Entrar</TabsTrigger>
+                <TabsTrigger value="signup">Cadastrar</TabsTrigger>
+              </TabsList>
 
-                    {[
-                      { slug: 'individual', name: 'Individual', price: 'R$ 29,90', sub: '300 clientes • 1 usuário' },
-                      { slug: 'profissional', name: 'Profissional', price: 'R$ 69,90', sub: 'Ilimitado • 4 usuários', star: true },
-                      { slug: 'empresa', name: 'Empresa', price: 'R$ 109,90', sub: 'Ilimitado • 20 usuários' },
-                    ].map((p) => {
-                      const active = selectedPlan === p.slug;
-                      return (
-                        <button
-                          type="button"
-                          key={p.slug}
-                          onClick={() => setSelectedPlan(p.slug as any)}
-                          className={`relative text-left rounded-lg border p-3 transition ${
-                            active
-                              ? 'border-primary bg-primary/10 shadow-[0_0_18px_hsl(var(--primary)/0.25)]'
-                              : 'border-border hover:border-primary/50'
-                          }`}
-                        >
-                          {p.star && <span className="absolute -top-2 right-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded">⭐</span>}
-                          <div className="text-sm font-semibold">{p.name}</div>
-                          <div className="text-sm font-bold text-primary">{p.price}<span className="text-[10px] text-muted-foreground font-normal">/mês</span></div>
-                          <div className="text-[10px] text-muted-foreground mt-1">{p.sub}</div>
-                        </button>
-                      );
-                    })}
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">Email</Label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      value={loginData.email}
+                      onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Senha</Label>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      value={loginData.password}
+                      onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={openForgotPassword}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Esqueci minha senha
+                    </button>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Entrando...' : 'Entrar'}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="signup">
+                <form onSubmit={handleSignup} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Escolha seu plano</Label>
+                    <div className="grid grid-cols-3 gap-2">
+
+                      {[
+                        { slug: 'individual', name: 'Individual', price: 'R$ 29,90', sub: '300 clientes • 1 usuário' },
+                        { slug: 'profissional', name: 'Profissional', price: 'R$ 69,90', sub: 'Ilimitado • 4 usuários', star: true },
+                        { slug: 'empresa', name: 'Empresa', price: 'R$ 109,90', sub: 'Ilimitado • 20 usuários' },
+                      ].map((p) => {
+                        const active = selectedPlan === p.slug;
+                        return (
+                          <button
+                            type="button"
+                            key={p.slug}
+                            onClick={() => setSelectedPlan(p.slug as 'individual' | 'profissional' | 'empresa')}
+                            className={`relative text-left rounded-lg border p-3 transition ${
+                              active
+                                ? 'border-primary bg-primary/10 shadow-[0_0_18px_hsl(var(--primary)/0.25)]'
+                                : 'border-border hover:border-primary/50'
+                            }`}
+                          >
+                            {p.star && <span className="absolute -top-2 right-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded">⭐</span>}
+                            <div className="text-sm font-semibold">{p.name}</div>
+                            <div className="text-sm font-bold text-primary">{p.price}<span className="text-[10px] text-muted-foreground font-normal">/mês</span></div>
+                            <div className="text-[10px] text-muted-foreground mt-1">{p.sub}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+
+                    <p className="text-xs text-muted-foreground">10 dias grátis • sem cartão de crédito</p>
                   </div>
 
-
-                  <p className="text-xs text-muted-foreground">10 dias grátis • sem cartão de crédito</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="business-name">Nome do Estabelecimento</Label>
-                  <Input
-                    id="business-name"
-                    value={signupData.businessName}
-                    onChange={(e) => setSignupData({ ...signupData, businessName: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="document">CPF ou CNPJ</Label>
-                  <Input
-                    id="document"
-                    value={signupData.document}
-                    onChange={(e) => setSignupData({ ...signupData, document: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="owner-name">Nome do Proprietário</Label>
-                  <Input
-                    id="owner-name"
-                    value={signupData.ownerName}
-                    onChange={(e) => setSignupData({ ...signupData, ownerName: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input
-                    id="phone"
-                    value={signupData.phone}
-                    onChange={(e) => setSignupData({ ...signupData, phone: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cep">CEP</Label>
-                  <Input
-                    id="cep"
-                    value={signupData.cep}
-                    onChange={(e) => setSignupData({ ...signupData, cep: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="street">Rua</Label>
-                  <Input
-                    id="street"
-                    value={signupData.street}
-                    onChange={(e) => setSignupData({ ...signupData, street: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="neighborhood">Bairro</Label>
-                  <Input
-                    id="neighborhood"
-                    value={signupData.neighborhood}
-                    onChange={(e) => setSignupData({ ...signupData, neighborhood: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="city">Cidade</Label>
-                  <Input
-                    id="city"
-                    value={signupData.city}
-                    onChange={(e) => setSignupData({ ...signupData, city: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="business-type">Tipo de comércio</Label>
-                  <select
-                    id="business-type"
-                    value={signupData.businessType}
-                    onChange={(e) => setSignupData({ ...signupData, businessType: e.target.value })}
-                    required
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="" disabled>Selecione...</option>
-                    <option value="Salao de beleza">Salão de beleza</option>
-                    <option value="Barbeiro">Barbeiro</option>
-                    <option value="Clinica Estetica">Clinica Estética</option>
-                    <option value="Trancista">Trancista</option>
-                    <option value="Manicure">Manicure</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    value={signupData.email}
-                    onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Senha</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    value={signupData.password}
-                    onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Cadastrando...' : 'Cadastrar'}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+                  <div className="space-y-2">
+                    <Label htmlFor="business-name">Nome do Estabelecimento</Label>
+                    <Input
+                      id="business-name"
+                      value={signupData.businessName}
+                      onChange={(e) => setSignupData({ ...signupData, businessName: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="document">CPF ou CNPJ</Label>
+                    <Input
+                      id="document"
+                      value={signupData.document}
+                      onChange={(e) => setSignupData({ ...signupData, document: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="owner-name">Nome do Proprietário</Label>
+                    <Input
+                      id="owner-name"
+                      value={signupData.ownerName}
+                      onChange={(e) => setSignupData({ ...signupData, ownerName: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Telefone</Label>
+                    <Input
+                      id="phone"
+                      value={signupData.phone}
+                      onChange={(e) => setSignupData({ ...signupData, phone: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cep">CEP</Label>
+                    <Input
+                      id="cep"
+                      value={signupData.cep}
+                      onChange={(e) => setSignupData({ ...signupData, cep: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="street">Rua</Label>
+                    <Input
+                      id="street"
+                      value={signupData.street}
+                      onChange={(e) => setSignupData({ ...signupData, street: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="neighborhood">Bairro</Label>
+                    <Input
+                      id="neighborhood"
+                      value={signupData.neighborhood}
+                      onChange={(e) => setSignupData({ ...signupData, neighborhood: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city">Cidade</Label>
+                    <Input
+                      id="city"
+                      value={signupData.city}
+                      onChange={(e) => setSignupData({ ...signupData, city: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="business-type">Tipo de comércio</Label>
+                    <select
+                      id="business-type"
+                      value={signupData.businessType}
+                      onChange={(e) => setSignupData({ ...signupData, businessType: e.target.value })}
+                      required
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="" disabled>Selecione...</option>
+                      <option value="Salao de beleza">Salão de beleza</option>
+                      <option value="Barbeiro">Barbeiro</option>
+                      <option value="Clinica Estetica">Clinica Estética</option>
+                      <option value="Trancista">Trancista</option>
+                      <option value="Manicure">Manicure</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      value={signupData.email}
+                      onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Senha</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      value={signupData.password}
+                      onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Cadastrando...' : 'Cadastrar'}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          )}
         </CardContent>
       </Card>
     </div>
