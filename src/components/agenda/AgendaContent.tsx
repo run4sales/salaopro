@@ -29,6 +29,22 @@ const ALL_PROFESSIONALS = "all";
 const FILTER_STORAGE_KEY = "agenda.professionalFilter";
 const APPOINTMENT_ID_BATCH_SIZE = 500;
 
+function isOptionalAgendaTableError(error: any, tableName: string) {
+  if (!error) return false;
+
+  const code = String(error.code ?? "");
+  const message = String(error.message ?? error.details ?? "").toLowerCase();
+  const table = tableName.toLowerCase();
+
+  return (
+    ["42P01", "42501", "PGRST200", "PGRST205"].includes(code) ||
+    message.includes(table) ||
+    message.includes("schema cache") ||
+    message.includes("permission denied") ||
+    message.includes("does not exist")
+  );
+}
+
 const getWeekOptions = () => ({ locale: ptBR, weekStartsOn: 0 as const });
 
 function getRangeForPeriod(periodMode: PeriodMode, date: Date) {
@@ -171,7 +187,14 @@ export default function AgendaContent() {
           .eq("establishment_id", establishmentId)
           .eq("professional_id", effectiveProfessionalId);
 
-        if (linkedIdsRes.error) return linkedIdsRes;
+        if (linkedIdsRes.error) {
+          if (isOptionalAgendaTableError(linkedIdsRes.error, "appointment_professionals")) {
+            console.warn("Agenda carregada sem vínculos de múltiplos profissionais:", linkedIdsRes.error);
+            return primaryRes;
+          }
+
+          return linkedIdsRes;
+        }
 
         const linkedAppointmentIds = [
           ...new Set((linkedIdsRes.data ?? []).map((row: any) => row.appointment_id).filter(Boolean)),
@@ -249,7 +272,12 @@ export default function AgendaContent() {
       if (apptRes.error) throw apptRes.error;
       if (servicesRes.error) throw servicesRes.error;
       if (profRes.error) throw profRes.error;
-      if (blocksRes.error) throw blocksRes.error;
+      if (blocksRes.error && !isOptionalAgendaTableError(blocksRes.error, "appointment_blocks")) {
+        throw blocksRes.error;
+      }
+      if (blocksRes.error) {
+        console.warn("Agenda carregada sem bloqueios de horário:", blocksRes.error);
+      }
 
       const appts = apptRes.data ?? [];
       const services = servicesRes.data ?? [];
@@ -264,7 +292,7 @@ export default function AgendaContent() {
       const serviceMap = new Map(services.map((s: any) => [s.id, s]));
       const profMap = new Map(activeProfessionals.map((p: any) => [p.id, p.name]));
       const clientMap = new Map(((clientsRes.data ?? []) as any[]).map((c: any) => [c.id, c.name]));
-      return { appts, blocks: (blocksRes.data ?? []) as AppointmentBlock[], serviceMap, profMap, clientMap, services, professionals: activeProfessionals };
+      return { appts, blocks: (blocksRes.error ? [] : blocksRes.data ?? []) as AppointmentBlock[], serviceMap, profMap, clientMap, services, professionals: activeProfessionals };
     },
   });
 
