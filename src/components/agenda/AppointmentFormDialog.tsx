@@ -172,11 +172,11 @@ export function AppointmentFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="flex max-h-[92svh] w-[calc(100vw-1rem)] max-w-lg grid-rows-none flex-col gap-3 overflow-hidden p-4 sm:w-[calc(100%-2rem)] sm:p-6">
+        <DialogHeader className="shrink-0 pr-8">
           <DialogTitle>{appointment?.id ? "Editar agendamento" : "Novo agendamento"}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]">
           <div>
             <label className="text-sm text-muted-foreground">Cliente *</label>
             <div className="mt-1">
