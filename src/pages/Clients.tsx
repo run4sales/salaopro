@@ -323,11 +323,11 @@ const Clients = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen w-full overflow-x-hidden bg-background">
       {/* Header */}
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex flex-col gap-3 md:flex-row md:justify-between md:items-center">
-          <div>
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-3 py-4 sm:px-4 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
             <h1 className="text-xl md:text-2xl font-bold">
               {filterType === 'inactive' ? 'Clientes Inativos' : 'Clientes'}
             </h1>
@@ -338,14 +338,14 @@ const Clients = () => {
               }
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap">
-            <Button variant="outline" size="sm" onClick={() => setIsImportOpen(true)}>
+          <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap">
+            <Button variant="outline" size="sm" className="min-w-0 px-2" onClick={() => setIsImportOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
               Importar
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={!allClients?.length} className="w-full md:w-auto">
+                <Button variant="outline" size="sm" disabled={!allClients?.length} className="w-full min-w-0 px-2 md:w-auto">
                   <Download className="h-4 w-4 mr-2" />
                   Exportar
                 </Button>
@@ -359,11 +359,11 @@ const Clients = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" size="sm" onClick={() => setIsSettingsDialogOpen(true)}>
+            <Button variant="outline" size="sm" className="min-w-0 px-2" onClick={() => setIsSettingsDialogOpen(true)}>
               <Settings className="h-4 w-4 mr-2" />
               Configurações
             </Button>
-            <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+            <Button size="sm" className="min-w-0 px-2" onClick={() => setIsAddDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Cliente
             </Button>
@@ -373,7 +373,7 @@ const Clients = () => {
       </header>
 
       {/* Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="mx-auto w-full max-w-7xl overflow-x-hidden px-3 py-4 sm:px-4 sm:py-8">
         {/* Search Bar */}
         <Card className="mb-6">
           <CardContent className="p-4">
