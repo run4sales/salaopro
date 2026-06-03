@@ -32,6 +32,7 @@ export interface AgendaEvent {
   start: Date;
   end: Date;
   status: string;
+  type?: "appointment" | "block";
   raw: any;
 }
 
@@ -61,6 +62,20 @@ export function AgendaCalendar({
 
   const eventPropGetter = useMemo(
     () => (event: AgendaEvent) => {
+      if (event.type === "block" || event.status === "blocked") {
+        return {
+          style: {
+            backgroundColor: "hsl(var(--muted))",
+            color: "hsl(var(--muted-foreground))",
+            border: "1px solid hsl(var(--border))",
+            borderLeft: "4px solid hsl(var(--muted-foreground))",
+            borderRadius: 6,
+            padding: "2px 6px",
+            fontSize: 12,
+            fontWeight: 600,
+          },
+        };
+      }
       const c = STATUS_COLORS[normalizeStatus(event.status)] ?? STATUS_COLORS.scheduled;
       return {
         style: {
@@ -104,7 +119,7 @@ export function AgendaCalendar({
           }
         }}
         style={{ height: 680 }}
-        tooltipAccessor={(e: any) => `${e.title} — ${STATUS_LABELS[normalizeStatus(e.status)] ?? ""}`}
+        tooltipAccessor={(e: any) => e.type === "block" ? e.title : `${e.title} — ${STATUS_LABELS[normalizeStatus(e.status)] ?? ""}`}
         step={30}
         timeslots={2}
       />

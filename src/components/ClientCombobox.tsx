@@ -25,6 +25,7 @@ async function fetchAllClients(establishmentId: string) {
       .from("clients")
       .select("id, name, phone")
       .eq("establishment_id", establishmentId)
+      .is("deleted_at", null)
       .order("name")
       .range(from, to);
 

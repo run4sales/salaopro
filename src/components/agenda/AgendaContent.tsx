@@ -12,16 +12,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, CalendarDays, List, Upload } from "lucide-react";
+import { Ban, Plus, CalendarDays, List, Upload } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { AgendaCalendar, AgendaEvent } from "@/components/agenda/AgendaCalendar";
 import { AppointmentFormDialog } from "@/components/agenda/AppointmentFormDialog";
 import { AppointmentDetailsDialog } from "@/components/agenda/AppointmentDetailsDialog";
+import { AppointmentBlockDialog } from "@/components/agenda/AppointmentBlockDialog";
 import ImportAppointmentsDialog from "@/components/agenda/ImportAppointmentsDialog";
 import { STATUS_LABELS, STATUS_VARIANTS, STATUS_OPTIONS, normalizeStatus } from "@/lib/appointmentStatus";
 
 type PeriodMode = "day" | "week" | "month" | "custom";
 type Professional = { id: string; name: string };
+type AppointmentBlock = { id: string; professional_id: string; start_time: string; end_time: string; reason?: string | null };
 
 const ALL_PROFESSIONALS = "all";
 const FILTER_STORAGE_KEY = "agenda.professionalFilter";
@@ -80,6 +82,8 @@ export default function AgendaContent() {
   const [formOpen, setFormOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [selectedBlock, setSelectedBlock] = useState<AppointmentBlock | null>(null);
   const [selectedAppt, setSelectedAppt] = useState<any | null>(null);
   const [initialSlot, setInitialSlot] = useState<Date | null>(null);
 
@@ -147,13 +151,14 @@ export default function AgendaContent() {
     queryKey: ["agenda", establishmentId, range.start.toISOString(), range.end.toISOString(), effectiveProfessionalId],
     enabled: !!establishmentId && (!isEmployee || !!professionalId),
     queryFn: async () => {
-      const appointmentFields = "id, establishment_id, appointment_date, status, notes, client_id, service_id, professional_id";
+      const appointmentFields = "id, establishment_id, appointment_date, duration_minutes, service_amount, status, notes, client_id, service_id, professional_id";
       const appointmentRangeQuery = () => supabase
         .from("appointments")
         .select(appointmentFields)
         .eq("establishment_id", establishmentId)
         .gte("appointment_date", range.start.toISOString())
         .lte("appointment_date", range.end.toISOString())
+        .or("status.is.null,status.not.in.(canceled,cancelled)")
         .order("appointment_date", { ascending: true });
 
       const fetchAppointmentsByProfessional = async () => {
@@ -182,6 +187,7 @@ export default function AgendaContent() {
             .in("id", ids)
             .gte("appointment_date", range.start.toISOString())
             .lte("appointment_date", range.end.toISOString())
+            .or("status.is.null,status.not.in.(canceled,cancelled)")
             .order("appointment_date", { ascending: true });
 
           if (linkedRes.error) return linkedRes;
@@ -216,15 +222,34 @@ export default function AgendaContent() {
         professionalsQuery = professionalsQuery.eq("id", professionalId);
       }
 
-      const [apptRes, servicesRes, profRes] = await Promise.all([
+      const blocksQuery = effectiveProfessionalId
+        ? (supabase as any)
+            .from("appointment_blocks")
+            .select("id, professional_id, start_time, end_time, reason")
+            .eq("establishment_id", establishmentId)
+            .eq("professional_id", effectiveProfessionalId)
+            .lt("start_time", range.end.toISOString())
+            .gt("end_time", range.start.toISOString())
+            .order("start_time")
+        : (supabase as any)
+            .from("appointment_blocks")
+            .select("id, professional_id, start_time, end_time, reason")
+            .eq("establishment_id", establishmentId)
+            .lt("start_time", range.end.toISOString())
+            .gt("end_time", range.start.toISOString())
+            .order("start_time");
+
+      const [apptRes, servicesRes, profRes, blocksRes] = await Promise.all([
         appointmentsPromise,
-        supabase.from("services").select("id, name, duration_minutes").eq("establishment_id", establishmentId).eq("active", true),
+        supabase.from("services").select("id, name, duration_minutes, price").eq("establishment_id", establishmentId).eq("active", true),
         professionalsQuery,
+        blocksQuery,
       ]);
 
       if (apptRes.error) throw apptRes.error;
       if (servicesRes.error) throw servicesRes.error;
       if (profRes.error) throw profRes.error;
+      if (blocksRes.error) throw blocksRes.error;
 
       const appts = apptRes.data ?? [];
       const services = servicesRes.data ?? [];
@@ -239,21 +264,36 @@ export default function AgendaContent() {
       const serviceMap = new Map(services.map((s: any) => [s.id, s]));
       const profMap = new Map(activeProfessionals.map((p: any) => [p.id, p.name]));
       const clientMap = new Map(((clientsRes.data ?? []) as any[]).map((c: any) => [c.id, c.name]));
-      return { appts, serviceMap, profMap, clientMap, services, professionals: activeProfessionals };
+      return { appts, blocks: (blocksRes.data ?? []) as AppointmentBlock[], serviceMap, profMap, clientMap, services, professionals: activeProfessionals };
     },
   });
 
   const events: AgendaEvent[] = useMemo(() => {
     if (!data) return [];
-    return data.appts.map((a: any) => {
+    const appointmentEvents = data.appts.map((a: any) => {
       const svc: any = data.serviceMap.get(a.service_id);
       const start = new Date(a.appointment_date);
-      const dur = svc?.duration_minutes ?? 30;
+      const dur = Number(a.duration_minutes || svc?.duration_minutes || 30);
       const end = new Date(start.getTime() + dur * 60_000);
       const client = data.clientMap.get(a.client_id) ?? "Cliente";
       const sname = svc?.name ?? "Serviço";
-      return { id: a.id, title: `${client} · ${sname}`, start, end, status: a.status, raw: a };
+      return { id: a.id, title: `${client} · ${sname}`, start, end, status: a.status, type: "appointment" as const, raw: a };
     });
+
+    const blockEvents = (data.blocks ?? []).map((block: AppointmentBlock) => {
+      const professional = data.profMap.get(block.professional_id) ?? "Profissional";
+      return {
+        id: `block-${block.id}`,
+        title: `Bloqueado · ${professional}${block.reason ? ` · ${block.reason}` : ""}`,
+        start: new Date(block.start_time),
+        end: new Date(block.end_time),
+        status: "blocked",
+        type: "block" as const,
+        raw: block,
+      };
+    });
+
+    return [...appointmentEvents, ...blockEvents];
   }, [data]);
 
   const selectedProfessionalName = effectiveProfessionalId
@@ -269,8 +309,17 @@ export default function AgendaContent() {
   };
 
   const handleNew = () => { setSelectedAppt(null); setInitialSlot(null); setFormOpen(true); };
+  const handleNewBlock = () => { setSelectedBlock(null); setInitialSlot(null); setBlockOpen(true); };
   const handleSlot = (slot: any) => { setSelectedAppt(null); setInitialSlot(slot.start); setFormOpen(true); };
-  const handleEventClick = (e: AgendaEvent) => { setSelectedAppt(e.raw); setDetailsOpen(true); };
+  const handleEventClick = (e: AgendaEvent) => {
+    if (e.type === "block") {
+      setSelectedBlock(e.raw as AppointmentBlock);
+      setBlockOpen(true);
+      return;
+    }
+    setSelectedAppt(e.raw);
+    setDetailsOpen(true);
+  };
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["agenda"] });
 
@@ -334,6 +383,7 @@ export default function AgendaContent() {
           </ToggleGroup>
           <Button onClick={copyLink} variant="outline">Copiar link</Button>
           <Button onClick={() => setImportOpen(true)} variant="outline"><Upload className="h-4 w-4 mr-1" /> Importar</Button>
+          <Button onClick={handleNewBlock} variant="outline"><Ban className="h-4 w-4 mr-1" /> Bloquear horário</Button>
           <Button onClick={handleNew}><Plus className="h-4 w-4 mr-1" /> Novo agendamento</Button>
         </div>
       </div>
@@ -392,7 +442,7 @@ export default function AgendaContent() {
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-          <span>Exibindo {events.length} agendamento(s) para <strong className="text-foreground">{selectedProfessionalName}</strong>.</span>
+          <span>Exibindo {data?.appts?.length ?? 0} agendamento(s) para <strong className="text-foreground">{selectedProfessionalName}</strong>.</span>
           {isFetching && <span>Atualizando agenda...</span>}
         </div>
       </div>
@@ -459,8 +509,21 @@ export default function AgendaContent() {
           establishmentId={establishmentId}
           services={data?.services ?? []}
           professionals={data?.professionals ?? []}
+          blocks={data?.blocks ?? []}
           initialDate={initialSlot}
           appointment={selectedAppt}
+          onSaved={refresh}
+        />
+      )}
+
+      {establishmentId && (
+        <AppointmentBlockDialog
+          open={blockOpen}
+          onOpenChange={setBlockOpen}
+          establishmentId={establishmentId}
+          professionals={data?.professionals ?? professionals}
+          initialDate={initialSlot}
+          block={selectedBlock}
           onSaved={refresh}
         />
       )}

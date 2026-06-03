@@ -1,6 +1,6 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Upload } from 'lucide-react';
+import { Plus, Pencil, Search, Upload } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,30 @@ import {
 } from '@/components/ui/dialog';
 import { ImportServicesDialog } from '@/components/services/ImportServicesDialog';
 
+
+
+const SERVICE_SORT_STORAGE_KEY = 'services.sortPreference';
+type ServiceSort = 'name-asc' | 'name-desc' | 'created-desc' | 'created-asc';
+
+const formatDurationInput = (minutes: number | string | null | undefined) => {
+  const total = Math.max(0, Number(minutes) || 0);
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+};
+
+const parseDurationInput = (value: string) => {
+  const [hours = '0', minutes = '0'] = value.split(':');
+  return (Number(hours) || 0) * 60 + (Number(minutes) || 0);
+};
+
+const formatDurationLabel = (minutes: number | string | null | undefined) => {
+  const total = Math.max(0, Number(minutes) || 0);
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+  if (!hours) return `${mins} min`;
+  return `${hours}h${String(mins).padStart(2, '0')}`;
+};
 
 const Services = () => {
   const { user, profile } = useAuth();
@@ -40,6 +64,12 @@ const Services = () => {
 
   const [editingService, setEditingService] = useState<any>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [serviceSearch, setServiceSearch] = useState('');
+  const [debouncedServiceSearch, setDebouncedServiceSearch] = useState('');
+  const [serviceSort, setServiceSort] = useState<ServiceSort>(() => {
+    if (typeof window === 'undefined') return 'created-desc';
+    return (window.localStorage.getItem(SERVICE_SORT_STORAGE_KEY) as ServiceSort | null) || 'created-desc';
+  });
 
 
 
@@ -52,6 +82,16 @@ const Services = () => {
   });
   const [linkServiceId, setLinkServiceId] = useState('');
   const [linkProfessionalId, setLinkProfessionalId] = useState('');
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedServiceSearch(serviceSearch.trim().toLowerCase()), 300);
+    return () => window.clearTimeout(timeout);
+  }, [serviceSearch]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(SERVICE_SORT_STORAGE_KEY, serviceSort);
+  }, [serviceSort]);
 
   if (!user) {
     return <Navigate to="/auth" replace />;
@@ -115,7 +155,7 @@ const Services = () => {
       const insertData = {
         name: payload.name,
         price: Number(payload.price),
-        duration_minutes: Number(payload.duration_minutes),
+        duration_minutes: parseDurationInput(payload.duration_minutes),
         description: payload.description || null,
         commission_solo: pct,
         commission_with_assistants: pct,
@@ -149,7 +189,7 @@ const Services = () => {
         .update({
           name: payload.name,
           price: Number(payload.price),
-          duration_minutes: Number(payload.duration_minutes),
+          duration_minutes: parseDurationInput(payload.duration_minutes),
           description: payload.description || null,
           commission_solo: pct,
           commission_with_assistants: pct,
@@ -237,9 +277,29 @@ const Services = () => {
     },
   });
 
+  const filteredServices = useMemo(() => {
+    const term = debouncedServiceSearch;
+    const list = [...(services ?? [])].filter((service: any) => {
+      if (!term) return true;
+      return [service.name, service.category, service.description]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term));
+    });
+
+    list.sort((a: any, b: any) => {
+      if (serviceSort === 'name-asc') return String(a.name ?? '').localeCompare(String(b.name ?? ''), 'pt-BR');
+      if (serviceSort === 'name-desc') return String(b.name ?? '').localeCompare(String(a.name ?? ''), 'pt-BR');
+      const aCreated = new Date(a.created_at ?? 0).getTime();
+      const bCreated = new Date(b.created_at ?? 0).getTime();
+      return serviceSort === 'created-asc' ? aCreated - bCreated : bCreated - aCreated;
+    });
+
+    return list;
+  }, [services, debouncedServiceSearch, serviceSort]);
+
   const handleAddService = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newService.name || !newService.price || !newService.duration_minutes) return;
+    if (!newService.name || !newService.price || !newService.duration_minutes || parseDurationInput(newService.duration_minutes) <= 0) return;
     addServiceMutation.mutate(newService);
   };
 
@@ -292,8 +352,8 @@ const Services = () => {
                 <Input id="price" type="number" step="0.01" min="0" value={newService.price} onChange={(e) => setNewService({ ...newService, price: e.target.value })} required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="duration">Duração (min) *</Label>
-                <Input id="duration" type="number" min="0" value={newService.duration_minutes} onChange={(e) => setNewService({ ...newService, duration_minutes: e.target.value })} required />
+                <Label htmlFor="duration">Duração (HH:mm) *</Label>
+                <Input id="duration" type="time" step="60" value={newService.duration_minutes} onChange={(e) => setNewService({ ...newService, duration_minutes: e.target.value })} required />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="description">Descrição</Label>
@@ -326,11 +386,33 @@ const Services = () => {
             <CardTitle>Serviços Cadastrados</CardTitle>
             <CardDescription>Lista de serviços do seu estabelecimento</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-[1fr_260px]">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou categoria..."
+                  value={serviceSearch}
+                  onChange={(e) => setServiceSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={serviceSort} onValueChange={(value) => setServiceSort(value as ServiceSort)}>
+                <SelectTrigger><SelectValue placeholder="Ordenar" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created-desc">Mais recentes</SelectItem>
+                  <SelectItem value="created-asc">Mais antigos</SelectItem>
+                  <SelectItem value="name-asc">Nome A-Z</SelectItem>
+                  <SelectItem value="name-desc">Nome Z-A</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             {isLoading ? (
               <p>Carregando serviços...</p>
             ) : !services || services.length === 0 ? (
               <div className="text-center text-muted-foreground">Nenhum serviço cadastrado ainda.</div>
+            ) : filteredServices.length === 0 ? (
+              <div className="text-center text-muted-foreground">Nenhum serviço encontrado</div>
             ) : (
               <Table>
                 <TableHeader>
@@ -344,15 +426,15 @@ const Services = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {services.map((s: any) => (
+                  {filteredServices.map((s: any) => (
                     <TableRow key={s.id}>
                       <TableCell className="font-medium">{s.name}</TableCell>
                       <TableCell>R$ {Number(s.price).toFixed(2)}</TableCell>
-                      <TableCell>{s.duration_minutes} min</TableCell>
+                      <TableCell>{formatDurationLabel(s.duration_minutes)}</TableCell>
                       <TableCell>{Number(s.commission_solo ?? 0)}%</TableCell>
                       <TableCell>{s.active ? 'Ativo' : 'Inativo'}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => setEditingService(s)}>
+                        <Button variant="ghost" size="icon" onClick={() => setEditingService({ ...s, duration_minutes: formatDurationInput(s.duration_minutes) })}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -556,11 +638,11 @@ const Services = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-duration">Duração (min) *</Label>
+                    <Label htmlFor="edit-duration">Duração (HH:mm) *</Label>
                     <Input
                       id="edit-duration"
-                      type="number"
-                      min="0"
+                      type="time"
+                      step="60"
                       value={editingService.duration_minutes}
                       onChange={(e) => setEditingService({ ...editingService, duration_minutes: e.target.value })}
                       required
