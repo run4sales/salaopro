@@ -1,6 +1,6 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MessageCircle, Plus, Search, Edit, CalendarIcon, Settings, Upload, Download, Trash2 } from 'lucide-react';
+import { MessageCircle, Plus, Search, Edit, CalendarIcon, Settings, Upload, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -22,25 +22,17 @@ import ImportClientsDialog from '@/components/clients/ImportClientsDialog';
 import { exportClientsToXlsx, exportClientsToCsv } from '@/lib/clientImportExport';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-const CLIENT_SORT_STORAGE_KEY = 'clients.sortPreference';
-type ClientSort = 'name-asc' | 'name-desc' | 'created-desc' | 'created-asc' | 'last-service-desc' | 'last-service-asc';
-
 const Clients = () => {
   const { user, profile } = useAuth();
   const [searchParams] = useSearchParams();
   const filterType = searchParams.get('filter');
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
-  const [clientToDelete, setClientToDelete] = useState<any>(null);
-  const [clientSort, setClientSort] = useState<ClientSort>(() => {
-    if (typeof window === 'undefined') return 'created-desc';
-    return (window.localStorage.getItem(CLIENT_SORT_STORAGE_KEY) as ClientSort | null) || 'created-desc';
-  });
   const [editingClient, setEditingClient] = useState<any>(null);
   const [inactiveDaysConfig, setInactiveDaysConfig] = useState(20);
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -55,11 +47,6 @@ const Clients = () => {
     acquisition_source: '',
     notes: '',
   });
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(CLIENT_SORT_STORAGE_KEY, clientSort);
-  }, [clientSort]);
 
   const ACQUISITION_SOURCES = [
     { value: 'indicacao', label: 'Indicação' },
@@ -78,15 +65,15 @@ const Clients = () => {
     queryKey: ['settings', profile?.id],
     queryFn: async () => {
       if (!profile?.id) return null;
-
+      
       console.log('Fetching settings for establishment:', profile.id);
-
+      
       const { data, error } = await supabase
         .from('settings')
         .select('*')
         .eq('establishment_id', profile.id)
         .single();
-
+      
       if (error && error.code !== 'PGRST116') {
         console.error('Settings error:', error);
         throw error;
@@ -116,9 +103,8 @@ const Clients = () => {
         .from('clients')
         .select('*')
         .eq('establishment_id', profile.id)
-        .is('deleted_at', null)
         .order('created_at', { ascending: false });
-
+      
       if (error) {
         console.error('Clients fetch error:', error);
         throw error;
@@ -129,51 +115,34 @@ const Clients = () => {
     enabled: !!profile?.id,
   });
 
-  // Filter, search and sort clients
-  const filteredClients = useMemo(() => {
-    const list = (allClients ?? []).filter(client => {
-      // Search filter
-      const matchesSearch = !searchTerm ||
-        client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.phone.includes(searchTerm) ||
-        (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Filter and search clients
+  const filteredClients = allClients?.filter(client => {
+    // Search filter
+    const matchesSearch = !searchTerm || 
+      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.phone.includes(searchTerm) ||
+      (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    if (!matchesSearch) return false;
 
-      if (!matchesSearch) return false;
+    // Inactive filter
+    if (filterType === 'inactive') {
+      const inactiveDays = settings?.inactive_days_threshold || 20;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - inactiveDays);
+      
+      return !client.last_service_date || new Date(client.last_service_date) < cutoffDate;
+    }
 
-      // Inactive filter
-      if (filterType === 'inactive') {
-        const inactiveDays = settings?.inactive_days_threshold || 20;
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - inactiveDays);
-
-        return !client.last_service_date || new Date(client.last_service_date) < cutoffDate;
-      }
-
-      return true;
-    });
-
-    list.sort((a, b) => {
-      if (clientSort === 'name-asc') return a.name.localeCompare(b.name, 'pt-BR');
-      if (clientSort === 'name-desc') return b.name.localeCompare(a.name, 'pt-BR');
-      if (clientSort === 'last-service-desc' || clientSort === 'last-service-asc') {
-        const aDate = a.last_service_date ? new Date(a.last_service_date).getTime() : 0;
-        const bDate = b.last_service_date ? new Date(b.last_service_date).getTime() : 0;
-        return clientSort === 'last-service-asc' ? aDate - bDate : bDate - aDate;
-      }
-      const aCreated = new Date(a.created_at ?? 0).getTime();
-      const bCreated = new Date(b.created_at ?? 0).getTime();
-      return clientSort === 'created-asc' ? aCreated - bCreated : bCreated - aCreated;
-    });
-
-    return list;
-  }, [allClients, searchTerm, filterType, settings?.inactive_days_threshold, clientSort]);
+    return true;
+  }) || [];
 
   // Add client mutation
   const addClientMutation = useMutation({
     mutationFn: async (clientData: typeof newClient) => {
       console.log('Adding client with data:', clientData);
       console.log('Profile ID:', profile?.id);
-
+      
       const insertData = {
         name: clientData.name,
         phone: clientData.phone,
@@ -185,9 +154,9 @@ const Clients = () => {
         notes: clientData.notes || null,
         establishment_id: profile?.id,
       };
-
+      
       console.log('Insert data:', insertData);
-
+      
       const { data, error } = await supabase
         .from('clients')
         .insert(insertData)
@@ -203,15 +172,15 @@ const Clients = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
-      setNewClient({
-        name: '',
-        phone: '',
-        email: '',
-        gender: '',
-        birth_date: null,
-        last_service_date: null,
+      setNewClient({ 
+        name: '', 
+        phone: '', 
+        email: '', 
+        gender: '', 
+        birth_date: null, 
+        last_service_date: null, 
         acquisition_source: '',
-        notes: ''
+        notes: '' 
       });
       setIsAddDialogOpen(false);
       toast({
@@ -302,25 +271,6 @@ const Clients = () => {
     },
   });
 
-  const deleteClientMutation = useMutation({
-    mutationFn: async (clientId: string) => {
-      const { error } = await (supabase as any)
-        .from('clients')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', clientId)
-        .eq('establishment_id', profile?.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      setClientToDelete(null);
-      toast({ title: 'Cliente excluído', description: 'O cliente foi removido da lista, mantendo o histórico.' });
-    },
-    onError: () => {
-      toast({ title: 'Erro ao excluir cliente', description: 'Tente novamente em instantes.', variant: 'destructive' });
-    },
-  });
-
   const handleAddClient = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newClient.name || !newClient.phone) return;
@@ -382,7 +332,7 @@ const Clients = () => {
               {filterType === 'inactive' ? 'Clientes Inativos' : 'Clientes'}
             </h1>
             <p className="text-muted-foreground">
-              {filterType === 'inactive'
+              {filterType === 'inactive' 
                 ? `Clientes sem atendimento há mais de ${settings?.inactive_days_threshold || 20} dias`
                 : 'Gerencie seus clientes'
               }
@@ -426,27 +376,14 @@ const Clients = () => {
         {/* Search Bar */}
         <Card className="mb-6">
           <CardContent className="p-4">
-            <div className="grid gap-3 md:grid-cols-[1fr_260px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome, telefone ou email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={clientSort} onValueChange={(value) => setClientSort(value as ClientSort)}>
-                <SelectTrigger><SelectValue placeholder="Ordenar" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="created-desc">Mais recentes</SelectItem>
-                  <SelectItem value="created-asc">Mais antigos</SelectItem>
-                  <SelectItem value="name-asc">Nome A-Z</SelectItem>
-                  <SelectItem value="name-desc">Nome Z-A</SelectItem>
-                  <SelectItem value="last-service-desc">Último atendimento mais recente</SelectItem>
-                  <SelectItem value="last-service-asc">Último atendimento mais antigo</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, telefone ou email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
           </CardContent>
         </Card>
@@ -462,9 +399,9 @@ const Clients = () => {
           <Card>
             <CardContent className="p-8 text-center">
               <p className="text-muted-foreground mb-4">
-                {searchTerm
+                {searchTerm 
                   ? 'Nenhum cliente encontrado com os termos de busca.'
-                  : filterType === 'inactive'
+                  : filterType === 'inactive' 
                     ? 'Nenhum cliente inativo encontrado.'
                     : 'Nenhum cliente cadastrado ainda.'
                 }
@@ -485,7 +422,7 @@ const Clients = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table className="min-w-[900px]">
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
@@ -525,14 +462,6 @@ const Clients = () => {
                             <MessageCircle className="h-4 w-4 mr-1" />
                             WhatsApp
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => setClientToDelete(client)}
-                            aria-label={`Excluir ${client.name}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -543,27 +472,6 @@ const Clients = () => {
           </Card>
         )}
       </main>
-
-      <Dialog open={!!clientToDelete} onOpenChange={(open) => { if (!open) setClientToDelete(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Excluir cliente?</DialogTitle>
-            <DialogDescription>
-              {clientToDelete ? `O cliente ${clientToDelete.name} sairá das listas, mas o histórico financeiro e de agendamentos será mantido.` : ''}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setClientToDelete(null)}>Cancelar</Button>
-            <Button
-              variant="destructive"
-              disabled={deleteClientMutation.isPending || !clientToDelete}
-              onClick={() => clientToDelete && deleteClientMutation.mutate(clientToDelete.id)}
-            >
-              {deleteClientMutation.isPending ? 'Excluindo...' : 'Excluir cliente'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Add Client Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
