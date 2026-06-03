@@ -326,26 +326,26 @@ const Clients = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="container mx-auto px-4 py-4 flex flex-col gap-3 md:flex-row md:justify-between md:items-center">
           <div>
-            <h1 className="text-2xl font-bold">
+            <h1 className="text-xl md:text-2xl font-bold">
               {filterType === 'inactive' ? 'Clientes Inativos' : 'Clientes'}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {filterType === 'inactive' 
-                ? `Clientes sem atendimento há mais de ${settings?.inactive_days_threshold || 20} dias`
+                ? `Sem atendimento há mais de ${settings?.inactive_days_threshold || 20} dias`
                 : 'Gerencie seus clientes'
               }
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap">
             <Button variant="outline" size="sm" onClick={() => setIsImportOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
               Importar
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={!allClients?.length}>
+                <Button variant="outline" size="sm" disabled={!allClients?.length} className="w-full md:w-auto">
                   <Download className="h-4 w-4 mr-2" />
                   Exportar
                 </Button>
@@ -363,12 +363,13 @@ const Clients = () => {
               <Settings className="h-4 w-4 mr-2" />
               Configurações
             </Button>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Cliente
             </Button>
           </div>
         </div>
+
       </header>
 
       {/* Content */}
