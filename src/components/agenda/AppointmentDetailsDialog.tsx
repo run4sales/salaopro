@@ -69,6 +69,8 @@ export function AppointmentDetailsDialog({
           <div className="flex justify-between"><span className="text-muted-foreground">Cliente</span><span className="font-medium">{clientName ?? "-"}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Serviço</span><span>{serviceName ?? "-"}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Profissional</span><span>{professionalName ?? "-"}</span></div>
+          {appointment.duration_minutes && <div className="flex justify-between"><span className="text-muted-foreground">Duração</span><span>{appointment.duration_minutes} min</span></div>}
+          {appointment.service_amount != null && <div className="flex justify-between"><span className="text-muted-foreground">Valor</span><span>{Number(appointment.service_amount).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span></div>}
           {appointment.notes && (
             <div className="pt-2 border-t">
               <div className="text-muted-foreground mb-1">Observações</div>

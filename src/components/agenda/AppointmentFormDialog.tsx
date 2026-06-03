@@ -10,7 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { STATUS_OPTIONS } from "@/lib/appointmentStatus";
 import { ChevronDown } from "lucide-react";
 
-type Service = { id: string; name: string; duration_minutes?: number | null };
+type Service = { id: string; name: string; duration_minutes?: number | null; price?: number | null };
+type AppointmentBlock = { id: string; professional_id: string; start_time: string; end_time: string; reason?: string | null };
 type Professional = { id: string; name: string };
 
 interface Props {
@@ -19,6 +20,7 @@ interface Props {
   establishmentId: string;
   services: Service[];
   professionals: Professional[];
+  blocks?: AppointmentBlock[];
   initialDate?: Date | null;
   appointment?: any | null;
   onSaved?: () => void;
@@ -27,6 +29,19 @@ interface Props {
 function toLocalInput(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+
+function formatDurationInput(minutes: number | string | null | undefined) {
+  const total = Math.max(0, Number(minutes) || 0);
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+}
+
+function parseDurationInput(value: string) {
+  const [hours = "0", minutes = "0"] = value.split(":");
+  return (Number(hours) || 0) * 60 + (Number(minutes) || 0);
 }
 
 function MultiSelect({
@@ -78,7 +93,7 @@ function MultiSelect({
 }
 
 export function AppointmentFormDialog({
-  open, onOpenChange, establishmentId, services, professionals, initialDate, appointment, onSaved,
+  open, onOpenChange, establishmentId, services, professionals, blocks = [], initialDate, appointment, onSaved,
 }: Props) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -87,6 +102,8 @@ export function AppointmentFormDialog({
     service_ids: [] as string[],
     professional_ids: [] as string[],
     appointment_date: "",
+    duration_minutes: "",
+    service_amount: "",
     notes: "",
     status: "scheduled",
   });
@@ -106,6 +123,12 @@ export function AppointmentFormDialog({
           service_ids: svcIds.length ? svcIds : (appointment.service_id ? [appointment.service_id] : []),
           professional_ids: profIds.length ? profIds : (appointment.professional_id ? [appointment.professional_id] : []),
           appointment_date: appointment.appointment_date ? toLocalInput(new Date(appointment.appointment_date)) : "",
+          duration_minutes: appointment.duration_minutes
+            ? formatDurationInput(appointment.duration_minutes)
+            : formatDurationInput(services.filter(s => svcIds.includes(s.id)).reduce((sum, s) => sum + (Number(s.duration_minutes) || 0), 0)),
+          service_amount: appointment.service_amount != null
+            ? String(appointment.service_amount)
+            : services.filter(s => svcIds.includes(s.id)).reduce((sum, s) => sum + (Number(s.price) || 0), 0).toFixed(2),
           notes: appointment.notes ?? "",
           status: appointment.status ?? "scheduled",
         });
@@ -113,12 +136,14 @@ export function AppointmentFormDialog({
         setForm({
           client_id: "", service_ids: [], professional_ids: [],
           appointment_date: initialDate ? toLocalInput(initialDate) : "",
+          duration_minutes: "",
+          service_amount: "",
           notes: "", status: "scheduled",
         });
       }
     };
     load();
-  }, [open, appointment, initialDate]);
+  }, [open, appointment, initialDate, services]);
 
   const totalDuration = useMemo(() => {
     return services
@@ -126,28 +151,87 @@ export function AppointmentFormDialog({
       .reduce((sum, s) => sum + (Number(s.duration_minutes) || 0), 0);
   }, [services, form.service_ids]);
 
+  const totalAmount = useMemo(() => {
+    return services
+      .filter(s => form.service_ids.includes(s.id))
+      .reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+  }, [services, form.service_ids]);
+
+  useEffect(() => {
+    if (!open || appointment?.id) return;
+    setForm(f => ({
+      ...f,
+      duration_minutes: totalDuration > 0 ? formatDurationInput(totalDuration) : f.duration_minutes,
+      service_amount: totalAmount > 0 ? totalAmount.toFixed(2) : f.service_amount,
+    }));
+  }, [open, appointment?.id, totalDuration, totalAmount]);
+
   const handleSave = async () => {
-    if (!form.client_id || form.service_ids.length === 0 || form.professional_ids.length === 0 || !form.appointment_date) {
-      toast({ title: "Preencha cliente, serviço(s), profissional(is) e data/hora", variant: "destructive" });
+    const durationMinutes = parseDurationInput(form.duration_minutes);
+    if (!form.client_id || form.service_ids.length === 0 || form.professional_ids.length === 0 || !form.appointment_date || durationMinutes <= 0) {
+      toast({ title: "Preencha cliente, serviço(s), profissional(is), data/hora e duração", variant: "destructive" });
       return;
     }
+
+    const start = new Date(form.appointment_date);
+    const end = new Date(start.getTime() + durationMinutes * 60_000);
+    const blocked = blocks.find((block) =>
+      form.professional_ids.includes(block.professional_id) &&
+      new Date(block.start_time) < end &&
+      new Date(block.end_time) > start
+    );
+
+    if (blocked) {
+      toast({
+        title: "Horário bloqueado",
+        description: blocked.reason || "Existe um bloqueio para este profissional no horário selecionado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { data: conflictingBlocks, error: blocksError } = await (supabase as any)
+      .from("appointment_blocks")
+      .select("id, reason")
+      .eq("establishment_id", establishmentId)
+      .in("professional_id", form.professional_ids)
+      .lt("start_time", end.toISOString())
+      .gt("end_time", start.toISOString())
+      .limit(1);
+
+    if (blocksError) {
+      toast({ title: "Erro ao validar bloqueios", description: blocksError.message, variant: "destructive" });
+      return;
+    }
+
+    if ((conflictingBlocks ?? []).length > 0) {
+      toast({
+        title: "Horário bloqueado",
+        description: conflictingBlocks[0].reason || "Existe um bloqueio para este profissional no horário selecionado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSaving(true);
     const payload = {
       establishment_id: establishmentId,
       client_id: form.client_id,
       service_id: form.service_ids[0],
       professional_id: form.professional_ids[0],
-      appointment_date: new Date(form.appointment_date).toISOString(),
+      appointment_date: start.toISOString(),
+      duration_minutes: durationMinutes,
+      service_amount: Number(form.service_amount) || 0,
       status: form.status,
       notes: form.notes || null,
     };
 
     let appointmentId = appointment?.id as string | undefined;
     if (appointmentId) {
-      const { error } = await supabase.from("appointments").update(payload).eq("id", appointmentId);
+      const { error } = await (supabase as any).from("appointments").update(payload).eq("id", appointmentId);
       if (error) { setSaving(false); toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
     } else {
-      const { data, error } = await supabase.from("appointments").insert(payload).select("id").single();
+      const { data, error } = await (supabase as any).from("appointments").insert(payload).select("id").single();
       if (error || !data) { setSaving(false); toast({ title: "Erro ao salvar", description: error?.message, variant: "destructive" }); return; }
       appointmentId = data.id;
     }
@@ -194,11 +278,21 @@ export function AppointmentFormDialog({
             <MultiSelect
               options={services.map(s => ({ id: s.id, name: s.name }))}
               selected={form.service_ids}
-              onChange={(v) => setForm(f => ({ ...f, service_ids: v }))}
+              onChange={(value) => {
+                const selectedServices = services.filter(service => value.includes(service.id));
+                const nextDuration = selectedServices.reduce((sum, service) => sum + (Number(service.duration_minutes) || 0), 0);
+                const nextAmount = selectedServices.reduce((sum, service) => sum + (Number(service.price) || 0), 0);
+                setForm(f => ({
+                  ...f,
+                  service_ids: value,
+                  duration_minutes: nextDuration > 0 ? formatDurationInput(nextDuration) : f.duration_minutes,
+                  service_amount: nextAmount > 0 ? nextAmount.toFixed(2) : f.service_amount,
+                }));
+              }}
               placeholder="Selecione os serviços"
             />
             {totalDuration > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">Duração total: {totalDuration} min</p>
+              <p className="text-xs text-muted-foreground mt-1">Duração padrão dos serviços: {formatDurationInput(totalDuration)}</p>
             )}
           </div>
           <div>
@@ -210,9 +304,19 @@ export function AppointmentFormDialog({
               placeholder="Selecione os profissionais"
             />
           </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-sm text-muted-foreground">Data e hora *</label>
+              <Input type="datetime-local" value={form.appointment_date} onChange={e => setForm(f => ({ ...f, appointment_date: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">Duração *</label>
+              <Input type="time" step="60" value={form.duration_minutes} onChange={e => setForm(f => ({ ...f, duration_minutes: e.target.value }))} />
+            </div>
+          </div>
           <div>
-            <label className="text-sm text-muted-foreground">Data e hora *</label>
-            <Input type="datetime-local" value={form.appointment_date} onChange={e => setForm(f => ({ ...f, appointment_date: e.target.value }))} />
+            <label className="text-sm text-muted-foreground">Valor do serviço (R$)</label>
+            <Input type="number" min="0" step="0.01" value={form.service_amount} onChange={e => setForm(f => ({ ...f, service_amount: e.target.value }))} placeholder="0,00" />
           </div>
           <div>
             <label className="text-sm text-muted-foreground">Status</label>
