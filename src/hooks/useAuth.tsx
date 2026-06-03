@@ -11,6 +11,8 @@ interface AuthContextType {
   profile: any | null;
   signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
+  updatePassword: (password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   loading: boolean;
 }
@@ -158,6 +160,48 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return { error };
   };
 
+  const resetPassword = async (email: string) => {
+    const redirectUrl = `${window.location.origin}/auth?mode=reset-password`;
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
+
+    if (error) {
+      toast({
+        title: "Erro ao enviar recuperação",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Email de recuperação enviado",
+        description: "Confira sua caixa de entrada para criar uma nova senha.",
+      });
+    }
+
+    return { error };
+  };
+
+  const updatePassword = async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+
+    if (error) {
+      toast({
+        title: "Erro ao atualizar senha",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Senha atualizada",
+        description: "Sua nova senha já pode ser usada para acessar o sistema.",
+      });
+    }
+
+    return { error };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -177,6 +221,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     profile,
     signUp,
     signIn,
+    resetPassword,
+    updatePassword,
     signOut,
     loading,
     establishmentRole,
