@@ -422,52 +422,103 @@ const Clients = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Origem</TableHead>
-                    <TableHead>Total Gasto</TableHead>
-                    <TableHead>Visitas</TableHead>
-                    <TableHead>Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredClients.map((client) => (
-                    <TableRow key={client.id}>
-                      <TableCell className="font-medium">{client.name}</TableCell>
-                      <TableCell>{client.phone}</TableCell>
-                      <TableCell>{client.email || '-'}</TableCell>
-                      <TableCell>{getStatusBadge(client.last_service_date)}</TableCell>
-                      <TableCell>{ACQUISITION_SOURCES.find(s => s.value === (client as any).acquisition_source)?.label || '-'}</TableCell>
-                      <TableCell>R$ {Number(client.total_spent).toFixed(2)}</TableCell>
-                      <TableCell>{client.visit_count}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEditClient(client)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => openWhatsApp(client.phone, client.name)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <MessageCircle className="h-4 w-4 mr-1" />
-                            WhatsApp
-                          </Button>
-                        </div>
-                      </TableCell>
+              <div className="grid gap-3 md:hidden">
+                {filteredClients.map((client) => (
+                  <article key={client.id} className="rounded-lg border bg-card p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="truncate font-semibold">{client.name}</h3>
+                        <p className="text-sm text-muted-foreground">{client.phone}</p>
+                        <p className="truncate text-sm text-muted-foreground">{client.email || 'Sem email'}</p>
+                      </div>
+                      <div className="shrink-0">{getStatusBadge(client.last_service_date)}</div>
+                    </div>
+
+                    <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <dt className="text-muted-foreground">Origem</dt>
+                        <dd className="font-medium">{ACQUISITION_SOURCES.find(s => s.value === (client as any).acquisition_source)?.label || '-'}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Total gasto</dt>
+                        <dd className="font-medium">R$ {Number(client.total_spent).toFixed(2)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Visitas</dt>
+                        <dd className="font-medium">{client.visit_count}</dd>
+                      </div>
+                    </dl>
+
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEditClient(client)}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => openWhatsApp(client.phone, client.name)}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        WhatsApp
+                      </Button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="hidden md:block">
+                <Table className="min-w-[900px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Origem</TableHead>
+                      <TableHead>Total Gasto</TableHead>
+                      <TableHead>Visitas</TableHead>
+                      <TableHead>Ações</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredClients.map((client) => (
+                      <TableRow key={client.id}>
+                        <TableCell className="font-medium">{client.name}</TableCell>
+                        <TableCell>{client.phone}</TableCell>
+                        <TableCell>{client.email || '-'}</TableCell>
+                        <TableCell>{getStatusBadge(client.last_service_date)}</TableCell>
+                        <TableCell>{ACQUISITION_SOURCES.find(s => s.value === (client as any).acquisition_source)?.label || '-'}</TableCell>
+                        <TableCell>R$ {Number(client.total_spent).toFixed(2)}</TableCell>
+                        <TableCell>{client.visit_count}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditClient(client)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => openWhatsApp(client.phone, client.name)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <MessageCircle className="h-4 w-4 mr-1" />
+                              WhatsApp
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         )}
