@@ -416,23 +416,23 @@ const Clients = () => {
             </CardContent>
           </Card>
         ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>
+          <Card className="min-w-0 overflow-hidden">
+            <CardHeader className="px-4 sm:px-6">
+              <CardTitle className="text-xl leading-tight sm:text-2xl">
                 {filteredClients.length} cliente{filteredClients.length !== 1 ? 's' : ''} encontrado{filteredClients.length !== 1 ? 's' : ''}
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 md:hidden">
+            <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
+              <div className="grid min-w-0 gap-3 md:hidden">
                 {filteredClients.map((client) => (
-                  <article key={client.id} className="rounded-lg border bg-card p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
+                  <article key={client.id} className="min-w-0 rounded-lg border bg-card p-4 shadow-sm">
+                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                      <div className="min-w-0 space-y-0.5">
                         <h3 className="truncate font-semibold">{client.name}</h3>
-                        <p className="text-sm text-muted-foreground">{client.phone}</p>
+                        <p className="break-words text-sm text-muted-foreground">{client.phone}</p>
                         <p className="truncate text-sm text-muted-foreground">{client.email || 'Sem email'}</p>
                       </div>
-                      <div className="shrink-0">{getStatusBadge(client.last_service_date)}</div>
+                      <div className="flex min-w-0">{getStatusBadge(client.last_service_date)}</div>
                     </div>
 
                     <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -450,10 +450,11 @@ const Clients = () => {
                       </div>
                     </dl>
 
-                    <div className="mt-4 grid grid-cols-2 gap-2">
+                    <div className="mt-4 grid min-w-0 grid-cols-2 gap-2">
                       <Button
                         size="sm"
                         variant="outline"
+                        className="min-w-0 px-2"
                         onClick={() => handleEditClient(client)}
                       >
                         <Edit className="h-4 w-4 mr-2" />
@@ -462,7 +463,7 @@ const Clients = () => {
                       <Button
                         size="sm"
                         onClick={() => openWhatsApp(client.phone, client.name)}
-                        className="bg-green-600 hover:bg-green-700"
+                        className="min-w-0 bg-success px-2 hover:bg-success/90"
                       >
                         <MessageCircle className="h-4 w-4 mr-2" />
                         WhatsApp
