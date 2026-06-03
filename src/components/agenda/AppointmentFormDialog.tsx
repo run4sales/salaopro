@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ClientCombobox } from "@/components/ClientCombobox";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +37,8 @@ function MultiSelect({
   onChange: (v: string[]) => void;
   placeholder: string;
 }) {
+  const [open, setOpen] = useState(false);
+
   const label = useMemo(() => {
     if (!selected.length) return placeholder;
     const names = options.filter(o => selected.includes(o.id)).map(o => o.name);
@@ -50,19 +51,19 @@ function MultiSelect({
   };
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" className="mt-1 w-full min-w-0 justify-between font-normal">
-          <span className={selected.length ? "truncate" : "truncate text-muted-foreground"}>{label}</span>
-          <ChevronDown className="h-4 w-4 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        side="bottom"
-        collisionPadding={16}
-        className="z-[70] w-[--radix-popover-trigger-width] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain p-2 [max-height:min(var(--radix-popover-content-available-height),20rem)] [-webkit-overflow-scrolling:touch]"
+    <div className="mt-1 space-y-2">
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full min-w-0 justify-between font-normal"
+        onClick={() => setOpen(value => !value)}
       >
+        <span className={selected.length ? "truncate" : "truncate text-muted-foreground"}>{label}</span>
+        <ChevronDown className={`h-4 w-4 opacity-50 transition-transform ${open ? "rotate-180" : ""}`} />
+      </Button>
+
+      {open && (
+        <div className="max-h-[40svh] overflow-y-auto overscroll-contain rounded-md border bg-popover p-2 text-popover-foreground [-webkit-overflow-scrolling:touch]">
         {options.length === 0 && <p className="text-sm text-muted-foreground p-2">Nenhuma opção</p>}
         {options.map(opt => (
           <label key={opt.id} className="flex min-w-0 cursor-pointer items-center gap-2 rounded p-3 hover:bg-accent sm:p-2">
@@ -70,8 +71,9 @@ function MultiSelect({
             <span className="min-w-0 flex-1 break-words text-sm leading-snug">{opt.name}</span>
           </label>
         ))}
-      </PopoverContent>
-    </Popover>
+        </div>
+      )}
+    </div>
   );
 }
 
