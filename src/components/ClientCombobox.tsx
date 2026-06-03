@@ -146,44 +146,47 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
         />
       </div>
 
-      <div className="max-h-48 overflow-y-auto rounded-md border bg-background">
-        {isLoading && (
-          <div className="px-3 py-3 text-sm text-muted-foreground text-center">
-            Carregando clientes...
-          </div>
-        )}
-        {isError && (
-          <div className="px-3 py-3 text-sm text-destructive text-center">
-            Erro ao carregar clientes.
-          </div>
-        )}
-        {!isLoading && !isError && visibleClients.map(c => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => { onChange(c.id, c); setSearch(""); }}
-            className="w-full text-left px-3 py-2 hover:bg-muted text-sm border-b last:border-0 flex items-center justify-between"
-          >
-            <span className="font-medium">{c.name}</span>
-            {c.phone && <span className="text-xs text-muted-foreground">{c.phone}</span>}
-          </button>
-        ))}
-        {!isLoading && !isError && filtered.length === 0 && (
-          <div className="px-3 py-3 text-sm text-muted-foreground text-center">
-            {search ? "Nenhum cliente encontrado." : "Digite para buscar..."}
-          </div>
-        )}
-        {!isLoading && !isError && hasMoreClients && (
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full rounded-none text-xs text-muted-foreground"
-            onClick={() => setVisibleCount(count => count + VISIBLE_CLIENTS_INCREMENT)}
-          >
-            Mostrar mais {Math.min(VISIBLE_CLIENTS_INCREMENT, filtered.length - visibleClients.length)} de {filtered.length} clientes
-          </Button>
-        )}
-      </div>
+      {search.trim() && (
+        <div className="max-h-48 overflow-y-auto rounded-md border bg-background">
+          {isLoading && (
+            <div className="px-3 py-3 text-sm text-muted-foreground text-center">
+              Carregando clientes...
+            </div>
+          )}
+          {isError && (
+            <div className="px-3 py-3 text-sm text-destructive text-center">
+              Erro ao carregar clientes.
+            </div>
+          )}
+          {!isLoading && !isError && visibleClients.map(c => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => { onChange(c.id, c); setSearch(""); }}
+              className="w-full text-left px-3 py-2 hover:bg-muted text-sm border-b last:border-0 flex items-center justify-between"
+            >
+              <span className="font-medium">{c.name}</span>
+              {c.phone && <span className="text-xs text-muted-foreground">{c.phone}</span>}
+            </button>
+          ))}
+          {!isLoading && !isError && filtered.length === 0 && (
+            <div className="px-3 py-3 text-sm text-muted-foreground text-center">
+              Nenhum cliente encontrado.
+            </div>
+          )}
+          {!isLoading && !isError && hasMoreClients && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full rounded-none text-xs text-muted-foreground"
+              onClick={() => setVisibleCount(count => count + VISIBLE_CLIENTS_INCREMENT)}
+            >
+              Mostrar mais {Math.min(VISIBLE_CLIENTS_INCREMENT, filtered.length - visibleClients.length)} de {filtered.length} clientes
+            </Button>
+          )}
+        </div>
+      )}
+
 
       <Button type="button" variant="outline" className="w-full" onClick={openWithSearch}>
         <UserPlus className="h-4 w-4 mr-2" /> Cadastrar novo cliente
