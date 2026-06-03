@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ClientCombobox } from "@/components/ClientCombobox";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +37,8 @@ function MultiSelect({
   onChange: (v: string[]) => void;
   placeholder: string;
 }) {
+  const [open, setOpen] = useState(false);
+
   const label = useMemo(() => {
     if (!selected.length) return placeholder;
     const names = options.filter(o => selected.includes(o.id)).map(o => o.name);
@@ -50,23 +51,29 @@ function MultiSelect({
   };
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" className="w-full justify-between mt-1 font-normal">
-          <span className={selected.length ? "" : "text-muted-foreground"}>{label}</span>
-          <ChevronDown className="h-4 w-4 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-2 max-h-72 overflow-auto" align="start">
+    <div className="mt-1 space-y-2">
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full min-w-0 justify-between font-normal"
+        onClick={() => setOpen(value => !value)}
+      >
+        <span className={selected.length ? "truncate" : "truncate text-muted-foreground"}>{label}</span>
+        <ChevronDown className={`h-4 w-4 opacity-50 transition-transform ${open ? "rotate-180" : ""}`} />
+      </Button>
+
+      {open && (
+        <div className="max-h-[40svh] overflow-y-auto overscroll-contain rounded-md border bg-popover p-2 text-popover-foreground [-webkit-overflow-scrolling:touch]">
         {options.length === 0 && <p className="text-sm text-muted-foreground p-2">Nenhuma opção</p>}
         {options.map(opt => (
-          <label key={opt.id} className="flex items-center gap-2 p-2 rounded hover:bg-accent cursor-pointer">
+          <label key={opt.id} className="flex min-w-0 cursor-pointer items-center gap-2 rounded p-3 hover:bg-accent sm:p-2">
             <Checkbox checked={selected.includes(opt.id)} onCheckedChange={() => toggle(opt.id)} />
-            <span className="text-sm">{opt.name}</span>
+            <span className="min-w-0 flex-1 break-words text-sm leading-snug">{opt.name}</span>
           </label>
         ))}
-      </PopoverContent>
-    </Popover>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -167,11 +174,11 @@ export function AppointmentFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="flex max-h-[92svh] w-[calc(100vw-1rem)] max-w-lg grid-rows-none flex-col gap-3 overflow-hidden p-4 sm:w-[calc(100%-2rem)] sm:p-6">
+        <DialogHeader className="shrink-0 pr-8">
           <DialogTitle>{appointment?.id ? "Editar agendamento" : "Novo agendamento"}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]">
           <div>
             <label className="text-sm text-muted-foreground">Cliente *</label>
             <div className="mt-1">
