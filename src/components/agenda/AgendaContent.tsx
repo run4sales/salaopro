@@ -29,27 +29,6 @@ const ALL_PROFESSIONALS = "all";
 const FILTER_STORAGE_KEY = "agenda.professionalFilter";
 const APPOINTMENT_ID_BATCH_SIZE = 500;
 
-function isRecoverableAgendaResourceError(error: any, resourceName: string) {
-  if (!error) return false;
-
-  const code = String(error.code ?? "");
-  const message = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
-
-  return (
-    ["42P01", "42501", "PGRST200", "PGRST205"].includes(code) ||
-    message.includes(resourceName.toLowerCase()) ||
-    message.includes("schema cache") ||
-    message.includes("permission denied") ||
-    message.includes("does not exist") ||
-    message.includes("could not find")
-  );
-}
-
-function isVisibleAppointment(appointment: any) {
-  const status = String(appointment?.status ?? "").toLowerCase();
-  return status !== "canceled" && status !== "cancelled";
-}
-
 const getWeekOptions = () => ({ locale: ptBR, weekStartsOn: 0 as const });
 
 function getRangeForPeriod(periodMode: PeriodMode, date: Date) {
@@ -179,6 +158,7 @@ export default function AgendaContent() {
         .eq("establishment_id", establishmentId)
         .gte("appointment_date", range.start.toISOString())
         .lte("appointment_date", range.end.toISOString())
+        .or("status.is.null,status.not.in.(canceled,cancelled)")
         .order("appointment_date", { ascending: true });
 
       const fetchAppointmentsByProfessional = async () => {
@@ -191,14 +171,7 @@ export default function AgendaContent() {
           .eq("establishment_id", establishmentId)
           .eq("professional_id", effectiveProfessionalId);
 
-        if (linkedIdsRes.error) {
-          if (isRecoverableAgendaResourceError(linkedIdsRes.error, "appointment_professionals")) {
-            console.warn("Agenda carregada sem vínculos de múltiplos profissionais:", linkedIdsRes.error);
-            return primaryRes;
-          }
-
-          return linkedIdsRes;
-        }
+        if (linkedIdsRes.error) return linkedIdsRes;
 
         const linkedAppointmentIds = [
           ...new Set((linkedIdsRes.data ?? []).map((row: any) => row.appointment_id).filter(Boolean)),
@@ -214,6 +187,7 @@ export default function AgendaContent() {
             .in("id", ids)
             .gte("appointment_date", range.start.toISOString())
             .lte("appointment_date", range.end.toISOString())
+            .or("status.is.null,status.not.in.(canceled,cancelled)")
             .order("appointment_date", { ascending: true });
 
           if (linkedRes.error) return linkedRes;
@@ -275,11 +249,9 @@ export default function AgendaContent() {
       if (apptRes.error) throw apptRes.error;
       if (servicesRes.error) throw servicesRes.error;
       if (profRes.error) throw profRes.error;
-      if (blocksRes.error) {
-        console.warn("Agenda carregada sem bloqueios de horário:", blocksRes.error);
-      }
+      if (blocksRes.error) throw blocksRes.error;
 
-      const appts = (apptRes.data ?? []).filter(isVisibleAppointment);
+      const appts = apptRes.data ?? [];
       const services = servicesRes.data ?? [];
       const activeProfessionals = (profRes.data ?? []) as Professional[];
       const clientIds = [...new Set(appts.map((appt: any) => appt.client_id).filter(Boolean))];
@@ -292,7 +264,7 @@ export default function AgendaContent() {
       const serviceMap = new Map(services.map((s: any) => [s.id, s]));
       const profMap = new Map(activeProfessionals.map((p: any) => [p.id, p.name]));
       const clientMap = new Map(((clientsRes.data ?? []) as any[]).map((c: any) => [c.id, c.name]));
-      return { appts, blocks: (blocksRes.error ? [] : blocksRes.data ?? []) as AppointmentBlock[], serviceMap, profMap, clientMap, services, professionals: activeProfessionals };
+      return { appts, blocks: (blocksRes.data ?? []) as AppointmentBlock[], serviceMap, profMap, clientMap, services, professionals: activeProfessionals };
     },
   });
 
