@@ -304,7 +304,7 @@ const Clients = () => {
 
   const getStatusBadge = (lastServiceDate: string | null) => {
     if (!lastServiceDate) {
-      return <Badge variant="secondary">Novo Cliente</Badge>;
+      return <Badge variant="secondary" className="max-w-full whitespace-normal text-center">Novo Cliente</Badge>;
     }
 
     const daysSinceLastService = Math.floor(
@@ -314,11 +314,11 @@ const Clients = () => {
     const inactiveDays = settings?.inactive_days_threshold || 20;
 
     if (daysSinceLastService > inactiveDays) {
-      return <Badge variant="destructive">Inativo ({daysSinceLastService} dias)</Badge>;
+      return <Badge variant="destructive" className="max-w-full whitespace-normal text-center">Inativo ({daysSinceLastService} dias)</Badge>;
     } else if (daysSinceLastService > inactiveDays / 2) {
-      return <Badge variant="outline">Atenção ({daysSinceLastService} dias)</Badge>;
+      return <Badge variant="outline" className="max-w-full whitespace-normal text-center">Atenção ({daysSinceLastService} dias)</Badge>;
     } else {
-      return <Badge variant="default">Ativo ({daysSinceLastService} dias)</Badge>;
+      return <Badge variant="default" className="max-w-full whitespace-normal text-center">Ativo ({daysSinceLastService} dias)</Badge>;
     }
   };
 
