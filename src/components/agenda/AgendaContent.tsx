@@ -28,32 +28,20 @@ type AppointmentBlock = { id: string; professional_id: string; start_time: strin
 const ALL_PROFESSIONALS = "all";
 const FILTER_STORAGE_KEY = "agenda.professionalFilter";
 const APPOINTMENT_ID_BATCH_SIZE = 500;
-const APPOINTMENT_FIELDS = "id, establishment_id, appointment_date, duration_minutes, service_amount, status, notes, client_id, service_id, professional_id";
-const APPOINTMENT_CORE_FIELDS = "id, establishment_id, appointment_date, status, notes, client_id, service_id, professional_id";
-const APPOINTMENT_MIN_FIELDS = "id, establishment_id, appointment_date, notes, client_id, service_id, professional_id";
-const SERVICE_FIELDS = "id, name, duration_minutes, price";
-const SERVICE_CORE_FIELDS = "id, name";
 
-function getSupabaseErrorText(error: any) {
-  return `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""}`.toLowerCase();
-}
-
-function isRecoverableAgendaDataError(error: any, resourceName?: string) {
+function isRecoverableAgendaResourceError(error: any, resourceName: string) {
   if (!error) return false;
 
   const code = String(error.code ?? "");
-  const message = getSupabaseErrorText(error);
-  const resource = resourceName?.toLowerCase();
+  const message = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
 
   return (
-    ["42P01", "42703", "42501", "22P02", "PGRST100", "PGRST200", "PGRST204", "PGRST205"].includes(code) ||
-    (resource ? message.includes(resource) : false) ||
+    ["42P01", "42501", "PGRST200", "PGRST205"].includes(code) ||
+    message.includes(resourceName.toLowerCase()) ||
     message.includes("schema cache") ||
     message.includes("permission denied") ||
     message.includes("does not exist") ||
-    message.includes("could not find") ||
-    message.includes("failed to parse logic tree") ||
-    message.includes("invalid input value for enum")
+    message.includes("could not find")
   );
 }
 
@@ -184,71 +172,17 @@ export default function AgendaContent() {
     queryKey: ["agenda", establishmentId, range.start.toISOString(), range.end.toISOString(), effectiveProfessionalId],
     enabled: !!establishmentId && (!isEmployee || !!professionalId),
     queryFn: async () => {
-      const appointmentRangeQuery = (fields: string, filterCanceled = true) => {
-        let query = supabase
-          .from("appointments")
-          .select(fields)
-          .eq("establishment_id", establishmentId)
-          .gte("appointment_date", range.start.toISOString())
-          .lte("appointment_date", range.end.toISOString());
-
-        if (filterCanceled) {
-          query = query.or("status.is.null,status.not.in.(canceled,cancelled)");
-        }
-
-        return query.order("appointment_date", { ascending: true });
-      };
-
-      const fetchAppointmentRange = async (configureQuery?: (query: any) => any) => {
-        const run = (fields: string, filterCanceled = true) => {
-          const query = appointmentRangeQuery(fields, filterCanceled);
-          return configureQuery ? configureQuery(query) : query;
-        };
-
-        let response = await run(APPOINTMENT_FIELDS);
-        if (response.error && isRecoverableAgendaDataError(response.error, "appointments")) {
-          console.warn("Agenda: tentando carregar agendamentos sem colunas opcionais:", response.error);
-          response = await run(APPOINTMENT_CORE_FIELDS);
-        }
-
-        if (response.error && isRecoverableAgendaDataError(response.error, "appointments")) {
-          console.warn("Agenda: tentando carregar agendamentos sem filtro remoto de status:", response.error);
-          response = await run(APPOINTMENT_CORE_FIELDS, false);
-        }
-
-        if (response.error && isRecoverableAgendaDataError(response.error, "appointments")) {
-          console.warn("Agenda: tentando carregar agendamentos com campos mínimos:", response.error);
-          response = await run(APPOINTMENT_MIN_FIELDS, false);
-        }
-
-        if (response.data) {
-          return { ...response, data: response.data.filter(isVisibleAppointment) };
-        }
-
-        return response;
-      };
-
-      const fetchServices = async () => {
-        let response = await supabase
-          .from("services")
-          .select(SERVICE_FIELDS)
-          .eq("establishment_id", establishmentId)
-          .eq("active", true);
-
-        if (response.error && isRecoverableAgendaDataError(response.error, "services")) {
-          console.warn("Agenda: tentando carregar serviços sem colunas opcionais:", response.error);
-          response = await supabase
-            .from("services")
-            .select(SERVICE_CORE_FIELDS)
-            .eq("establishment_id", establishmentId)
-            .eq("active", true);
-        }
-
-        return response;
-      };
+      const appointmentFields = "id, establishment_id, appointment_date, duration_minutes, service_amount, status, notes, client_id, service_id, professional_id";
+      const appointmentRangeQuery = () => supabase
+        .from("appointments")
+        .select(appointmentFields)
+        .eq("establishment_id", establishmentId)
+        .gte("appointment_date", range.start.toISOString())
+        .lte("appointment_date", range.end.toISOString())
+        .order("appointment_date", { ascending: true });
 
       const fetchAppointmentsByProfessional = async () => {
-        const primaryRes = await fetchAppointmentRange((query) => query.eq("professional_id", effectiveProfessionalId));
+        const primaryRes = await appointmentRangeQuery().eq("professional_id", effectiveProfessionalId);
         if (primaryRes.error) return primaryRes;
 
         const linkedIdsRes = await supabase
@@ -258,7 +192,7 @@ export default function AgendaContent() {
           .eq("professional_id", effectiveProfessionalId);
 
         if (linkedIdsRes.error) {
-          if (isRecoverableAgendaDataError(linkedIdsRes.error, "appointment_professionals")) {
+          if (isRecoverableAgendaResourceError(linkedIdsRes.error, "appointment_professionals")) {
             console.warn("Agenda carregada sem vínculos de múltiplos profissionais:", linkedIdsRes.error);
             return primaryRes;
           }
@@ -273,7 +207,14 @@ export default function AgendaContent() {
 
         for (let i = 0; i < linkedAppointmentIds.length; i += APPOINTMENT_ID_BATCH_SIZE) {
           const ids = linkedAppointmentIds.slice(i, i + APPOINTMENT_ID_BATCH_SIZE);
-          const linkedRes = await fetchAppointmentRange((query) => query.in("id", ids));
+          const linkedRes = await supabase
+            .from("appointments")
+            .select(appointmentFields)
+            .eq("establishment_id", establishmentId)
+            .in("id", ids)
+            .gte("appointment_date", range.start.toISOString())
+            .lte("appointment_date", range.end.toISOString())
+            .order("appointment_date", { ascending: true });
 
           if (linkedRes.error) return linkedRes;
           linkedAppointments.push(...(linkedRes.data ?? []));
@@ -294,7 +235,7 @@ export default function AgendaContent() {
 
       const appointmentsPromise = effectiveProfessionalId
         ? fetchAppointmentsByProfessional()
-        : fetchAppointmentRange();
+        : appointmentRangeQuery();
 
       let professionalsQuery = supabase
         .from("professionals")
@@ -326,42 +267,31 @@ export default function AgendaContent() {
 
       const [apptRes, servicesRes, profRes, blocksRes] = await Promise.all([
         appointmentsPromise,
-        fetchServices(),
+        supabase.from("services").select("id, name, duration_minutes, price").eq("establishment_id", establishmentId).eq("active", true),
         professionalsQuery,
         blocksQuery,
       ]);
 
       if (apptRes.error) throw apptRes.error;
-
-      if (servicesRes.error) {
-        console.warn("Agenda carregada sem catálogo de serviços:", servicesRes.error);
-      }
-
-      if (profRes.error) {
-        console.warn("Agenda carregada sem lista auxiliar de profissionais:", profRes.error);
-      }
-
-      if (blocksRes.error && !isRecoverableAgendaDataError(blocksRes.error, "appointment_blocks")) {
-        console.warn("Agenda carregada sem bloqueios de horário:", blocksRes.error);
-      } else if (blocksRes.error) {
+      if (servicesRes.error) throw servicesRes.error;
+      if (profRes.error) throw profRes.error;
+      if (blocksRes.error) {
         console.warn("Agenda carregada sem bloqueios de horário:", blocksRes.error);
       }
 
-      const appts = apptRes.data ?? [];
-      const services = servicesRes.error ? [] : servicesRes.data ?? [];
-      const activeProfessionals = (profRes.error ? professionals : profRes.data ?? []) as Professional[];
+      const appts = (apptRes.data ?? []).filter(isVisibleAppointment);
+      const services = servicesRes.data ?? [];
+      const activeProfessionals = (profRes.data ?? []) as Professional[];
       const clientIds = [...new Set(appts.map((appt: any) => appt.client_id).filter(Boolean))];
       const clientsRes = clientIds.length
         ? await supabase.from("clients").select("id, name").in("id", clientIds)
         : { data: [], error: null };
 
-      if (clientsRes.error) {
-        console.warn("Agenda carregada sem nomes de clientes:", clientsRes.error);
-      }
+      if (clientsRes.error) throw clientsRes.error;
 
-      const serviceMap = new Map(services.map((service: any) => [service.id, service]));
-      const profMap = new Map(activeProfessionals.map((professional: any) => [professional.id, professional.name]));
-      const clientMap = new Map((clientsRes.error ? [] : ((clientsRes.data ?? []) as any[])).map((client: any) => [client.id, client.name]));
+      const serviceMap = new Map(services.map((s: any) => [s.id, s]));
+      const profMap = new Map(activeProfessionals.map((p: any) => [p.id, p.name]));
+      const clientMap = new Map(((clientsRes.data ?? []) as any[]).map((c: any) => [c.id, c.name]));
       return { appts, blocks: (blocksRes.error ? [] : blocksRes.data ?? []) as AppointmentBlock[], serviceMap, profMap, clientMap, services, professionals: activeProfessionals };
     },
   });
