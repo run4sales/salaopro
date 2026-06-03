@@ -12,10 +12,15 @@ type Sub = {
   started_at: string;
   canceled_at: string | null;
   plan_id: string | null;
-  plan?: { monthly_price: number } | null;
+  plan?: { monthly_price: number; name?: string; slug?: string } | null;
 };
-type Profile = { id: string; created_at: string; plan?: string | null };
-type Plan = { id: string; slug: string; monthly_price: number };
+type Profile = {
+  id: string;
+  created_at: string;
+  plan?: string | null;
+  selected_plan_slug?: string | null;
+};
+type Plan = { id: string; name: string; slug: string; monthly_price: number; display_order: number };
 
 export default function AdminDashboard() {
   const metrics = useQuery({
@@ -24,33 +29,53 @@ export default function AdminDashboard() {
       const [{ data: subs, error: subsError }, { data: profiles, error: profilesError }, { data: plans, error: plansError }] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
-          .select("establishment_id, status, monthly_amount, started_at, canceled_at, plan_id, subscription_plans!subscriptions_plan_id_fkey(monthly_price)"),
-        (supabase as any).from("profiles").select("id, created_at, plan"),
-        (supabase as any).from("subscription_plans").select("id, slug, monthly_price"),
+          .select("establishment_id, status, monthly_amount, started_at, canceled_at, plan_id, subscription_plans!subscriptions_plan_id_fkey(id, name, slug, monthly_price, display_order)"),
+        (supabase as any).from("profiles").select("id, created_at, plan, selected_plan_slug"),
+        (supabase as any).from("subscription_plans").select("id, name, slug, monthly_price, display_order").order("display_order"),
       ]);
       if (subsError) throw subsError;
       if (profilesError) throw profilesError;
       if (plansError) throw plansError;
 
+      const plansById = new Map<string, Plan>();
       const plansBySlug = new Map<string, Plan>();
-      (plans ?? []).forEach((p: Plan) => plansBySlug.set(p.slug, p));
+      (plans ?? []).forEach((p: Plan) => {
+        plansById.set(p.id, p);
+        plansBySlug.set(p.slug, p);
+      });
+
+      const getProfilePlan = (profile: Profile) => {
+        const selectedSlug = profile.selected_plan_slug || (profile.plan !== "trial" ? profile.plan : null);
+        return selectedSlug ? plansBySlug.get(selectedSlug) : undefined;
+      };
+
       const subsByEstablishment = new Map<string, Sub>();
       (subs ?? []).forEach((s: any) => {
+        const relationPlan = s.subscription_plans as Plan | null;
+        const plan = relationPlan ?? (s.plan_id ? plansById.get(s.plan_id) : undefined);
         subsByEstablishment.set(s.establishment_id, {
           establishment_id: s.establishment_id,
           status: s.status,
-          monthly_amount: Number(s.monthly_amount || s.subscription_plans?.monthly_price || 0),
+          monthly_amount: Number(s.monthly_amount || plan?.monthly_price || 0),
           started_at: s.started_at,
           canceled_at: s.canceled_at,
-          plan_id: s.plan_id,
-          plan: s.subscription_plans,
+          plan_id: s.plan_id ?? plan?.id ?? null,
+          plan: plan ? { monthly_price: plan.monthly_price, name: plan.name, slug: plan.slug } : null,
         });
       });
 
       const list = (profiles ?? []).map((p: Profile) => {
         const sub = subsByEstablishment.get(p.id);
-        if (sub) return sub;
-        const chosenPlan = p.plan && p.plan !== "trial" ? plansBySlug.get(p.plan) : undefined;
+        const chosenPlan = getProfilePlan(p);
+        const plan = sub?.plan ?? (chosenPlan ? { monthly_price: chosenPlan.monthly_price, name: chosenPlan.name, slug: chosenPlan.slug } : null);
+        if (sub) {
+          return {
+            ...sub,
+            monthly_amount: Number(sub.monthly_amount || chosenPlan?.monthly_price || 0),
+            plan_id: sub.plan_id ?? chosenPlan?.id ?? null,
+            plan,
+          } satisfies Sub;
+        }
         return {
           establishment_id: p.id,
           status: "trial",
@@ -58,22 +83,24 @@ export default function AdminDashboard() {
           started_at: p.created_at,
           canceled_at: null,
           plan_id: chosenPlan?.id ?? null,
-          plan: chosenPlan ? { monthly_price: chosenPlan.monthly_price } : null,
+          plan,
         } satisfies Sub;
       });
 
-      return { list, profiles: (profiles ?? []) as Profile[] };
+      return { list, profiles: (profiles ?? []) as Profile[], plans: (plans ?? []) as Plan[] };
     },
   });
 
   const list = metrics.data?.list ?? [];
   const profiles = metrics.data?.profiles ?? [];
+  const plans = metrics.data?.plans ?? [];
   const active = list.filter((s) => s.status === "active");
   const trial = list.filter((s) => s.status === "trial");
   const canceled = list.filter((s) => s.status === "canceled");
-  const billablePotential = list.filter((s) => !["canceled", "blocked"].includes(s.status));
+  const potentialStatuses = new Set(["trial", "active"]);
+  const potentialList = list.filter((s) => potentialStatuses.has(s.status));
   const mrr = active.reduce((sum, s) => sum + Number(s.monthly_amount || 0), 0);
-  const potentialMrr = billablePotential.reduce((sum, s) => sum + Number(s.monthly_amount || s.plan?.monthly_price || 0), 0);
+  const potentialMrr = potentialList.reduce((sum, s) => sum + Number(s.monthly_amount || s.plan?.monthly_price || 0), 0);
   const arr = mrr * 12;
   const arpu = active.length > 0 ? mrr / active.length : 0;
   const totalCompanies = profiles.length;
@@ -94,7 +121,7 @@ export default function AdminDashboard() {
         .filter((s) => s.status === "active")
         .reduce((sum, s) => sum + Number(s.monthly_amount || 0), 0);
       const monthPotential = eligible
-        .filter((s) => !["canceled", "blocked"].includes(s.status))
+        .filter((s) => potentialStatuses.has(s.status))
         .reduce((sum, s) => sum + Number(s.monthly_amount || s.plan?.monthly_price || 0), 0);
       months.push({
         label: d.toLocaleDateString("pt-BR", { month: "short" }),
@@ -138,9 +165,32 @@ export default function AdminDashboard() {
     ? (active.length / (trial.length + active.length)) * 100
     : 0;
 
+  const planCounts = (() => {
+    const counts = new Map<string, { planId: string | null; name: string; price: number; total: number; active: number; trial: number }>();
+    plans.forEach((plan) => {
+      counts.set(plan.id, { planId: plan.id, name: plan.name, price: plan.monthly_price, total: 0, active: 0, trial: 0 });
+    });
+    list.forEach((sub) => {
+      const key = sub.plan_id ?? sub.plan?.slug ?? "no-plan";
+      const current = counts.get(key) ?? {
+        planId: sub.plan_id,
+        name: sub.plan?.name ?? "Sem plano definido",
+        price: Number(sub.plan?.monthly_price || sub.monthly_amount || 0),
+        total: 0,
+        active: 0,
+        trial: 0,
+      };
+      current.total += 1;
+      if (sub.status === "active") current.active += 1;
+      if (sub.status === "trial") current.trial += 1;
+      counts.set(key, current);
+    });
+    return Array.from(counts.values()).filter((item) => item.total > 0);
+  })();
+
   const kpis = [
     { label: "MRR", value: fmtBRL(mrr), icon: DollarSign, tone: "text-accent" },
-    { label: "Potencial de faturamento", value: fmtBRL(potentialMrr), icon: Target, tone: "text-success" },
+    { label: "Potencial de MRR", value: fmtBRL(potentialMrr), icon: Target, tone: "text-success" },
     { label: "ARR", value: fmtBRL(arr), icon: TrendingUp, tone: "text-primary-glow" },
     { label: "Ticket médio (ARPU)", value: fmtBRL(arpu), icon: TrendingUp, tone: "text-accent" },
     { label: "Empresas ativas", value: active.length, icon: Building2, tone: "text-success" },
@@ -193,6 +243,40 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="bg-card/60 border-border/60">
+        <CardHeader>
+          <CardTitle className="text-base">Negócios por plano</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {planCounts.map((plan) => (
+              <div key={plan.planId ?? plan.name} className="rounded-lg border border-border/60 bg-background/50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold">{plan.name}</div>
+                    <div className="text-xs text-muted-foreground">{fmtBRL(plan.price)}/mês</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-primary-glow">{plan.total}</div>
+                    <div className="text-xs text-muted-foreground">negócio{plan.total !== 1 ? "s" : ""}</div>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-md bg-success/10 px-3 py-2">
+                    <div className="font-semibold text-success">{plan.active}</div>
+                    <div className="text-xs text-muted-foreground">ativos</div>
+                  </div>
+                  <div className="rounded-md bg-accent/10 px-3 py-2">
+                    <div className="font-semibold text-accent">{plan.trial}</div>
+                    <div className="text-xs text-muted-foreground">trials</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="bg-card/60 border-border/60">
