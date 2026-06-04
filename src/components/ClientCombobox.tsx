@@ -15,19 +15,42 @@ const CLIENTS_PAGE_SIZE = 1000;
 const INITIAL_VISIBLE_CLIENTS = 50;
 const VISIBLE_CLIENTS_INCREMENT = 50;
 
+function isRecoverableClientsFilterError(error: any) {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  const message = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
+
+  return (
+    ["42703", "PGRST200", "PGRST204", "PGRST205"].includes(code) ||
+    message.includes("deleted_at") ||
+    message.includes("schema cache") ||
+    message.includes("does not exist") ||
+    message.includes("could not find")
+  );
+}
+
 async function fetchAllClients(establishmentId: string) {
   const allClients: ClientLite[] = [];
   let from = 0;
 
   while (true) {
     const to = from + CLIENTS_PAGE_SIZE - 1;
-    const { data, error } = await supabase
+    const filteredRes = await supabase
       .from("clients")
       .select("id, name, phone")
       .eq("establishment_id", establishmentId)
       .is("deleted_at", null)
       .order("name")
       .range(from, to);
+
+    const { data, error } = filteredRes.error && isRecoverableClientsFilterError(filteredRes.error)
+      ? await supabase
+          .from("clients")
+          .select("id, name, phone")
+          .eq("establishment_id", establishmentId)
+          .order("name")
+          .range(from, to)
+      : filteredRes;
 
     if (error) {
       throw error;
@@ -101,12 +124,20 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
       return;
     }
     setSaving(true);
-    const { data, error } = await supabase.from("clients").insert({
+    const payload = {
       establishment_id: establishmentId,
       name: form.name.trim(),
       phone: form.phone.trim(),
       acquisition_source: form.acquisition_source || null,
-    }).select("id, name, phone").single();
+    };
+    const firstRes = await supabase.from("clients").insert(payload).select("id, name, phone").single();
+    const { data, error } = firstRes.error && isRecoverableClientsFilterError(firstRes.error)
+      ? await supabase.from("clients").insert({
+          establishment_id: payload.establishment_id,
+          name: payload.name,
+          phone: payload.phone,
+        }).select("id, name, phone").single()
+      : firstRes;
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Cliente cadastrado");
