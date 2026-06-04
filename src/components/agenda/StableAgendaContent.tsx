@@ -83,7 +83,7 @@ function formatRangeLabel(start: Date, end: Date) {
   return `${format(start, "dd/MM/yyyy")} até ${format(end, "dd/MM/yyyy")}`;
 }
 
-export default function ResilientAgendaContent() {
+export default function StableAgendaContent() {
   const { profile, establishmentRole, professionalId } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
