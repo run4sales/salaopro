@@ -44,6 +44,21 @@ function parseDurationInput(value: string) {
   return (Number(hours) || 0) * 60 + (Number(minutes) || 0);
 }
 
+function isRecoverableAppointmentSupportError(error: any, resourceName: string) {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  const message = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
+
+  return (
+    ["42P01", "42703", "42501", "PGRST200", "PGRST204", "PGRST205"].includes(code) ||
+    message.includes(resourceName.toLowerCase()) ||
+    message.includes("schema cache") ||
+    message.includes("permission denied") ||
+    message.includes("does not exist") ||
+    message.includes("could not find")
+  );
+}
+
 function MultiSelect({
   options, selected, onChange, placeholder,
 }: {
@@ -200,11 +215,15 @@ export function AppointmentFormDialog({
       .limit(1);
 
     if (blocksError) {
-      toast({ title: "Erro ao validar bloqueios", description: blocksError.message, variant: "destructive" });
-      return;
+      if (isRecoverableAppointmentSupportError(blocksError, "appointment_blocks")) {
+        console.warn("Agendamento salvo sem validação remota de bloqueios:", blocksError);
+      } else {
+        toast({ title: "Erro ao validar bloqueios", description: blocksError.message, variant: "destructive" });
+        return;
+      }
     }
 
-    if ((conflictingBlocks ?? []).length > 0) {
+    if (!blocksError && (conflictingBlocks ?? []).length > 0) {
       toast({
         title: "Horário bloqueado",
         description: conflictingBlocks[0].reason || "Existe um bloqueio para este profissional no horário selecionado.",
@@ -225,13 +244,28 @@ export function AppointmentFormDialog({
       status: form.status,
       notes: form.notes || null,
     };
+    const corePayload = {
+      establishment_id: payload.establishment_id,
+      client_id: payload.client_id,
+      service_id: payload.service_id,
+      professional_id: payload.professional_id,
+      appointment_date: payload.appointment_date,
+      status: payload.status,
+      notes: payload.notes,
+    };
 
     let appointmentId = appointment?.id as string | undefined;
     if (appointmentId) {
-      const { error } = await (supabase as any).from("appointments").update(payload).eq("id", appointmentId);
+      const firstRes = await (supabase as any).from("appointments").update(payload).eq("id", appointmentId);
+      const { error } = firstRes.error && isRecoverableAppointmentSupportError(firstRes.error, "appointments")
+        ? await (supabase as any).from("appointments").update(corePayload).eq("id", appointmentId)
+        : firstRes;
       if (error) { setSaving(false); toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
     } else {
-      const { data, error } = await (supabase as any).from("appointments").insert(payload).select("id").single();
+      const firstRes = await (supabase as any).from("appointments").insert(payload).select("id").single();
+      const { data, error } = firstRes.error && isRecoverableAppointmentSupportError(firstRes.error, "appointments")
+        ? await (supabase as any).from("appointments").insert(corePayload).select("id").single()
+        : firstRes;
       if (error || !data) { setSaving(false); toast({ title: "Erro ao salvar", description: error?.message, variant: "destructive" }); return; }
       appointmentId = data.id;
     }

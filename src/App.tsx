@@ -13,7 +13,7 @@ import Services from "./pages/Services";
 import Products from "./pages/Products";
 import Sales from "./pages/Sales";
 import Expenses from "./pages/Expenses";
-import Agenda from "./pages/Agenda";
+import Agenda from "./pages/StableAgenda";
 import Reports from "./pages/Reports";
 import Metrics from "./pages/Metrics";
 import Settings from "./pages/Settings";
