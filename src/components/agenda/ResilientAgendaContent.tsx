@@ -29,6 +29,26 @@ const ALL_PROFESSIONALS = "all";
 const FILTER_STORAGE_KEY = "agenda.professionalFilter";
 const APPOINTMENT_ID_BATCH_SIZE = 500;
 
+function isRecoverableAgendaResourceError(error: any, resourceName: string) {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  const message = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
+
+  return (
+    ["42P01", "42501", "PGRST200", "PGRST205"].includes(code) ||
+    message.includes(resourceName.toLowerCase()) ||
+    message.includes("schema cache") ||
+    message.includes("permission denied") ||
+    message.includes("does not exist") ||
+    message.includes("could not find")
+  );
+}
+
+function isVisibleAppointment(appointment: any) {
+  const status = String(appointment?.status ?? "").toLowerCase();
+  return status !== "canceled" && status !== "cancelled";
+}
+
 const getWeekOptions = () => ({ locale: ptBR, weekStartsOn: 0 as const });
 
 function getRangeForPeriod(periodMode: PeriodMode, date: Date) {
@@ -61,7 +81,7 @@ function formatRangeLabel(start: Date, end: Date) {
   return `${format(start, "dd/MM/yyyy")} até ${format(end, "dd/MM/yyyy")}`;
 }
 
-export default function AgendaContent() {
+export default function ResilientAgendaContent() {
   const { profile, establishmentRole, professionalId } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -147,7 +167,7 @@ export default function AgendaContent() {
     }
   }, [isEmployee, professionals, selectedProfessionalId]);
 
-  const { data, isLoading, isFetching, error } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ["agenda", establishmentId, range.start.toISOString(), range.end.toISOString(), effectiveProfessionalId],
     enabled: !!establishmentId && (!isEmployee || !!professionalId),
     queryFn: async () => {
@@ -158,7 +178,6 @@ export default function AgendaContent() {
         .eq("establishment_id", establishmentId)
         .gte("appointment_date", range.start.toISOString())
         .lte("appointment_date", range.end.toISOString())
-        .or("status.is.null,status.not.in.(canceled,cancelled)")
         .order("appointment_date", { ascending: true });
 
       const fetchAppointmentsByProfessional = async () => {
@@ -171,7 +190,14 @@ export default function AgendaContent() {
           .eq("establishment_id", establishmentId)
           .eq("professional_id", effectiveProfessionalId);
 
-        if (linkedIdsRes.error) return linkedIdsRes;
+        if (linkedIdsRes.error) {
+          if (isRecoverableAgendaResourceError(linkedIdsRes.error, "appointment_professionals")) {
+            console.warn("Agenda carregada sem vínculos de múltiplos profissionais:", linkedIdsRes.error);
+            return primaryRes;
+          }
+
+          return linkedIdsRes;
+        }
 
         const linkedAppointmentIds = [
           ...new Set((linkedIdsRes.data ?? []).map((row: any) => row.appointment_id).filter(Boolean)),
@@ -187,7 +213,6 @@ export default function AgendaContent() {
             .in("id", ids)
             .gte("appointment_date", range.start.toISOString())
             .lte("appointment_date", range.end.toISOString())
-            .or("status.is.null,status.not.in.(canceled,cancelled)")
             .order("appointment_date", { ascending: true });
 
           if (linkedRes.error) return linkedRes;
@@ -246,42 +271,61 @@ export default function AgendaContent() {
         blocksQuery,
       ]);
 
-      if (apptRes.error) throw apptRes.error;
-      if (servicesRes.error) throw servicesRes.error;
-      if (profRes.error) throw profRes.error;
-      if (blocksRes.error) throw blocksRes.error;
+      if (apptRes.error) {
+        console.error("Agenda carregada sem agendamentos:", apptRes.error);
+      }
+      if (servicesRes.error) {
+        console.warn("Agenda carregada sem catálogo de serviços:", servicesRes.error);
+      }
+      if (profRes.error) {
+        console.warn("Agenda carregada sem lista auxiliar de profissionais:", profRes.error);
+      }
+      if (blocksRes.error) {
+        console.warn("Agenda carregada sem bloqueios de horário:", blocksRes.error);
+      }
 
-      const appts = apptRes.data ?? [];
-      const services = servicesRes.data ?? [];
-      const activeProfessionals = (profRes.data ?? []) as Professional[];
+      const appts = (apptRes.error ? [] : apptRes.data ?? []).filter(isVisibleAppointment);
+      const services = servicesRes.error ? [] : servicesRes.data ?? [];
+      const activeProfessionals = (profRes.error ? professionals : profRes.data ?? []) as Professional[];
       const clientIds = [...new Set(appts.map((appt: any) => appt.client_id).filter(Boolean))];
       const clientsRes = clientIds.length
         ? await supabase.from("clients").select("id, name").in("id", clientIds)
         : { data: [], error: null };
 
-      if (clientsRes.error) throw clientsRes.error;
+      if (clientsRes.error) {
+        console.warn("Agenda carregada sem nomes de clientes:", clientsRes.error);
+      }
 
       const serviceMap = new Map(services.map((s: any) => [s.id, s]));
       const profMap = new Map(activeProfessionals.map((p: any) => [p.id, p.name]));
-      const clientMap = new Map(((clientsRes.data ?? []) as any[]).map((c: any) => [c.id, c.name]));
-      return { appts, blocks: (blocksRes.data ?? []) as AppointmentBlock[], serviceMap, profMap, clientMap, services, professionals: activeProfessionals };
+      const clientMap = new Map((clientsRes.error ? [] : ((clientsRes.data ?? []) as any[])).map((c: any) => [c.id, c.name]));
+      return { appts, blocks: (blocksRes.error ? [] : blocksRes.data ?? []) as AppointmentBlock[], serviceMap, profMap, clientMap, services, professionals: activeProfessionals };
     },
   });
 
+  const agendaData = useMemo(() => data ?? {
+    appts: [],
+    blocks: [] as AppointmentBlock[],
+    serviceMap: new Map(),
+    profMap: new Map(),
+    clientMap: new Map(),
+    services: [],
+    professionals,
+  }, [data, professionals]);
+
   const events: AgendaEvent[] = useMemo(() => {
-    if (!data) return [];
-    const appointmentEvents = data.appts.map((a: any) => {
-      const svc: any = data.serviceMap.get(a.service_id);
+    const appointmentEvents = agendaData.appts.map((a: any) => {
+      const svc: any = agendaData.serviceMap.get(a.service_id);
       const start = new Date(a.appointment_date);
       const dur = Number(a.duration_minutes || svc?.duration_minutes || 30);
       const end = new Date(start.getTime() + dur * 60_000);
-      const client = data.clientMap.get(a.client_id) ?? "Cliente";
+      const client = agendaData.clientMap.get(a.client_id) ?? "Cliente";
       const sname = svc?.name ?? "Serviço";
       return { id: a.id, title: `${client} · ${sname}`, start, end, status: a.status, type: "appointment" as const, raw: a };
     });
 
-    const blockEvents = (data.blocks ?? []).map((block: AppointmentBlock) => {
-      const professional = data.profMap.get(block.professional_id) ?? "Profissional";
+    const blockEvents = (agendaData.blocks ?? []).map((block: AppointmentBlock) => {
+      const professional = agendaData.profMap.get(block.professional_id) ?? "Profissional";
       return {
         id: `block-${block.id}`,
         title: `Bloqueado · ${professional}${block.reason ? ` · ${block.reason}` : ""}`,
@@ -294,7 +338,7 @@ export default function AgendaContent() {
     });
 
     return [...appointmentEvents, ...blockEvents];
-  }, [data]);
+  }, [agendaData]);
 
   const selectedProfessionalName = effectiveProfessionalId
     ? professionals.find(professional => professional.id === effectiveProfessionalId)?.name ?? "Profissional"
@@ -442,15 +486,13 @@ export default function AgendaContent() {
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-          <span>Exibindo {data?.appts?.length ?? 0} agendamento(s) para <strong className="text-foreground">{selectedProfessionalName}</strong>.</span>
+          <span>Exibindo {agendaData.appts.length} agendamento(s) para <strong className="text-foreground">{selectedProfessionalName}</strong>.</span>
           {isFetching && <span>Atualizando agenda...</span>}
         </div>
       </div>
 
       {isLoading ? (
         <div className="rounded-md border p-6 bg-card text-sm text-muted-foreground">Carregando agendamentos...</div>
-      ) : error ? (
-        <div className="rounded-md border p-6 bg-card text-sm text-destructive">Erro ao carregar agenda.</div>
       ) : viewMode === "calendar" ? (
         <AgendaCalendar
           events={events}
@@ -477,14 +519,14 @@ export default function AgendaContent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data?.appts?.length ? data.appts.map((a: any) => {
+              {agendaData.appts.length ? agendaData.appts.map((a: any) => {
                 const key = normalizeStatus(a.status);
                 return (
                   <TableRow key={a.id} className="cursor-pointer" onClick={() => { setSelectedAppt(a); setDetailsOpen(true); }}>
                     <TableCell>{new Date(a.appointment_date).toLocaleString("pt-BR")}</TableCell>
-                    <TableCell>{data?.clientMap.get(a.client_id) ?? "-"}</TableCell>
-                    <TableCell>{(data?.serviceMap.get(a.service_id) as any)?.name ?? "-"}</TableCell>
-                    <TableCell>{data?.profMap.get(a.professional_id) ?? "-"}</TableCell>
+                    <TableCell>{agendaData.clientMap.get(a.client_id) ?? "-"}</TableCell>
+                    <TableCell>{(agendaData.serviceMap.get(a.service_id) as any)?.name ?? "-"}</TableCell>
+                    <TableCell>{agendaData.profMap.get(a.professional_id) ?? "-"}</TableCell>
                     <TableCell><Badge variant={STATUS_VARIANTS[key] ?? "secondary"}>{STATUS_LABELS[key] ?? "Agendado"}</Badge></TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Select value={key} onValueChange={(v) => updateStatus(a.id, v)}>
@@ -507,9 +549,9 @@ export default function AgendaContent() {
           open={formOpen}
           onOpenChange={setFormOpen}
           establishmentId={establishmentId}
-          services={data?.services ?? []}
-          professionals={data?.professionals ?? []}
-          blocks={data?.blocks ?? []}
+          services={agendaData.services}
+          professionals={agendaData.professionals}
+          blocks={agendaData.blocks}
           initialDate={initialSlot}
           appointment={selectedAppt}
           onSaved={refresh}
@@ -521,7 +563,7 @@ export default function AgendaContent() {
           open={blockOpen}
           onOpenChange={setBlockOpen}
           establishmentId={establishmentId}
-          professionals={data?.professionals ?? professionals}
+          professionals={agendaData.professionals}
           initialDate={initialSlot}
           block={selectedBlock}
           onSaved={refresh}
@@ -532,9 +574,9 @@ export default function AgendaContent() {
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
         appointment={selectedAppt}
-        clientName={selectedAppt ? data?.clientMap.get(selectedAppt.client_id) : undefined}
-        serviceName={selectedAppt ? (data?.serviceMap.get(selectedAppt.service_id) as any)?.name : undefined}
-        professionalName={selectedAppt ? data?.profMap.get(selectedAppt.professional_id) : undefined}
+        clientName={selectedAppt ? agendaData.clientMap.get(selectedAppt.client_id) : undefined}
+        serviceName={selectedAppt ? (agendaData.serviceMap.get(selectedAppt.service_id) as any)?.name : undefined}
+        professionalName={selectedAppt ? agendaData.profMap.get(selectedAppt.professional_id) : undefined}
         onEdit={() => { setDetailsOpen(false); setFormOpen(true); }}
         onChanged={refresh}
       />
