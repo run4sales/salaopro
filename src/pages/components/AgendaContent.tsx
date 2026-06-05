@@ -19,6 +19,7 @@ import { AppointmentFormDialog } from "@/components/agenda/AppointmentFormDialog
 import { AppointmentDetailsDialog } from "@/components/agenda/AppointmentDetailsDialog";
 import ImportAppointmentsDialog from "@/components/agenda/ImportAppointmentsDialog";
 import { STATUS_LABELS, STATUS_VARIANTS, STATUS_OPTIONS, normalizeStatus } from "@/lib/appointmentStatus";
+import { BUSINESS_HOURS_SELECT, DEFAULT_CLOSING_TIME, DEFAULT_OPENING_TIME, normalizeTimeValue } from "@/lib/businessHours";
 
 type PeriodMode = "day" | "week" | "month" | "custom";
 type Professional = { id: string; name: string };
@@ -141,6 +142,23 @@ export default function AgendaContent() {
       setSelectedProfessionalId(ALL_PROFESSIONALS);
     }
   }, [isEmployee, professionals, selectedProfessionalId]);
+
+  const { data: businessHours = { open: DEFAULT_OPENING_TIME, close: DEFAULT_CLOSING_TIME } } = useQuery({
+    queryKey: ["business-hours", establishmentId],
+    enabled: !!establishmentId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("settings")
+        .select(BUSINESS_HOURS_SELECT)
+        .eq("establishment_id", establishmentId)
+        .maybeSingle();
+      if (error) throw error;
+      return {
+        open: normalizeTimeValue(data?.business_open_time, DEFAULT_OPENING_TIME),
+        close: normalizeTimeValue(data?.business_close_time, DEFAULT_CLOSING_TIME),
+      };
+    },
+  });
 
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["agenda", establishmentId, range.start.toISOString(), range.end.toISOString(), effectiveProfessionalId],
@@ -386,6 +404,8 @@ export default function AgendaContent() {
           view={calendarView}
           date={calendarDate}
           agendaLength={Math.max(1, Math.round((range.end.getTime() - range.start.getTime()) / 86_400_000) + 1)}
+          openTime={businessHours.open}
+          closeTime={businessHours.close}
           onViewChange={handleCalendarViewChange}
           onNavigate={setCalendarDate}
           onSelectSlot={handleSlot}
