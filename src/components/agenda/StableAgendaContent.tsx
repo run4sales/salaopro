@@ -508,6 +508,8 @@ export default function StableAgendaContent() {
           view={calendarView}
           date={calendarDate}
           agendaLength={Math.max(1, Math.round((range.end.getTime() - range.start.getTime()) / 86_400_000) + 1)}
+          openTime={businessHours.open}
+          closeTime={businessHours.close}
           onViewChange={handleCalendarViewChange}
           onNavigate={setCalendarDate}
           onSelectSlot={handleSlot}
