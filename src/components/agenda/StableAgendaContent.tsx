@@ -162,6 +162,22 @@ export default function StableAgendaContent() {
     },
   });
 
+  const { data: businessHours = { open: "08:00", close: "19:00" } } = useQuery({
+    queryKey: ["business-hours", establishmentId],
+    enabled: !!establishmentId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("settings")
+        .select("business_open_time, business_close_time")
+        .eq("establishment_id", establishmentId)
+        .maybeSingle();
+      return {
+        open: String(data?.business_open_time ?? "08:00").slice(0, 5),
+        close: String(data?.business_close_time ?? "19:00").slice(0, 5),
+      };
+    },
+  });
+
   useEffect(() => {
     if (isEmployee || selectedProfessionalId === ALL_PROFESSIONALS || professionals.length === 0) return;
     if (!professionals.some(professional => professional.id === selectedProfessionalId)) {
