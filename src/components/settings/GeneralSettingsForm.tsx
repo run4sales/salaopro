@@ -4,40 +4,43 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { areBusinessHoursValid, BUSINESS_HOURS_SELECT, DEFAULT_CLOSING_TIME, DEFAULT_OPENING_TIME, normalizeTimeValue } from "@/lib/businessHours";
 
 interface GeneralSettingsFormProps {
   establishmentId: string;
 }
 
 export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProps) {
+  const queryClient = useQueryClient();
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["settings", establishmentId],
     queryFn: async () => {
       const [settingsRes, profileRes] = await Promise.all([
-        (supabase as any).from("settings").select("id, inactive_days_threshold, business_open_time, business_close_time").eq("establishment_id", establishmentId).maybeSingle(),
+        (supabase as any).from("settings").select(BUSINESS_HOURS_SELECT).eq("establishment_id", establishmentId).maybeSingle(),
         supabase.from("profiles").select("accepting_bookings").eq("id", establishmentId).maybeSingle(),
       ]);
       if (settingsRes.error) throw settingsRes.error;
       if (profileRes.error) throw profileRes.error;
       return {
-        settings: settingsRes.data as { id: string; inactive_days_threshold: number; business_open_time: string | null; business_close_time: string | null } | null,
+        settings: settingsRes.data as { id: string; inactive_days_threshold: number; opening_time: string | null; closing_time: string | null } | null,
         accepting_bookings: (profileRes.data as any)?.accepting_bookings ?? true,
       };
     },
   });
 
   const [threshold, setThreshold] = useState<number>(20);
-  const [openTime, setOpenTime] = useState<string>("08:00");
-  const [closeTime, setCloseTime] = useState<string>("19:00");
+  const [openTime, setOpenTime] = useState<string>(DEFAULT_OPENING_TIME);
+  const [closeTime, setCloseTime] = useState<string>(DEFAULT_CLOSING_TIME);
   const [accepting, setAccepting] = useState<boolean>(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (data?.settings?.inactive_days_threshold != null) setThreshold(Number(data.settings.inactive_days_threshold));
-    if (data?.settings?.business_open_time) setOpenTime(String(data.settings.business_open_time).slice(0, 5));
-    if (data?.settings?.business_close_time) setCloseTime(String(data.settings.business_close_time).slice(0, 5));
+    if (data?.settings?.opening_time) setOpenTime(normalizeTimeValue(data.settings.opening_time, DEFAULT_OPENING_TIME));
+    if (data?.settings?.closing_time) setCloseTime(normalizeTimeValue(data.settings.closing_time, DEFAULT_CLOSING_TIME));
     if (data) setAccepting(data.accepting_bookings);
   }, [data]);
 
@@ -54,12 +57,17 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!areBusinessHoursValid(openTime, closeTime)) {
+      toast.error("Informe horários válidos no formato HH:mm, com abertura menor que fechamento.");
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {
         inactive_days_threshold: threshold,
-        business_open_time: openTime,
-        business_close_time: closeTime,
+        opening_time: openTime,
+        closing_time: closeTime,
       };
       if (data?.settings?.id) {
         const { error } = await (supabase as any)
@@ -74,7 +82,11 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
         if (error) throw error;
       }
       toast.success("Preferências salvas!");
-      await refetch();
+      await Promise.all([
+        refetch(),
+        queryClient.invalidateQueries({ queryKey: ["agenda"] }),
+        queryClient.invalidateQueries({ queryKey: ["business-hours"] }),
+      ]);
     } catch (err: any) {
       toast.error(err?.message ?? "Não foi possível salvar as preferências.");
     } finally {

@@ -927,28 +927,34 @@ export type Database = {
         Row: {
           business_close_time: string
           business_open_time: string
+          closing_time: string
           created_at: string
           establishment_id: string
           id: string
           inactive_days_threshold: number | null
+          opening_time: string
           updated_at: string
         }
         Insert: {
           business_close_time?: string
           business_open_time?: string
+          closing_time?: string
           created_at?: string
           establishment_id: string
           id?: string
           inactive_days_threshold?: number | null
+          opening_time?: string
           updated_at?: string
         }
         Update: {
           business_close_time?: string
           business_open_time?: string
+          closing_time?: string
           created_at?: string
           establishment_id?: string
           id?: string
           inactive_days_threshold?: number | null
+          opening_time?: string
           updated_at?: string
         }
         Relationships: [
