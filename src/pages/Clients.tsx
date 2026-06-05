@@ -599,6 +599,10 @@ const Clients = () => {
                     selected={newClient.birth_date || undefined}
                     onSelect={(date) => setNewClient({ ...newClient, birth_date: date || null })}
                     disabled={(date) => date > new Date()}
+                    defaultMonth={newClient.birth_date || new Date(1990, 0)}
+                    captionLayout="dropdown"
+                    startMonth={new Date(1920, 0)}
+                    endMonth={new Date()}
                     initialFocus
                     className="pointer-events-auto"
                   />
@@ -708,6 +712,10 @@ const Clients = () => {
                       selected={editingClient.birth_date || undefined}
                       onSelect={(date) => setEditingClient({ ...editingClient, birth_date: date || null })}
                       disabled={(date) => date > new Date()}
+                      defaultMonth={editingClient.birth_date || new Date(1990, 0)}
+                      captionLayout="dropdown"
+                      startMonth={new Date(1920, 0)}
+                      endMonth={new Date()}
                       initialFocus
                       className="pointer-events-auto"
                     />

@@ -41,6 +41,8 @@ interface Props {
   view: View;
   date: Date;
   agendaLength?: number;
+  openTime?: string;
+  closeTime?: string;
   onViewChange: (view: View) => void;
   onNavigate: (date: Date) => void;
   onSelectSlot: (slot: SlotInfo) => void;
@@ -48,17 +50,34 @@ interface Props {
   onRangeChange?: (range: { start: Date; end: Date }) => void;
 }
 
+function buildTimeBoundary(time: string | undefined, fallbackHour: number, fallbackMinute: number) {
+  const d = new Date();
+  let h = fallbackHour;
+  let m = fallbackMinute;
+  if (time && /^\d{1,2}:\d{2}/.test(time)) {
+    const [hh, mm] = time.split(":").map(Number);
+    if (!isNaN(hh)) h = hh;
+    if (!isNaN(mm)) m = mm;
+  }
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
 export function AgendaCalendar({
   events,
   view,
   date,
   agendaLength,
+  openTime,
+  closeTime,
   onViewChange,
   onNavigate,
   onSelectSlot,
   onSelectEvent,
   onRangeChange,
 }: Props) {
+  const minTime = useMemo(() => buildTimeBoundary(openTime, 8, 0), [openTime]);
+  const maxTime = useMemo(() => buildTimeBoundary(closeTime, 19, 0), [closeTime]);
 
   const eventPropGetter = useMemo(
     () => (event: AgendaEvent) => {
@@ -122,6 +141,8 @@ export function AgendaCalendar({
         tooltipAccessor={(e: any) => e.type === "block" ? e.title : `${e.title} — ${STATUS_LABELS[normalizeStatus(e.status)] ?? ""}`}
         step={30}
         timeslots={2}
+        min={minTime}
+        max={maxTime}
       />
     </div>
   );

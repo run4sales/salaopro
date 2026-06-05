@@ -162,6 +162,22 @@ export default function StableAgendaContent() {
     },
   });
 
+  const { data: businessHours = { open: "08:00", close: "19:00" } } = useQuery({
+    queryKey: ["business-hours", establishmentId],
+    enabled: !!establishmentId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("settings")
+        .select("business_open_time, business_close_time")
+        .eq("establishment_id", establishmentId)
+        .maybeSingle();
+      return {
+        open: String(data?.business_open_time ?? "08:00").slice(0, 5),
+        close: String(data?.business_close_time ?? "19:00").slice(0, 5),
+      };
+    },
+  });
+
   useEffect(() => {
     if (isEmployee || selectedProfessionalId === ALL_PROFESSIONALS || professionals.length === 0) return;
     if (!professionals.some(professional => professional.id === selectedProfessionalId)) {
@@ -296,7 +312,7 @@ export default function StableAgendaContent() {
       const appts = (apptRes.error ? [] : apptRes.data ?? []).filter(isVisibleAppointment);
       const services = servicesRes.error ? [] : servicesRes.data ?? [];
       const activeProfessionals = (profRes.error ? professionals : profRes.data ?? []) as Professional[];
-      const clientIds = [...new Set(appts.map((appt: any) => appt.client_id).filter(Boolean))];
+      const clientIds = [...new Set(appts.map((appt: any) => appt.client_id).filter(Boolean))] as string[];
       const clientsRes = clientIds.length
         ? await supabase.from("clients").select("id, name").in("id", clientIds)
         : { data: [], error: null };
@@ -508,6 +524,8 @@ export default function StableAgendaContent() {
           view={calendarView}
           date={calendarDate}
           agendaLength={Math.max(1, Math.round((range.end.getTime() - range.start.getTime()) / 86_400_000) + 1)}
+          openTime={businessHours.open}
+          closeTime={businessHours.close}
           onViewChange={handleCalendarViewChange}
           onNavigate={setCalendarDate}
           onSelectSlot={handleSlot}

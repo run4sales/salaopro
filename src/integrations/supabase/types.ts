@@ -65,39 +65,6 @@ export type Database = {
         }
         Relationships: []
       }
-      appointment_blocks: {
-        Row: {
-          created_at: string
-          end_time: string
-          establishment_id: string
-          id: string
-          professional_id: string
-          reason: string | null
-          start_time: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          end_time: string
-          establishment_id: string
-          id?: string
-          professional_id: string
-          reason?: string | null
-          start_time: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          end_time?: string
-          establishment_id?: string
-          id?: string
-          professional_id?: string
-          reason?: string | null
-          start_time?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       appointment_services: {
         Row: {
           appointment_id: string
@@ -349,7 +316,6 @@ export type Database = {
           birth_day: number | null
           birth_month: number | null
           created_at: string
-          deleted_at: string | null
           email: string | null
           establishment_id: string
           gender: string | null
@@ -373,7 +339,6 @@ export type Database = {
           birth_day?: number | null
           birth_month?: number | null
           created_at?: string
-          deleted_at?: string | null
           email?: string | null
           establishment_id: string
           gender?: string | null
@@ -397,7 +362,6 @@ export type Database = {
           birth_day?: number | null
           birth_month?: number | null
           created_at?: string
-          deleted_at?: string | null
           email?: string | null
           establishment_id?: string
           gender?: string | null
@@ -961,6 +925,8 @@ export type Database = {
       }
       settings: {
         Row: {
+          business_close_time: string
+          business_open_time: string
           created_at: string
           establishment_id: string
           id: string
@@ -968,6 +934,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          business_close_time?: string
+          business_open_time?: string
           created_at?: string
           establishment_id: string
           id?: string
@@ -975,6 +943,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          business_close_time?: string
+          business_open_time?: string
           created_at?: string
           establishment_id?: string
           id?: string
