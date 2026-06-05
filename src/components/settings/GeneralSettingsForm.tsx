@@ -16,24 +16,28 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
     queryKey: ["settings", establishmentId],
     queryFn: async () => {
       const [settingsRes, profileRes] = await Promise.all([
-        supabase.from("settings").select("id, inactive_days_threshold").eq("establishment_id", establishmentId).maybeSingle(),
+        (supabase as any).from("settings").select("id, inactive_days_threshold, business_open_time, business_close_time").eq("establishment_id", establishmentId).maybeSingle(),
         supabase.from("profiles").select("accepting_bookings").eq("id", establishmentId).maybeSingle(),
       ]);
       if (settingsRes.error) throw settingsRes.error;
       if (profileRes.error) throw profileRes.error;
       return {
-        settings: settingsRes.data as { id: string; inactive_days_threshold: number } | null,
+        settings: settingsRes.data as { id: string; inactive_days_threshold: number; business_open_time: string | null; business_close_time: string | null } | null,
         accepting_bookings: (profileRes.data as any)?.accepting_bookings ?? true,
       };
     },
   });
 
   const [threshold, setThreshold] = useState<number>(20);
+  const [openTime, setOpenTime] = useState<string>("08:00");
+  const [closeTime, setCloseTime] = useState<string>("19:00");
   const [accepting, setAccepting] = useState<boolean>(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (data?.settings?.inactive_days_threshold != null) setThreshold(Number(data.settings.inactive_days_threshold));
+    if (data?.settings?.business_open_time) setOpenTime(String(data.settings.business_open_time).slice(0, 5));
+    if (data?.settings?.business_close_time) setCloseTime(String(data.settings.business_close_time).slice(0, 5));
     if (data) setAccepting(data.accepting_bookings);
   }, [data]);
 
@@ -52,16 +56,21 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
     e.preventDefault();
     setSaving(true);
     try {
+      const payload = {
+        inactive_days_threshold: threshold,
+        business_open_time: openTime,
+        business_close_time: closeTime,
+      };
       if (data?.settings?.id) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from("settings")
-          .update({ inactive_days_threshold: threshold })
+          .update(payload)
           .eq("establishment_id", establishmentId);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from("settings")
-          .insert({ establishment_id: establishmentId, inactive_days_threshold: threshold });
+          .insert({ establishment_id: establishmentId, ...payload });
         if (error) throw error;
       }
       toast.success("Preferências salvas!");
@@ -86,6 +95,23 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
       </div>
 
       <form onSubmit={onSubmit} className="space-y-6">
+        <div>
+          <h3 className="text-base font-semibold">Horário de funcionamento</h3>
+          <p className="text-sm text-muted-foreground">
+            Define o intervalo exibido na agenda. Horários fora desse intervalo ficam ocultos.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+          <div className="space-y-2">
+            <Label>Abertura</Label>
+            <Input type="time" value={openTime} onChange={(e) => setOpenTime(e.target.value)} required />
+          </div>
+          <div className="space-y-2">
+            <Label>Fechamento</Label>
+            <Input type="time" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} required />
+          </div>
+        </div>
+
         <div>
           <h3 className="text-base font-semibold">Clientes inativos</h3>
           <p className="text-sm text-muted-foreground">
