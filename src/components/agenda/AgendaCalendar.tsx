@@ -141,6 +141,8 @@ export function AgendaCalendar({
         tooltipAccessor={(e: any) => e.type === "block" ? e.title : `${e.title} — ${STATUS_LABELS[normalizeStatus(e.status)] ?? ""}`}
         step={30}
         timeslots={2}
+        min={minTime}
+        max={maxTime}
       />
     </div>
   );
