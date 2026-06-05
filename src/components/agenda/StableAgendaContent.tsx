@@ -296,7 +296,7 @@ export default function StableAgendaContent() {
       const appts = (apptRes.error ? [] : apptRes.data ?? []).filter(isVisibleAppointment);
       const services = servicesRes.error ? [] : servicesRes.data ?? [];
       const activeProfessionals = (profRes.error ? professionals : profRes.data ?? []) as Professional[];
-      const clientIds = [...new Set(appts.map((appt: any) => appt.client_id).filter(Boolean))];
+      const clientIds = [...new Set(appts.map((appt: any) => appt.client_id).filter(Boolean))] as string[];
       const clientsRes = clientIds.length
         ? await supabase.from("clients").select("id, name").in("id", clientIds)
         : { data: [], error: null };
