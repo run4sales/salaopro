@@ -20,6 +20,7 @@ import { AppointmentDetailsDialog } from "@/components/agenda/AppointmentDetails
 import { AppointmentBlockDialog } from "@/components/agenda/AppointmentBlockDialog";
 import ImportAppointmentsDialog from "@/components/agenda/ImportAppointmentsDialog";
 import { STATUS_LABELS, STATUS_VARIANTS, STATUS_OPTIONS, normalizeStatus } from "@/lib/appointmentStatus";
+import { BUSINESS_HOURS_SELECT, DEFAULT_CLOSING_TIME, DEFAULT_OPENING_TIME, normalizeTimeValue } from "@/lib/businessHours";
 
 type PeriodMode = "day" | "week" | "month" | "custom";
 type Professional = { id: string; name: string };
@@ -166,6 +167,23 @@ export default function ResilientAgendaContent() {
       setSelectedProfessionalId(ALL_PROFESSIONALS);
     }
   }, [isEmployee, professionals, selectedProfessionalId]);
+
+  const { data: businessHours = { open: DEFAULT_OPENING_TIME, close: DEFAULT_CLOSING_TIME } } = useQuery({
+    queryKey: ["business-hours", establishmentId],
+    enabled: !!establishmentId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("settings")
+        .select(BUSINESS_HOURS_SELECT)
+        .eq("establishment_id", establishmentId)
+        .maybeSingle();
+      if (error) throw error;
+      return {
+        open: normalizeTimeValue(data?.opening_time, DEFAULT_OPENING_TIME),
+        close: normalizeTimeValue(data?.closing_time, DEFAULT_CLOSING_TIME),
+      };
+    },
+  });
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["agenda", establishmentId, range.start.toISOString(), range.end.toISOString(), effectiveProfessionalId],
@@ -503,6 +521,8 @@ export default function ResilientAgendaContent() {
           onNavigate={setCalendarDate}
           onSelectSlot={handleSlot}
           onSelectEvent={handleEventClick}
+          openTime={businessHours.open}
+          closeTime={businessHours.close}
           onRangeChange={handleCalendarRangeChange}
         />
       ) : (

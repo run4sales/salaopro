@@ -20,6 +20,7 @@ import { AppointmentDetailsDialog } from "@/components/agenda/AppointmentDetails
 import { AppointmentBlockDialog } from "@/components/agenda/AppointmentBlockDialog";
 import ImportAppointmentsDialog from "@/components/agenda/ImportAppointmentsDialog";
 import { STATUS_LABELS, STATUS_VARIANTS, STATUS_OPTIONS, normalizeStatus } from "@/lib/appointmentStatus";
+import { BUSINESS_HOURS_SELECT, DEFAULT_CLOSING_TIME, DEFAULT_OPENING_TIME, normalizeTimeValue } from "@/lib/businessHours";
 
 type PeriodMode = "day" | "week" | "month" | "custom";
 type Professional = { id: string; name: string };
@@ -162,18 +163,18 @@ export default function StableAgendaContent() {
     },
   });
 
-  const { data: businessHours = { open: "08:00", close: "19:00" } } = useQuery({
+  const { data: businessHours = { open: DEFAULT_OPENING_TIME, close: DEFAULT_CLOSING_TIME } } = useQuery({
     queryKey: ["business-hours", establishmentId],
     enabled: !!establishmentId,
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("settings")
-        .select("business_open_time, business_close_time")
+        .select(BUSINESS_HOURS_SELECT)
         .eq("establishment_id", establishmentId)
         .maybeSingle();
       return {
-        open: String(data?.business_open_time ?? "08:00").slice(0, 5),
-        close: String(data?.business_close_time ?? "19:00").slice(0, 5),
+        open: normalizeTimeValue(data?.opening_time, DEFAULT_OPENING_TIME),
+        close: normalizeTimeValue(data?.closing_time, DEFAULT_CLOSING_TIME),
       };
     },
   });
