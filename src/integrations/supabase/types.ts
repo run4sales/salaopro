@@ -94,10 +94,12 @@ export type Database = {
           appointment_date: string
           client_id: string
           created_at: string
+          duration_minutes: number | null
           establishment_id: string
           id: string
           notes: string | null
           professional_id: string | null
+          service_amount: number | null
           service_id: string
           status: string | null
           updated_at: string
@@ -106,10 +108,12 @@ export type Database = {
           appointment_date: string
           client_id: string
           created_at?: string
+          duration_minutes?: number | null
           establishment_id: string
           id?: string
           notes?: string | null
           professional_id?: string | null
+          service_amount?: number | null
           service_id: string
           status?: string | null
           updated_at?: string
@@ -118,10 +122,12 @@ export type Database = {
           appointment_date?: string
           client_id?: string
           created_at?: string
+          duration_minutes?: number | null
           establishment_id?: string
           id?: string
           notes?: string | null
           professional_id?: string | null
+          service_amount?: number | null
           service_id?: string
           status?: string | null
           updated_at?: string
@@ -919,6 +925,8 @@ export type Database = {
       }
       settings: {
         Row: {
+          business_close_time: string
+          business_open_time: string
           created_at: string
           establishment_id: string
           id: string
@@ -926,6 +934,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          business_close_time?: string
+          business_open_time?: string
           created_at?: string
           establishment_id: string
           id?: string
@@ -933,6 +943,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          business_close_time?: string
+          business_open_time?: string
           created_at?: string
           establishment_id?: string
           id?: string
