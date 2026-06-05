@@ -4,7 +4,6 @@ import { format, parse, startOfWeek, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { STATUS_COLORS, STATUS_LABELS, normalizeStatus } from "@/lib/appointmentStatus";
-import { buildBusinessTimeBoundary, DEFAULT_CLOSING_TIME, DEFAULT_OPENING_TIME } from "@/lib/businessHours";
 
 const locales = { "pt-BR": ptBR };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek: (d: Date) => startOfWeek(d, { locale: ptBR }), getDay, locales });
@@ -51,6 +50,19 @@ interface Props {
   onRangeChange?: (range: { start: Date; end: Date }) => void;
 }
 
+function buildTimeBoundary(time: string | undefined, fallbackHour: number, fallbackMinute: number) {
+  const d = new Date();
+  let h = fallbackHour;
+  let m = fallbackMinute;
+  if (time && /^\d{1,2}:\d{2}/.test(time)) {
+    const [hh, mm] = time.split(":").map(Number);
+    if (!isNaN(hh)) h = hh;
+    if (!isNaN(mm)) m = mm;
+  }
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
 export function AgendaCalendar({
   events,
   view,
@@ -64,8 +76,8 @@ export function AgendaCalendar({
   onSelectEvent,
   onRangeChange,
 }: Props) {
-  const minTime = useMemo(() => buildBusinessTimeBoundary(openTime, DEFAULT_OPENING_TIME), [openTime]);
-  const maxTime = useMemo(() => buildBusinessTimeBoundary(closeTime, DEFAULT_CLOSING_TIME), [closeTime]);
+  const minTime = useMemo(() => buildTimeBoundary(openTime, 8, 0), [openTime]);
+  const maxTime = useMemo(() => buildTimeBoundary(closeTime, 19, 0), [closeTime]);
 
   const eventPropGetter = useMemo(
     () => (event: AgendaEvent) => {

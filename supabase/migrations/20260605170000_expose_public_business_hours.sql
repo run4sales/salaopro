@@ -1,8 +1,4 @@
--- Validate the existing per-establishment business hours columns and expose them through public salon RPCs.
-ALTER TABLE public.settings
-  ADD COLUMN IF NOT EXISTS business_open_time time without time zone NOT NULL DEFAULT '08:00',
-  ADD COLUMN IF NOT EXISTS business_close_time time without time zone NOT NULL DEFAULT '19:00';
-
+-- Expose existing per-establishment business hours through public salon RPCs.
 ALTER TABLE public.settings
   DROP CONSTRAINT IF EXISTS settings_business_hours_order_check;
 
