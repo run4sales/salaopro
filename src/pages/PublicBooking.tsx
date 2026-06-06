@@ -4,14 +4,51 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format, addMinutes, setHours, setMinutes, isSameDay } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+
+
+const DEFAULT_OPENING_TIME = "08:00";
+const DEFAULT_CLOSING_TIME = "19:00";
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function normalizeTimeValue(value: string | null | undefined, fallback: string): string {
+  const candidate = String(value ?? "").slice(0, 5);
+  return TIME_PATTERN.test(candidate) ? candidate : fallback;
+}
+
+function isBusinessHoursRangeValid(openingTime: string, closingTime: string): boolean {
+  const [openHours, openMinutes] = openingTime.split(":").map(Number);
+  const [closeHours, closeMinutes] = closingTime.split(":").map(Number);
+  return TIME_PATTERN.test(openingTime) && TIME_PATTERN.test(closingTime) && openHours * 60 + openMinutes < closeHours * 60 + closeMinutes;
+}
+
+function buildDateAtTime(baseDate: Date, value: string): Date {
+  const [hours, minutes] = value.split(":").map(Number);
+  const date = new Date(baseDate);
+  date.setHours(hours, minutes, 0, 0);
+  return date;
+}
+
+function generateBusinessSlots(date: Date, openingTime: string, closingTime: string, durationMinutes = 30, stepMinutes = 30): Date[] {
+  if (!isBusinessHoursRangeValid(openingTime, closingTime)) return [];
+
+  const end = buildDateAtTime(date, closingTime);
+  const slots: Date[] = [];
+  let current = buildDateAtTime(date, openingTime);
+
+  while (current.getTime() + durationMinutes * 60_000 <= end.getTime()) {
+    slots.push(new Date(current));
+    current = new Date(current.getTime() + stepMinutes * 60_000);
+  }
+
+  return slots;
+}
 
 interface Service { id: string; name: string; price: number; duration: number }
 interface Professional { id: string; name: string }
@@ -21,6 +58,7 @@ export default function PublicBooking() {
   const [resolvedId, setResolvedId] = useState<string | null>(null);
   const [salonName, setSalonName] = useState<string>("");
   const [acceptingBookings, setAcceptingBookings] = useState<boolean>(true);
+  const [businessHours, setBusinessHours] = useState({ openingTime: DEFAULT_OPENING_TIME, closingTime: DEFAULT_CLOSING_TIME });
   const [lookupState, setLookupState] = useState<"loading" | "ok" | "not_found">("loading");
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
@@ -60,6 +98,10 @@ export default function PublicBooking() {
         setResolvedId(salon.id);
         setSalonName(salon.business_name || "");
         setAcceptingBookings(salon.accepting_bookings !== false);
+        setBusinessHours({
+          openingTime: normalizeTimeValue(salon.opening_time, DEFAULT_OPENING_TIME),
+          closingTime: normalizeTimeValue(salon.closing_time, DEFAULT_CLOSING_TIME),
+        });
         setLookupState("ok");
         document.title = `${salon.business_name || "Agendar atendimento"} | Beauty Core`;
       } else if (establishmentId) {
@@ -72,6 +114,10 @@ export default function PublicBooking() {
         setResolvedId(salon.id);
         setSalonName(salon.business_name || "");
         setAcceptingBookings(salon.accepting_bookings !== false);
+        setBusinessHours({
+          openingTime: normalizeTimeValue(salon.opening_time, DEFAULT_OPENING_TIME),
+          closingTime: normalizeTimeValue(salon.closing_time, DEFAULT_CLOSING_TIME),
+        });
         setLookupState("ok");
       } else {
         setLookupState("not_found");
@@ -126,16 +172,8 @@ export default function PublicBooking() {
 
   const slots = useMemo(() => {
     if (!date) return [] as Date[];
-    const start = setMinutes(setHours(new Date(date), 9), 0); // 09:00
-    const end = setMinutes(setHours(new Date(date), 18), 0); // 18:00
-    const out: Date[] = [];
-    let cur = start;
-    while (cur <= end) {
-      out.push(new Date(cur));
-      cur = addMinutes(cur, 30);
-    }
-    return out;
-  }, [date]);
+    return generateBusinessSlots(date, businessHours.openingTime, businessHours.closingTime, Math.max(totalDuration, 30));
+  }, [businessHours.closingTime, businessHours.openingTime, date, totalDuration]);
 
   const isBooked = (d: Date) => {
     // compare by hour/minute on same day
@@ -150,7 +188,8 @@ export default function PublicBooking() {
   const handleSubmit = async () => {
     if (!canSubmit || !date) return;
     const [hh, mm] = slot.split(":").map(Number);
-    const startTime = setMinutes(setHours(new Date(date), hh), mm);
+    const startTime = new Date(date);
+    startTime.setHours(hh, mm, 0, 0);
     const { data, error } = await supabase.rpc("create_public_booking", {
       establishment: resolvedId!,
       client_name: clientName,
