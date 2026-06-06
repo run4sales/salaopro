@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
-import ResilientAgendaContent from "@/components/agenda/ResilientAgendaContent";
+import StableAgendaContent from "@/components/agenda/StableAgendaContent";
 
 export default function Agenda() {
   const { user } = useAuth();
@@ -25,7 +25,7 @@ export default function Agenda() {
         </div>
       </header>
       <main className="container mx-auto px-4 py-10 space-y-6">
-        <ResilientAgendaContent />
+        <StableAgendaContent />
       </main>
     </div>
   );
