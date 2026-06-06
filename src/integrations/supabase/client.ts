@@ -8,10 +8,67 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+type JsonRecord = Record<string, unknown>;
+
+const SETTINGS_REST_PATH = "/rest/v1/settings";
+
+function normalizeSettingsAliases(row: JsonRecord) {
+  const next = { ...row };
+
+  if ("opening_time" in next && !("business_open_time" in next)) {
+    next.business_open_time = next.opening_time;
+  }
+
+  if ("closing_time" in next && !("business_close_time" in next)) {
+    next.business_close_time = next.closing_time;
+  }
+
+  delete next.opening_time;
+  delete next.closing_time;
+
+  return next;
+}
+
+function normalizeSettingsRequestBody(body: BodyInit | null | undefined) {
+  if (typeof body !== "string" || !body.includes("closing_time") && !body.includes("opening_time")) {
+    return body;
+  }
+
+  const parsed = JSON.parse(body) as JsonRecord | JsonRecord[];
+  const normalized = Array.isArray(parsed)
+    ? parsed.map((row) => normalizeSettingsAliases(row))
+    : normalizeSettingsAliases(parsed);
+
+  return JSON.stringify(normalized);
+}
+
+function isSettingsWrite(input: RequestInfo | URL, init?: RequestInit) {
+  const url = input instanceof Request ? input.url : String(input);
+  const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
+
+  return url.includes(SETTINGS_REST_PATH) && ["POST", "PATCH", "PUT"].includes(method);
+}
+
+const supabaseFetch: typeof fetch = (input, init) => {
+  if (!isSettingsWrite(input, init)) {
+    return fetch(input, init);
+  }
+
+  const nextInit = {
+    ...init,
+    body: normalizeSettingsRequestBody(init?.body),
+  };
+
+  return fetch(input, nextInit);
+};
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
+  },
+  global: {
+    fetch: supabaseFetch,
   }
 });
