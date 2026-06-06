@@ -7,17 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-function timeToMinutes(value: string) {
-  const [hours, minutes] = value.split(":").map(Number);
-  return hours * 60 + minutes;
-}
-
-function areBusinessHoursValid(openTime: string, closeTime: string) {
-  return TIME_PATTERN.test(openTime) && TIME_PATTERN.test(closeTime) && timeToMinutes(openTime) < timeToMinutes(closeTime);
-}
-
 interface GeneralSettingsFormProps {
   establishmentId: string;
 }
@@ -63,54 +52,27 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
     toast.success(next ? "Agendamentos ativados" : "Agendamentos pausados");
   };
 
-  const saveSettingsDirectly = async () => {
-    const payload = {
-      inactive_days_threshold: threshold,
-      business_open_time: openTime,
-      business_close_time: closeTime,
-    };
-
-    if (data?.settings?.id) {
-      const { error } = await (supabase as any)
-        .from("settings")
-        .update(payload)
-        .eq("establishment_id", establishmentId);
-      if (error) throw error;
-      return;
-    }
-
-    const { error } = await (supabase as any)
-      .from("settings")
-      .insert({ establishment_id: establishmentId, ...payload });
-    if (error) throw error;
-  };
-
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!areBusinessHoursValid(openTime, closeTime)) {
-      toast.error("Informe horários válidos, com abertura menor que fechamento.");
-      return;
-    }
-
     setSaving(true);
     try {
-      const { error } = await (supabase as any).rpc("upsert_general_settings", {
-        p_establishment_id: establishmentId,
-        p_inactive_days_threshold: threshold,
-        p_business_open_time: openTime,
-        p_business_close_time: closeTime,
-      });
-
-      if (error) {
-        const message = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
-        if (message.includes("schema cache") || message.includes("could not find") || message.includes("upsert_general_settings")) {
-          await saveSettingsDirectly();
-        } else {
-          throw error;
-        }
+      const payload = {
+        inactive_days_threshold: threshold,
+        business_open_time: openTime,
+        business_close_time: closeTime,
+      };
+      if (data?.settings?.id) {
+        const { error } = await (supabase as any)
+          .from("settings")
+          .update(payload)
+          .eq("establishment_id", establishmentId);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any)
+          .from("settings")
+          .insert({ establishment_id: establishmentId, ...payload });
+        if (error) throw error;
       }
-
       toast.success("Preferências salvas!");
       await refetch();
     } catch (err: any) {
