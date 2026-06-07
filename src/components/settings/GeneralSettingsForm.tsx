@@ -69,18 +69,13 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
         opening_time: openTime,
         closing_time: closeTime,
       };
-      if (data?.settings?.id) {
-        const { error } = await (supabase as any)
-          .from("settings")
-          .update(payload)
-          .eq("establishment_id", establishmentId);
-        if (error) throw error;
-      } else {
-        const { error } = await (supabase as any)
-          .from("settings")
-          .insert({ establishment_id: establishmentId, ...payload });
-        if (error) throw error;
-      }
+      const { error } = await (supabase as any)
+        .from("settings")
+        .upsert(
+          { establishment_id: establishmentId, ...payload },
+          { onConflict: "establishment_id" }
+        );
+      if (error) throw error;
       toast.success("Preferências salvas!");
       await Promise.all([
         refetch(),
