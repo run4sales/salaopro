@@ -77,6 +77,20 @@ export default function Users() {
     },
   });
 
+  const professionalsQuery = useQuery({
+    queryKey: ["professionals-manage", establishmentId],
+    enabled: !!establishmentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("professionals")
+        .select("id, name, active, commission_percentage")
+        .eq("establishment_id", establishmentId)
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const maxUsers = subscription.data?.plan?.max_users ?? null;
   const activeUserCount = (usersQuery.data ?? []).filter((u: any) => u.active).length;
   const reachedUserLimit = maxUsers != null && activeUserCount >= maxUsers;
