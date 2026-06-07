@@ -243,6 +243,73 @@ export default function Users() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Profissionais</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Cadastre profissionais que atendem no salão. Eles aparecem na agenda, nos serviços e nos relatórios
+            mesmo sem possuir acesso ao sistema. Para dar acesso ao painel, cadastre um usuário abaixo.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid md:grid-cols-[1fr_180px_auto] gap-3 items-end">
+            <div>
+              <Label>Nome do profissional</Label>
+              <Input value={profName} onChange={(e) => setProfName(e.target.value)} placeholder="Ex: Maria Silva" />
+            </div>
+            <div>
+              <Label>Comissão (%)</Label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={profCommission}
+                onChange={(e) => setProfCommission(e.target.value)}
+              />
+            </div>
+            <Button onClick={onCreateProfessional} disabled={savingProf || !profName.trim()}>
+              {savingProf ? "Salvando..." : "Adicionar"}
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            {professionalsList.map((p: any) => {
+              const linkedUser = users.find((u: any) => u.professional_id === p.id);
+              return (
+                <div key={p.id} className="border rounded p-3 flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <div className="font-medium">{p.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {p.active ? "Ativo" : "Inativo"} • Comissão {Number(p.commission_percentage ?? 0)}% •{" "}
+                      {linkedUser ? "Com acesso ao sistema" : "Sem acesso ao sistema"}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => toggleProfessional(p.id, p.active)}>
+                      {p.active ? "Inativar" : "Ativar"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeProfessional(p.id)}
+                      disabled={!!linkedUser}
+                      title={linkedUser ? "Remova primeiro o usuário vinculado" : ""}
+                    >
+                      Excluir
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+            {!professionalsList.length && (
+              <div className="text-sm text-muted-foreground">Nenhum profissional cadastrado.</div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+
+      <Card>
+        <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Usuários</span>
             {maxUsers != null && (
