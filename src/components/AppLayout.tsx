@@ -45,6 +45,7 @@ export default function AppLayout() {
 
   return (
     <>
+      <TrialExpiredBanner />
       <TrialCountdownBanner />
       <SidebarProvider className="flex-col md:flex-row">
         <header className="h-12 flex items-center border-b border-border bg-background md:hidden">
