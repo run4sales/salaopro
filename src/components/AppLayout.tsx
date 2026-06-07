@@ -4,7 +4,8 @@ import AppSidebar from "@/components/AppSidebar";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
 import TrialCountdownBanner from "@/components/TrialCountdownBanner";
 import TrialExpiredBanner from "@/components/TrialExpiredBanner";
-import { useSubscription, isFullyBlocked } from "@/hooks/useSubscription";
+import StoreBlockedGate, { useStoreBlocked } from "@/components/StoreBlockedGate";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
