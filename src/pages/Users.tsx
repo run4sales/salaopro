@@ -29,6 +29,11 @@ export default function Users() {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
+  // Profissional sem usuário do sistema
+  const [profName, setProfName] = useState("");
+  const [profCommission, setProfCommission] = useState("40");
+  const [savingProf, setSavingProf] = useState(false);
+
   const isAdmin = establishmentRole === "owner" || establishmentRole === "admin";
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
@@ -66,6 +71,20 @@ export default function Users() {
         .select("id, name")
         .eq("establishment_id", establishmentId)
         .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const professionalsQuery = useQuery({
+    queryKey: ["professionals-manage", establishmentId],
+    enabled: !!establishmentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("professionals")
+        .select("id, name, active, commission_percentage")
+        .eq("establishment_id", establishmentId)
         .order("name");
       if (error) throw error;
       return data ?? [];
@@ -157,8 +176,53 @@ export default function Users() {
     qc.invalidateQueries({ queryKey: ["establishment-users"] });
   };
 
+  const onCreateProfessional = async () => {
+    if (!establishmentId || !profName.trim()) return;
+    setSavingProf(true);
+    const { error } = await supabase.from("professionals").insert({
+      establishment_id: establishmentId,
+      name: profName.trim(),
+      active: true,
+      commission_percentage: Number(profCommission) || 0,
+    } as any);
+    setSavingProf(false);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    setProfName("");
+    setProfCommission("40");
+    toast({ title: "Profissional cadastrado" });
+    qc.invalidateQueries({ queryKey: ["professionals-manage"] });
+    qc.invalidateQueries({ queryKey: ["professionals"] });
+    qc.invalidateQueries({ queryKey: ["agenda-professionals"] });
+  };
+
+  const toggleProfessional = async (id: string, active: boolean) => {
+    const { error } = await supabase.from("professionals").update({ active: !active }).eq("id", id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    qc.invalidateQueries({ queryKey: ["professionals-manage"] });
+    qc.invalidateQueries({ queryKey: ["professionals"] });
+    qc.invalidateQueries({ queryKey: ["agenda-professionals"] });
+  };
+
+  const removeProfessional = async (id: string) => {
+    const linkedUser = (usersQuery.data ?? []).find((u: any) => u.professional_id === id);
+    if (linkedUser) {
+      return toast({
+        title: "Profissional vinculado a um usuário",
+        description: "Remova primeiro o usuário do sistema vinculado a este profissional.",
+        variant: "destructive",
+      });
+    }
+    if (!confirm("Excluir este profissional? Esta ação não pode ser desfeita.")) return;
+    const { error } = await supabase.from("professionals").delete().eq("id", id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    qc.invalidateQueries({ queryKey: ["professionals-manage"] });
+    qc.invalidateQueries({ queryKey: ["professionals"] });
+    qc.invalidateQueries({ queryKey: ["agenda-professionals"] });
+  };
+
   const services = servicesQuery.data ?? [];
   const users = usersQuery.data ?? [];
+  const professionalsList = professionalsQuery.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -176,6 +240,73 @@ export default function Users() {
           </Button>
         </div>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Profissionais</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Cadastre profissionais que atendem no salão. Eles aparecem na agenda, nos serviços e nos relatórios
+            mesmo sem possuir acesso ao sistema. Para dar acesso ao painel, cadastre um usuário abaixo.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid md:grid-cols-[1fr_180px_auto] gap-3 items-end">
+            <div>
+              <Label>Nome do profissional</Label>
+              <Input value={profName} onChange={(e) => setProfName(e.target.value)} placeholder="Ex: Maria Silva" />
+            </div>
+            <div>
+              <Label>Comissão (%)</Label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={profCommission}
+                onChange={(e) => setProfCommission(e.target.value)}
+              />
+            </div>
+            <Button onClick={onCreateProfessional} disabled={savingProf || !profName.trim()}>
+              {savingProf ? "Salvando..." : "Adicionar"}
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            {professionalsList.map((p: any) => {
+              const linkedUser = users.find((u: any) => u.professional_id === p.id);
+              return (
+                <div key={p.id} className="border rounded p-3 flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <div className="font-medium">{p.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {p.active ? "Ativo" : "Inativo"} • Comissão {Number(p.commission_percentage ?? 0)}% •{" "}
+                      {linkedUser ? "Com acesso ao sistema" : "Sem acesso ao sistema"}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => toggleProfessional(p.id, p.active)}>
+                      {p.active ? "Inativar" : "Ativar"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeProfessional(p.id)}
+                      disabled={!!linkedUser}
+                      title={linkedUser ? "Remova primeiro o usuário vinculado" : ""}
+                    >
+                      Excluir
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+            {!professionalsList.length && (
+              <div className="text-sm text-muted-foreground">Nenhum profissional cadastrado.</div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
 
       <Card>
         <CardHeader>
