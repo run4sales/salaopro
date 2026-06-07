@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
 import TrialCountdownBanner from "@/components/TrialCountdownBanner";
+import TrialExpiredBanner from "@/components/TrialExpiredBanner";
 import { useSubscription, isFullyBlocked } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -44,6 +45,7 @@ export default function AppLayout() {
 
   return (
     <>
+      <TrialExpiredBanner />
       <TrialCountdownBanner />
       <SidebarProvider className="flex-col md:flex-row">
         <header className="h-12 flex items-center border-b border-border bg-background md:hidden">
