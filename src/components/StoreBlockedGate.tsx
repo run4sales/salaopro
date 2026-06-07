@@ -42,11 +42,7 @@ export default function StoreBlockedGate() {
 
   return (
     <AlertDialog open>
-      <AlertDialogContent
-        onEscapeKeyDown={(e) => e.preventDefault()}
-        onPointerDownOutside={(e) => e.preventDefault()}
-        className="border-destructive/40"
-      >
+      <AlertDialogContent className="border-destructive/40">
         <AlertDialogHeader>
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/15 text-destructive">
             <AlertTriangle className="h-6 w-6" />
