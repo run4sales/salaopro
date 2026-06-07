@@ -29,6 +29,11 @@ export default function Users() {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
+  // Profissional sem usuário do sistema
+  const [profName, setProfName] = useState("");
+  const [profCommission, setProfCommission] = useState("40");
+  const [savingProf, setSavingProf] = useState(false);
+
   const isAdmin = establishmentRole === "owner" || establishmentRole === "admin";
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
