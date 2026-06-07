@@ -34,18 +34,9 @@ export default function AppLayout() {
     return <Navigate to="/escolher-plano" replace />;
   }
 
-  // Gate: bloqueio total força ir ao checkout
-  if (
-    isOwner &&
-    sub &&
-    isFullyBlocked(sub.state) &&
-    location.pathname !== "/checkout"
-  ) {
-    return <Navigate to="/checkout" replace />;
-  }
-
   return (
     <>
+      <StoreBlockedGate />
       <TrialExpiredBanner />
       <TrialCountdownBanner />
       <SidebarProvider className="flex-col md:flex-row">
