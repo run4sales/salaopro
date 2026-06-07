@@ -64,12 +64,17 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
 
     setSaving(true);
     try {
-      const { error } = await (supabase as any).rpc("upsert_general_settings", {
-        p_establishment_id: establishmentId,
-        p_inactive_days_threshold: threshold,
-        p_business_open_time: openTime,
-        p_business_close_time: closeTime,
-      });
+      const payload = {
+        inactive_days_threshold: threshold,
+        opening_time: openTime,
+        closing_time: closeTime,
+      };
+      const { error } = await (supabase as any)
+        .from("settings")
+        .upsert(
+          { establishment_id: establishmentId, ...payload },
+          { onConflict: "establishment_id" }
+        );
       if (error) throw error;
       toast.success("Preferências salvas!");
       await Promise.all([
