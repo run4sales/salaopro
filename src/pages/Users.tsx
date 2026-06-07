@@ -176,8 +176,53 @@ export default function Users() {
     qc.invalidateQueries({ queryKey: ["establishment-users"] });
   };
 
+  const onCreateProfessional = async () => {
+    if (!establishmentId || !profName.trim()) return;
+    setSavingProf(true);
+    const { error } = await supabase.from("professionals").insert({
+      establishment_id: establishmentId,
+      name: profName.trim(),
+      active: true,
+      commission_percentage: Number(profCommission) || 0,
+    } as any);
+    setSavingProf(false);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    setProfName("");
+    setProfCommission("40");
+    toast({ title: "Profissional cadastrado" });
+    qc.invalidateQueries({ queryKey: ["professionals-manage"] });
+    qc.invalidateQueries({ queryKey: ["professionals"] });
+    qc.invalidateQueries({ queryKey: ["agenda-professionals"] });
+  };
+
+  const toggleProfessional = async (id: string, active: boolean) => {
+    const { error } = await supabase.from("professionals").update({ active: !active }).eq("id", id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    qc.invalidateQueries({ queryKey: ["professionals-manage"] });
+    qc.invalidateQueries({ queryKey: ["professionals"] });
+    qc.invalidateQueries({ queryKey: ["agenda-professionals"] });
+  };
+
+  const removeProfessional = async (id: string) => {
+    const linkedUser = (usersQuery.data ?? []).find((u: any) => u.professional_id === id);
+    if (linkedUser) {
+      return toast({
+        title: "Profissional vinculado a um usuário",
+        description: "Remova primeiro o usuário do sistema vinculado a este profissional.",
+        variant: "destructive",
+      });
+    }
+    if (!confirm("Excluir este profissional? Esta ação não pode ser desfeita.")) return;
+    const { error } = await supabase.from("professionals").delete().eq("id", id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    qc.invalidateQueries({ queryKey: ["professionals-manage"] });
+    qc.invalidateQueries({ queryKey: ["professionals"] });
+    qc.invalidateQueries({ queryKey: ["agenda-professionals"] });
+  };
+
   const services = servicesQuery.data ?? [];
   const users = usersQuery.data ?? [];
+  const professionalsList = professionalsQuery.data ?? [];
 
   return (
     <div className="space-y-6">
