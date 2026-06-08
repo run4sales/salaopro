@@ -25,9 +25,7 @@ const ALLOWED_PATHS = ["/escolher-plano", "/checkout", "/planos"];
 
 export function useStoreBlocked() {
   const { data } = useSubscription();
-  const { establishmentRole } = useAuth();
-  const isOwner = establishmentRole === "owner" || establishmentRole === null;
-  if (!isOwner || !data) return false;
+  if (!data) return false;
   const isActivePaid = data.status === "active" && !!data.plan_id;
   return !isActivePaid && BLOCKED_STATES.has(data.state);
 }
