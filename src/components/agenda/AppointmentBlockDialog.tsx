@@ -30,6 +30,28 @@ function toLocalInput(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function isAppointmentBlocksSchemaError(error: any) {
+  if (!error) return false;
+
+  const code = String(error.code ?? "");
+  const message = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
+
+  return (
+    ["42P01", "PGRST205"].includes(code) ||
+    message.includes("appointment_blocks") ||
+    message.includes("schema cache") ||
+    message.includes("could not find")
+  );
+}
+
+function getBlockPersistenceErrorMessage(error: any) {
+  if (isAppointmentBlocksSchemaError(error)) {
+    return "O recurso de bloqueio ainda não está disponível no banco. Aplique as migrations e aguarde o schema cache atualizar.";
+  }
+
+  return error?.message ?? "Não foi possível salvar o bloqueio.";
+}
+
 export function AppointmentBlockDialog({
   open,
   onOpenChange,
@@ -88,7 +110,7 @@ export function AppointmentBlockDialog({
 
     setSaving(false);
     if (error) {
-      toast({ title: "Erro ao salvar bloqueio", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao salvar bloqueio", description: getBlockPersistenceErrorMessage(error), variant: "destructive" });
       return;
     }
 
@@ -103,7 +125,7 @@ export function AppointmentBlockDialog({
     const { error } = await (supabase as any).from("appointment_blocks").delete().eq("id", block.id);
     setSaving(false);
     if (error) {
-      toast({ title: "Erro ao excluir bloqueio", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao excluir bloqueio", description: getBlockPersistenceErrorMessage(error), variant: "destructive" });
       return;
     }
     toast({ title: "Bloqueio removido" });
