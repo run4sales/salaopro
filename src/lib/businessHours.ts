@@ -1,4 +1,4 @@
-export const BUSINESS_HOURS_SELECT = "id, inactive_days_threshold, opening_time, closing_time";
+export const BUSINESS_HOURS_SELECT = "id, inactive_days_threshold, opening_time:business_open_time, closing_time:business_close_time";
 export const DEFAULT_OPENING_TIME = "08:00";
 export const DEFAULT_CLOSING_TIME = "19:00";
 

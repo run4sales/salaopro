@@ -41,6 +41,54 @@ export type Database = {
         }
         Relationships: []
       }
+      appointment_blocks: {
+        Row: {
+          created_at: string
+          end_time: string
+          establishment_id: string
+          id: string
+          professional_id: string
+          reason: string | null
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          establishment_id: string
+          id?: string
+          professional_id: string
+          reason?: string | null
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          establishment_id?: string
+          id?: string
+          professional_id?: string
+          reason?: string | null
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_blocks_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_blocks_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_professionals: {
         Row: {
           appointment_id: string
