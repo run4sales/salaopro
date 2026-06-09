@@ -65,12 +65,12 @@ Deno.serve(async (req) => {
 
       // Update subscription state based on event
       const updates: Record<string, unknown> = {};
-      const updates: Record<string, unknown> = {};
       switch (event) {
         case 'PAYMENT_CONFIRMED':
         case 'PAYMENT_RECEIVED': {
           updates.status = 'active';
           updates.last_payment_at = new Date().toISOString();
+          updates.canceled_at = null;
           const base = payment.dueDate ? new Date(payment.dueDate) : new Date();
           base.setDate(base.getDate() + 30);
           updates.next_billing_at = base.toISOString();

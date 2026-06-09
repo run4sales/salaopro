@@ -4,7 +4,7 @@ import AppSidebar from "@/components/AppSidebar";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
 import TrialCountdownBanner from "@/components/TrialCountdownBanner";
 import TrialExpiredBanner from "@/components/TrialExpiredBanner";
-import StoreBlockedGate from "@/components/StoreBlockedGate";
+import StoreBlockedGate, { isStoreBlocked } from "@/components/StoreBlockedGate";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -21,22 +21,26 @@ export default function AppLayout() {
 
   // Apenas owners passam pelo gate de plano (funcionários do estabelecimento não escolhem plano)
   const isOwner = establishmentRole === "owner" || establishmentRole === null;
+  const storeBlocked = isStoreBlocked(sub);
 
-  // Gate: dono precisa escolher plano se ainda não escolheu
+  // Gate: dono precisa escolher plano se ainda não escolheu.
+  // Se a loja já está bloqueada, o modal obrigatório deve prevalecer nas áreas internas.
   if (
     isOwner &&
+    !storeBlocked &&
     !subLoading &&
     sub &&
     !sub.plan_id &&
     location.pathname !== "/escolher-plano" &&
-    location.pathname !== "/checkout"
+    location.pathname !== "/checkout" &&
+    location.pathname !== "/planos"
   ) {
     return <Navigate to="/escolher-plano" replace />;
   }
 
   return (
     <>
-      <StoreBlockedGate />
+      <StoreBlockedGate subscription={sub} />
       <TrialExpiredBanner />
       <TrialCountdownBanner />
       <SidebarProvider className="flex-col md:flex-row">
