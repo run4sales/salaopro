@@ -21,6 +21,7 @@ interface Props {
   services: Service[];
   professionals: Professional[];
   blocks?: AppointmentBlock[];
+  businessHours?: { openingTime: string; closingTime: string; workingDays: number[] };
   initialDate?: Date | null;
   appointment?: any | null;
   onSaved?: () => void;
@@ -108,7 +109,7 @@ function MultiSelect({
 }
 
 export function AppointmentFormDialog({
-  open, onOpenChange, establishmentId, services, professionals, blocks = [], initialDate, appointment, onSaved,
+  open, onOpenChange, establishmentId, services, professionals, blocks = [], businessHours, initialDate, appointment, onSaved,
 }: Props) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -190,6 +191,25 @@ export function AppointmentFormDialog({
 
     const start = new Date(form.appointment_date);
     const end = new Date(start.getTime() + durationMinutes * 60_000);
+
+    if (businessHours) {
+      const dow = start.getDay();
+      if (!businessHours.workingDays.includes(dow)) {
+        toast({ title: "Dia fechado", description: "A loja está fechada neste dia da semana.", variant: "destructive" });
+        return;
+      }
+      const [oh, om] = businessHours.openingTime.split(":").map(Number);
+      const [ch, cm] = businessHours.closingTime.split(":").map(Number);
+      const openMin = oh * 60 + om;
+      const closeMin = ch * 60 + cm;
+      const startMin = start.getHours() * 60 + start.getMinutes();
+      const endMin = end.getHours() * 60 + end.getMinutes() + (end.getDate() !== start.getDate() ? 24 * 60 : 0);
+      if (startMin < openMin || endMin > closeMin) {
+        toast({ title: "Fora do horário", description: `O atendimento precisa ficar entre ${businessHours.openingTime} e ${businessHours.closingTime}.`, variant: "destructive" });
+        return;
+      }
+    }
+
     const blocked = blocks.find((block) =>
       form.professional_ids.includes(block.professional_id) &&
       new Date(block.start_time) < end &&

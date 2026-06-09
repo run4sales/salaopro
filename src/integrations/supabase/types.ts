@@ -980,6 +980,7 @@ export type Database = {
           id: string
           inactive_days_threshold: number | null
           updated_at: string
+          working_days: number[]
         }
         Insert: {
           business_close_time?: string
@@ -989,6 +990,7 @@ export type Database = {
           id?: string
           inactive_days_threshold?: number | null
           updated_at?: string
+          working_days?: number[]
         }
         Update: {
           business_close_time?: string
@@ -998,6 +1000,7 @@ export type Database = {
           id?: string
           inactive_days_threshold?: number | null
           updated_at?: string
+          working_days?: number[]
         }
         Relationships: [
           {
@@ -1227,8 +1230,8 @@ export type Database = {
           establishment: string
           notes?: string
           p_phone: string
-          professionals: string[]
-          services: string[]
+          p_professionals: string[]
+          p_services: string[]
           start_time: string
         }
         Returns: string
