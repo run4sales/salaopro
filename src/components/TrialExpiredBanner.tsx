@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useSubscription } from "@/hooks/useSubscription";
+import { isFullyBlocked, useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
 
 const EXPIRED_STATES = new Set([
@@ -19,9 +19,8 @@ export default function TrialExpiredBanner() {
   const isOwner = establishmentRole === "owner" || establishmentRole === null;
   if (!isOwner || !data) return null;
 
-  // Considera trial expirado / inadimplente quando não há assinatura ativa
-  const isActivePaid = data.status === "active" && !!data.plan_id;
-  const shouldShow = !isActivePaid && EXPIRED_STATES.has(data.state);
+  // Considera trial expirado / inadimplente pelo estado calculado no backend.
+  const shouldShow = isFullyBlocked(data.state) && EXPIRED_STATES.has(data.state);
   if (!shouldShow) return null;
 
   return (
@@ -34,7 +33,7 @@ export default function TrialExpiredBanner() {
           </span>
         </div>
         <Button asChild size="sm" variant="secondary" className="shrink-0">
-          <Link to="/escolher-plano">Escolher plano</Link>
+          <Link to="/planos">Pagar boleto</Link>
         </Button>
       </div>
     </div>
