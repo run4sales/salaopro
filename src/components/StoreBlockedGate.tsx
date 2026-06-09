@@ -16,37 +16,9 @@ import { isFullyBlocked, useSubscription, type SubscriptionInfo } from "@/hooks/
 const ALLOWED_PATHS = ["/escolher-plano", "/checkout", "/planos"];
 const SUPPORT_WHATSAPP_URL = "https://wa.me/5511917506368";
 
-export function isStoreBlockAllowedPath(pathname: string) {
-  return ALLOWED_PATHS.some((p) => pathname.startsWith(p));
-}
-
-function isTrialExpired(subscription: SubscriptionInfo) {
-  const trialEnd = subscription.trial_ends_at ?? subscription.created_at;
-  if (!trialEnd) return false;
-
-  const trialEndDate = new Date(trialEnd);
-  if (subscription.trial_ends_at === null && subscription.created_at) {
-    trialEndDate.setDate(trialEndDate.getDate() + 10);
-  }
-
-  return trialEndDate.getTime() <= Date.now();
-}
-
 export function isStoreBlocked(subscription: SubscriptionInfo | null | undefined) {
   if (!subscription) return false;
-
-  const manuallyBlocked = !!subscription.manual_blocked_at || subscription.status === "blocked";
-  const canceled = subscription.status === "canceled";
-  const backendBlocked = isFullyBlocked(subscription.state);
-  const activePaid =
-    subscription.state === "active_paid" ||
-    subscription.state === "payment_pending" ||
-    (subscription.status === "active" &&
-      !!subscription.asaas_subscription_id &&
-      !!subscription.last_payment_at);
-  const expiredTrialWithoutPayment = isTrialExpired(subscription) && !activePaid;
-
-  return manuallyBlocked || canceled || backendBlocked || expiredTrialWithoutPayment;
+  return isFullyBlocked(subscription.state);
 }
 
 export function useStoreBlocked() {
@@ -54,18 +26,13 @@ export function useStoreBlocked() {
   return isStoreBlocked(data);
 }
 
-interface StoreBlockedGateProps {
-  subscription?: SubscriptionInfo | null;
-}
-
-export default function StoreBlockedGate({ subscription }: StoreBlockedGateProps) {
-  const { data } = useSubscription();
-  const blocked = isStoreBlocked(subscription ?? data);
+export default function StoreBlockedGate() {
+  const blocked = useStoreBlocked();
   const location = useLocation();
   const navigate = useNavigate();
 
   if (!blocked) return null;
-  if (isStoreBlockAllowedPath(location.pathname)) return null;
+  if (ALLOWED_PATHS.some((p) => location.pathname.startsWith(p))) return null;
 
   return (
     <AlertDialog open onOpenChange={() => undefined}>

@@ -40,7 +40,7 @@ export default function AppLayout() {
 
   return (
     <>
-      <StoreBlockedGate subscription={sub} />
+      <StoreBlockedGate />
       <TrialExpiredBanner />
       <TrialCountdownBanner />
       <SidebarProvider className="flex-col md:flex-row">
