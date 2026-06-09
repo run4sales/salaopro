@@ -146,7 +146,16 @@ export default function AdminCompanies() {
   async function changeStatus(row: Row, status: string, action: string) {
     if (!row.subscription || row.subscription.inferred) return;
     const updates: any = { status };
-    if (status === "canceled" || status === "blocked") updates.canceled_at = new Date().toISOString();
+    if (status === "blocked") {
+      updates.manual_blocked_at = new Date().toISOString();
+      updates.manual_blocked_reason = "Bloqueio manual pelo Super Admin";
+      updates.canceled_at = new Date().toISOString();
+    }
+    if (status === "canceled") updates.canceled_at = new Date().toISOString();
+    if (status !== "blocked") {
+      updates.manual_blocked_at = null;
+      updates.manual_blocked_reason = null;
+    }
     const { error } = await (supabase as any)
       .from("subscriptions")
       .update(updates)

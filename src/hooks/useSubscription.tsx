@@ -29,6 +29,10 @@ export interface SubscriptionInfo {
   trial_ends_at: string | null;
   next_billing_at: string | null;
   monthly_amount: number;
+  created_at?: string | null;
+  last_payment_at?: string | null;
+  asaas_subscription_id?: string | null;
+  manual_blocked_at?: string | null;
   payment_link?: string | null;
 }
 
@@ -53,7 +57,7 @@ export function daysBetween(target: string | null | undefined): number | null {
 
 export function canCreateAppointments(state?: SubscriptionState) {
   if (!state) return true;
-  return !["overdue_partial", "overdue_blocked", "blocked", "no_subscription"].includes(state);
+  return ["trial_active", "trial_expiring", "active_paid", "payment_pending"].includes(state);
 }
 
 export function canCreateClients(state?: SubscriptionState) {
@@ -61,5 +65,5 @@ export function canCreateClients(state?: SubscriptionState) {
 }
 
 export function isFullyBlocked(state?: SubscriptionState) {
-  return state === "overdue_blocked" || state === "blocked";
+  return ["overdue", "overdue_partial", "overdue_blocked", "blocked", "no_subscription"].includes(state ?? "no_subscription");
 }
