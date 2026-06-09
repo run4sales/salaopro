@@ -11,26 +11,39 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isSameDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { DEFAULT_CLOSING_TIME, DEFAULT_OPENING_TIME, generateBusinessSlots, normalizeTimeValue } from "@/lib/businessHours";
-
+import {
+  DEFAULT_CLOSING_TIME,
+  DEFAULT_OPENING_TIME,
+  DEFAULT_WORKING_DAYS,
+  generateBusinessSlots,
+  isWorkingDay,
+  normalizeTimeValue,
+  normalizeWorkingDays,
+} from "@/lib/businessHours";
 
 interface Service { id: string; name: string; price: number; duration: number }
 interface Professional { id: string; name: string }
+interface BlockRange { start_time: string; end_time: string; reason?: string | null }
 
 export default function PublicBooking() {
   const { establishmentId, slug } = useParams<{ establishmentId?: string; slug?: string }>();
   const [resolvedId, setResolvedId] = useState<string | null>(null);
   const [salonName, setSalonName] = useState<string>("");
   const [acceptingBookings, setAcceptingBookings] = useState<boolean>(true);
-  const [businessHours, setBusinessHours] = useState({ openingTime: DEFAULT_OPENING_TIME, closingTime: DEFAULT_CLOSING_TIME });
+  const [businessHours, setBusinessHours] = useState({
+    openingTime: DEFAULT_OPENING_TIME,
+    closingTime: DEFAULT_CLOSING_TIME,
+    workingDays: DEFAULT_WORKING_DAYS,
+  });
   const [lookupState, setLookupState] = useState<"loading" | "ok" | "not_found">("loading");
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [professionalIds, setProfessionalIds] = useState<string[]>([]);
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [bookedTimes, setBookedTimes] = useState<string[]>([]); // ISO strings
-  const [slot, setSlot] = useState<string>(""); // HH:mm
+  const [bookedTimes, setBookedTimes] = useState<string[]>([]);
+  const [blocks, setBlocks] = useState<BlockRange[]>([]);
+  const [slot, setSlot] = useState<string>("");
 
   const [clientName, setClientName] = useState("");
   const [phone, setPhone] = useState("");
@@ -51,38 +64,29 @@ export default function PublicBooking() {
   useEffect(() => {
     const run = async () => {
       setLookupState("loading");
-      if (slug) {
-        const { data, error } = await supabase.rpc("get_public_salon_by_slug", { p_slug: slug });
-        const salon = data as any;
-        if (error || !salon?.id) {
-          console.error("Slug lookup failed", error);
-          setLookupState("not_found");
-          return;
-        }
+      const applySalon = (salon: any) => {
         setResolvedId(salon.id);
         setSalonName(salon.business_name || "");
         setAcceptingBookings(salon.accepting_bookings !== false);
         setBusinessHours({
           openingTime: normalizeTimeValue(salon.opening_time, DEFAULT_OPENING_TIME),
           closingTime: normalizeTimeValue(salon.closing_time, DEFAULT_CLOSING_TIME),
+          workingDays: normalizeWorkingDays(salon.working_days),
         });
         setLookupState("ok");
         document.title = `${salon.business_name || "Agendar atendimento"} | Beauty Core`;
+      };
+
+      if (slug) {
+        const { data, error } = await supabase.rpc("get_public_salon_by_slug", { p_slug: slug });
+        const salon = data as any;
+        if (error || !salon?.id) { setLookupState("not_found"); return; }
+        applySalon(salon);
       } else if (establishmentId) {
         const { data, error } = await supabase.rpc("get_public_salon_by_id", { p_id: establishmentId });
         const salon = data as any;
-        if (error || !salon?.id) {
-          setLookupState("not_found");
-          return;
-        }
-        setResolvedId(salon.id);
-        setSalonName(salon.business_name || "");
-        setAcceptingBookings(salon.accepting_bookings !== false);
-        setBusinessHours({
-          openingTime: normalizeTimeValue(salon.opening_time, DEFAULT_OPENING_TIME),
-          closingTime: normalizeTimeValue(salon.closing_time, DEFAULT_CLOSING_TIME),
-        });
-        setLookupState("ok");
+        if (error || !salon?.id) { setLookupState("not_found"); return; }
+        applySalon(salon);
       } else {
         setLookupState("not_found");
       }
@@ -95,7 +99,6 @@ export default function PublicBooking() {
     (async () => {
       const { data, error } = await supabase.rpc("get_public_catalog", { establishment: resolvedId });
       if (error) {
-        console.error(error);
         toast({ title: "Erro ao carregar catálogo", description: error.message, variant: "destructive" });
         return;
       }
@@ -110,10 +113,12 @@ export default function PublicBooking() {
   const totalPrice = useMemo(() => selectedServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0), [selectedServices]);
   const priceFmt = useMemo(() => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }), []);
   const primaryProfessionalId = professionalIds[0] ?? "";
+  const dayIsOpen = date ? isWorkingDay(date, businessHours.workingDays) : false;
 
-  // Load booked times for the first selected professional (used as availability reference)
   useEffect(() => {
-    if (!resolvedId || !primaryProfessionalId || !date) return;
+    if (!resolvedId || !primaryProfessionalId || !date) {
+      setBookedTimes([]); setBlocks([]); return;
+    }
     (async () => {
       const dayStr = format(date, "yyyy-MM-dd");
       const { data: avData, error } = await supabase.rpc("get_public_availability", {
@@ -122,32 +127,42 @@ export default function PublicBooking() {
         day: dayStr,
       });
       if (error) {
-        console.error(error);
         toast({ title: "Erro ao carregar disponibilidade", description: error.message, variant: "destructive" });
         return;
       }
       const avail = avData as any;
-      const booked = (avail?.booked ?? []) as string[];
-      setBookedTimes(booked);
+      setBookedTimes((avail?.booked ?? []) as string[]);
+      setBlocks((avail?.blocks ?? []) as BlockRange[]);
       setSlot("");
     })();
   }, [resolvedId, primaryProfessionalId, date, toast]);
 
-
   const slots = useMemo(() => {
     if (!date) return [] as Date[];
-    return generateBusinessSlots(date, businessHours.openingTime, businessHours.closingTime, Math.max(totalDuration, 30));
-  }, [businessHours.closingTime, businessHours.openingTime, date, totalDuration]);
+    return generateBusinessSlots(
+      date,
+      businessHours.openingTime,
+      businessHours.closingTime,
+      Math.max(totalDuration, 30),
+      30,
+      businessHours.workingDays,
+    );
+  }, [businessHours, date, totalDuration]);
 
-  const isBooked = (d: Date) => {
-    // compare by hour/minute on same day
-    return bookedTimes.some((iso) => {
-      const bd = new Date(iso);
-      return isSameDay(bd, d) && bd.getHours() === d.getHours() && bd.getMinutes() === d.getMinutes();
-    });
+  const isBooked = (d: Date) => bookedTimes.some((iso) => {
+    const bd = new Date(iso);
+    return isSameDay(bd, d) && bd.getHours() === d.getHours() && bd.getMinutes() === d.getMinutes();
+  });
+
+  const isBlocked = (d: Date) => {
+    const end = new Date(d.getTime() + Math.max(totalDuration, 30) * 60_000);
+    return blocks.some(b => new Date(b.start_time) < end && new Date(b.end_time) > d);
   };
 
-  const canSubmit = !!resolvedId && serviceIds.length > 0 && professionalIds.length > 0 && !!date && !!slot && !!clientName && !!phone;
+  const availableSlots = useMemo(() => slots.filter(d => !isBooked(d) && !isBlocked(d)), [slots, bookedTimes, blocks, totalDuration]);
+  const showNoAvailability = !!primaryProfessionalId && !!date && dayIsOpen && serviceIds.length > 0 && slots.length > 0 && availableSlots.length === 0;
+
+  const canSubmit = !!resolvedId && serviceIds.length > 0 && professionalIds.length > 0 && !!date && !!slot && !!clientName && !!phone && dayIsOpen;
 
   const handleSubmit = async () => {
     if (!canSubmit || !date) return;
@@ -158,8 +173,8 @@ export default function PublicBooking() {
       establishment: resolvedId!,
       client_name: clientName,
       p_phone: phone,
-      services: serviceIds,
-      professionals: professionalIds,
+      p_services: serviceIds,
+      p_professionals: professionalIds,
       start_time: startTime.toISOString(),
       notes: notes || null,
     });
@@ -170,7 +185,6 @@ export default function PublicBooking() {
     toast({ title: "Agendamento confirmado!", description: `Código: ${data}` });
     setSlot("");
   };
-
 
   if (lookupState === "loading") {
     return (
@@ -217,10 +231,7 @@ export default function PublicBooking() {
                   const checked = serviceIds.includes(s.id);
                   return (
                     <label key={s.id} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent/40">
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={() => setServiceIds(prev => checked ? prev.filter(x => x !== s.id) : [...prev, s.id])}
-                      />
+                      <Checkbox checked={checked} onCheckedChange={() => setServiceIds(prev => checked ? prev.filter(x => x !== s.id) : [...prev, s.id])} />
                       <span className="text-sm flex-1">{s.name}</span>
                       <span className="text-xs text-muted-foreground">{priceFmt.format(Number(s.price))}</span>
                     </label>
@@ -236,10 +247,7 @@ export default function PublicBooking() {
                   const checked = professionalIds.includes(p.id);
                   return (
                     <label key={p.id} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent/40">
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={() => setProfessionalIds(prev => checked ? prev.filter(x => x !== p.id) : [...prev, p.id])}
-                      />
+                      <Checkbox checked={checked} onCheckedChange={() => setProfessionalIds(prev => checked ? prev.filter(x => x !== p.id) : [...prev, p.id])} />
                       <span className="text-sm">{p.name}</span>
                     </label>
                   );
@@ -251,30 +259,49 @@ export default function PublicBooking() {
               <label className="text-sm text-muted-foreground">Data</label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start mt-1", !date && "text-muted-foreground")}> 
+                  <Button variant="outline" className={cn("w-full justify-start mt-1", !date && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {date ? format(date, "dd/MM/yyyy") : "Escolha uma data"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar selected={date} onSelect={setDate} mode="single" className={cn("p-3 pointer-events-auto")} />
+                  <Calendar
+                    selected={date}
+                    onSelect={setDate}
+                    mode="single"
+                    disabled={(d) => !isWorkingDay(d, businessHours.workingDays)}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
                 </PopoverContent>
               </Popover>
             </div>
             <div>
               <label className="text-sm text-muted-foreground">Horário</label>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {slots.map((d) => {
-                  const label = format(d, "HH:mm");
-                  const disabled = isBooked(d) || serviceIds.length === 0 || professionalIds.length === 0;
-                  const isActive = slot === label;
-                  return (
-                    <Button key={label} variant={isActive ? "default" : "outline"} disabled={disabled} onClick={() => setSlot(label)}>
-                      {label}
-                    </Button>
-                  );
-                })}
-              </div>
+              {date && !dayIsOpen ? (
+                <p className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+                  A loja está fechada neste dia. Escolha outra data.
+                </p>
+              ) : showNoAvailability ? (
+                <p className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+                  Este profissional não possui horários disponíveis neste período. Escolha outro profissional ou selecione outra data.
+                </p>
+              ) : (
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {slots.map((d) => {
+                    const label = format(d, "HH:mm");
+                    const disabled = isBooked(d) || isBlocked(d) || serviceIds.length === 0 || professionalIds.length === 0;
+                    const isActive = slot === label;
+                    return (
+                      <Button key={label} variant={isActive ? "default" : "outline"} disabled={disabled} onClick={() => setSlot(label)}>
+                        {label}
+                      </Button>
+                    );
+                  })}
+                  {slots.length === 0 && (
+                    <p className="col-span-3 text-sm text-muted-foreground">Selecione um serviço para ver os horários disponíveis.</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -299,7 +326,6 @@ export default function PublicBooking() {
               </div>
             )}
           </div>
-
         </div>
       </main>
     </div>

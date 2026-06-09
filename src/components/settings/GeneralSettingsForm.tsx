@@ -3,10 +3,20 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { areBusinessHoursValid, BUSINESS_HOURS_SELECT, DEFAULT_CLOSING_TIME, DEFAULT_OPENING_TIME, normalizeTimeValue } from "@/lib/businessHours";
+import {
+  areBusinessHoursValid,
+  BUSINESS_HOURS_SELECT,
+  DEFAULT_CLOSING_TIME,
+  DEFAULT_OPENING_TIME,
+  DEFAULT_WORKING_DAYS,
+  normalizeTimeValue,
+  normalizeWorkingDays,
+  WEEKDAY_LABELS,
+} from "@/lib/businessHours";
 
 interface GeneralSettingsFormProps {
   establishmentId: string;
@@ -25,7 +35,7 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
       if (settingsRes.error) throw settingsRes.error;
       if (profileRes.error) throw profileRes.error;
       return {
-        settings: settingsRes.data as { id: string; inactive_days_threshold: number; opening_time: string | null; closing_time: string | null } | null,
+        settings: settingsRes.data as { id: string; inactive_days_threshold: number; opening_time: string | null; closing_time: string | null; working_days: number[] | null } | null,
         accepting_bookings: (profileRes.data as any)?.accepting_bookings ?? true,
       };
     },
@@ -34,6 +44,7 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
   const [threshold, setThreshold] = useState<number>(20);
   const [openTime, setOpenTime] = useState<string>(DEFAULT_OPENING_TIME);
   const [closeTime, setCloseTime] = useState<string>(DEFAULT_CLOSING_TIME);
+  const [workingDays, setWorkingDays] = useState<number[]>(DEFAULT_WORKING_DAYS);
   const [accepting, setAccepting] = useState<boolean>(true);
   const [saving, setSaving] = useState(false);
 
@@ -41,6 +52,7 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
     if (data?.settings?.inactive_days_threshold != null) setThreshold(Number(data.settings.inactive_days_threshold));
     if (data?.settings?.opening_time) setOpenTime(normalizeTimeValue(data.settings.opening_time, DEFAULT_OPENING_TIME));
     if (data?.settings?.closing_time) setCloseTime(normalizeTimeValue(data.settings.closing_time, DEFAULT_CLOSING_TIME));
+    if (data?.settings) setWorkingDays(normalizeWorkingDays(data.settings.working_days));
     if (data) setAccepting(data.accepting_bookings);
   }, [data]);
 
@@ -55,10 +67,20 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
     toast.success(next ? "Agendamentos ativados" : "Agendamentos pausados");
   };
 
+  const toggleDay = (day: number) => {
+    setWorkingDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()
+    );
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!areBusinessHoursValid(openTime, closeTime)) {
       toast.error("Informe horários válidos no formato HH:mm, com abertura menor que fechamento.");
+      return;
+    }
+    if (workingDays.length === 0) {
+      toast.error("Selecione pelo menos um dia de funcionamento.");
       return;
     }
 
@@ -68,6 +90,7 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
         inactive_days_threshold: threshold,
         opening_time: openTime,
         closing_time: closeTime,
+        working_days: workingDays,
       };
       const { error } = await (supabase as any)
         .from("settings")
@@ -117,6 +140,24 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
             <Label>Fechamento</Label>
             <Input type="time" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} required />
           </div>
+        </div>
+
+        <div>
+          <h3 className="text-base font-semibold">Dias de funcionamento</h3>
+          <p className="text-sm text-muted-foreground">
+            Dias não marcados ficam fechados na agenda e no link público.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl">
+          {WEEKDAY_LABELS.map((d) => {
+            const checked = workingDays.includes(d.value);
+            return (
+              <label key={d.value} className="flex items-center gap-2 rounded-md border p-3 cursor-pointer hover:bg-accent/40">
+                <Checkbox checked={checked} onCheckedChange={() => toggleDay(d.value)} />
+                <span className="text-sm">{d.label}</span>
+              </label>
+            );
+          })}
         </div>
 
         <div>
