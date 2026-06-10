@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE, logAdminAction } from "./shared";
+import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE, logAdminAction, deriveEffectiveStatus } from "./shared";
 
 
 type Row = {
@@ -29,6 +29,7 @@ type Row = {
     plan_id: string | null;
     monthly_amount: number;
     next_billing_at: string | null;
+    trial_ends_at?: string | null;
     asaas_subscription_id: string | null;
     inferred?: boolean;
     plan?: { name: string };
@@ -62,7 +63,7 @@ export default function AdminCompanies() {
       const [{ data: subs }, { data: fetchedPlans }] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
-          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
+          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, trial_ends_at, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
         (supabase as any)
           .from("subscription_plans")
           .select("id, name, slug, monthly_price")
@@ -76,6 +77,7 @@ export default function AdminCompanies() {
           plan_id: s.plan_id,
           monthly_amount: Number(s.monthly_amount || 0),
           next_billing_at: s.next_billing_at,
+          trial_ends_at: s.trial_ends_at,
           asaas_subscription_id: s.asaas_subscription_id,
           plan: s.subscription_plans ? { name: s.subscription_plans.name } : undefined,
         });
@@ -130,7 +132,8 @@ export default function AdminCompanies() {
   const rows = useMemo(() => {
     const data = profilesQuery.data ?? [];
     return data.filter((r) => {
-      if (statusFilter !== "all" && r.subscription?.status !== statusFilter) return false;
+      const effective = deriveEffectiveStatus(r.subscription?.status, r.subscription?.trial_ends_at, r.subscription?.next_billing_at);
+      if (statusFilter !== "all" && effective !== statusFilter) return false;
       if (planFilter !== "all" && r.subscription?.plan_id !== planFilter) return false;
       if (search) {
         const s = search.toLowerCase();
@@ -318,7 +321,8 @@ export default function AdminCompanies() {
               </TableHeader>
               <TableBody>
                 {rows.map((r) => {
-                  const status = r.subscription?.status ?? "trial";
+                  const rawStatus = r.subscription?.status ?? "trial";
+                  const status = deriveEffectiveStatus(rawStatus, r.subscription?.trial_ends_at, r.subscription?.next_billing_at);
                   return (
                     <TableRow key={r.id} className="hover:bg-muted/30">
                       <TableCell className="font-medium">{r.business_name}</TableCell>
@@ -352,7 +356,7 @@ export default function AdminCompanies() {
                           <Button size="sm" variant="ghost" onClick={() => openBilling(r)} disabled={!r.subscription || r.subscription.inferred}>
                             <Wallet className="h-3.5 w-3.5" /> Cobrança
                           </Button>
-                          {status === "blocked" ? (
+                          {rawStatus === "blocked" ? (
                             <Button size="sm" variant="ghost" className="text-success" onClick={() => changeStatus(r, "active", "unblock")}>
                               <CheckCircle2 className="h-3.5 w-3.5" /> Desbloquear
                             </Button>
