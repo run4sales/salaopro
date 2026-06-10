@@ -42,6 +42,9 @@ export function useSubscription() {
     queryKey: ["my-subscription", user?.id],
     enabled: !!user?.id,
     refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
+    staleTime: 0,
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc("get_my_subscription");
       if (error) throw error;
