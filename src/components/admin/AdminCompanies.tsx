@@ -130,7 +130,8 @@ export default function AdminCompanies() {
   const rows = useMemo(() => {
     const data = profilesQuery.data ?? [];
     return data.filter((r) => {
-      if (statusFilter !== "all" && r.subscription?.status !== statusFilter) return false;
+      const effective = deriveEffectiveStatus(r.subscription?.status, r.subscription?.trial_ends_at, r.subscription?.next_billing_at);
+      if (statusFilter !== "all" && effective !== statusFilter) return false;
       if (planFilter !== "all" && r.subscription?.plan_id !== planFilter) return false;
       if (search) {
         const s = search.toLowerCase();
