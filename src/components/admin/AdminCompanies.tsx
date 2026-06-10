@@ -321,7 +321,8 @@ export default function AdminCompanies() {
               </TableHeader>
               <TableBody>
                 {rows.map((r) => {
-                  const status = r.subscription?.status ?? "trial";
+                  const rawStatus = r.subscription?.status ?? "trial";
+                  const status = deriveEffectiveStatus(rawStatus, r.subscription?.trial_ends_at, r.subscription?.next_billing_at);
                   return (
                     <TableRow key={r.id} className="hover:bg-muted/30">
                       <TableCell className="font-medium">{r.business_name}</TableCell>
