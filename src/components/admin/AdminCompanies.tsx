@@ -356,7 +356,7 @@ export default function AdminCompanies() {
                           <Button size="sm" variant="ghost" onClick={() => openBilling(r)} disabled={!r.subscription || r.subscription.inferred}>
                             <Wallet className="h-3.5 w-3.5" /> Cobrança
                           </Button>
-                          {status === "blocked" ? (
+                          {rawStatus === "blocked" ? (
                             <Button size="sm" variant="ghost" className="text-success" onClick={() => changeStatus(r, "active", "unblock")}>
                               <CheckCircle2 className="h-3.5 w-3.5" /> Desbloquear
                             </Button>
