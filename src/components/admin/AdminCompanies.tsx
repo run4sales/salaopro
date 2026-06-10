@@ -63,7 +63,7 @@ export default function AdminCompanies() {
       const [{ data: subs }, { data: fetchedPlans }] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
-          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
+          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, trial_ends_at, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
         (supabase as any)
           .from("subscription_plans")
           .select("id, name, slug, monthly_price")
@@ -77,6 +77,7 @@ export default function AdminCompanies() {
           plan_id: s.plan_id,
           monthly_amount: Number(s.monthly_amount || 0),
           next_billing_at: s.next_billing_at,
+          trial_ends_at: s.trial_ends_at,
           asaas_subscription_id: s.asaas_subscription_id,
           plan: s.subscription_plans ? { name: s.subscription_plans.name } : undefined,
         });
