@@ -1127,6 +1127,8 @@ export type Database = {
           establishment_id: string
           id: string
           last_payment_at: string | null
+          manual_blocked_at: string | null
+          manual_blocked_reason: string | null
           monthly_amount: number
           next_billing_at: string | null
           payment_link: string | null
@@ -1150,6 +1152,8 @@ export type Database = {
           establishment_id: string
           id?: string
           last_payment_at?: string | null
+          manual_blocked_at?: string | null
+          manual_blocked_reason?: string | null
           monthly_amount?: number
           next_billing_at?: string | null
           payment_link?: string | null
@@ -1173,6 +1177,8 @@ export type Database = {
           establishment_id?: string
           id?: string
           last_payment_at?: string | null
+          manual_blocked_at?: string | null
+          manual_blocked_reason?: string | null
           monthly_amount?: number
           next_billing_at?: string | null
           payment_link?: string | null
