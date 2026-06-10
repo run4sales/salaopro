@@ -29,6 +29,7 @@ type Row = {
     plan_id: string | null;
     monthly_amount: number;
     next_billing_at: string | null;
+    trial_ends_at?: string | null;
     asaas_subscription_id: string | null;
     inferred?: boolean;
     plan?: { name: string };
