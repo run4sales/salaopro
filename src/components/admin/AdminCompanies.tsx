@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE, logAdminAction } from "./shared";
+import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE, logAdminAction, deriveEffectiveStatus } from "./shared";
 
 
 type Row = {
