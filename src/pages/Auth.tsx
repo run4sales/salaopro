@@ -90,7 +90,7 @@ const Auth = () => {
     const { error } = await signUp(signupData.email, signupData.password, signupMetadata);
 
     if (!error) {
-      const { error: agendorError } = await supabase.functions.invoke('agendor-sync-signup-lead', {
+      const { error: agendorError } = await supabase.functions.invoke('agendor-submit-signup-lead', {
         body: {
           ...signupMetadata,
           email: signupData.email,

@@ -4,7 +4,7 @@ A integração usa o secret `AGENDOR_API_KEY` configurado no Supabase para criar
 
 ## Novos cadastros
 
-A função `agendor-sync-signup-lead` recebe os dados enviados no signup e cria/reutiliza a empresa no Agendor antes de criar um negócio vinculado.
+A função `agendor-submit-signup-lead` recebe os dados enviados no signup e cria/reutiliza a empresa no Agendor antes de criar um negócio vinculado.
 
 ## Empresas já cadastradas
 
