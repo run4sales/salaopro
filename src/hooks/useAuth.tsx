@@ -134,17 +134,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         variant: "destructive",
       });
     } else {
-      const { error: agendorError } = await supabase.functions.invoke('agendor-sync-signup-lead', {
-        body: {
-          ...metadata,
-          email,
-        },
-      });
-
-      if (agendorError) {
-        console.error('Erro ao enviar cadastro para o Agendor:', agendorError);
-      }
-
       toast({
         title: "Cadastro realizado!",
         description: "Verifique seu email para confirmar a conta.",
