@@ -49,6 +49,7 @@ export default function AdminCompanies() {
   const [billingStatus, setBillingStatus] = useState<string>("active");
   const [billingAmount, setBillingAmount] = useState<string>("");
   const [billingNextDate, setBillingNextDate] = useState<string>("");
+  const [isSyncingAgendor, setIsSyncingAgendor] = useState(false);
 
 
   const profilesQuery = useQuery({
@@ -227,6 +228,39 @@ export default function AdminCompanies() {
   }
 
 
+  async function syncExistingCompaniesToAgendor() {
+    setIsSyncingAgendor(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("agendor-sync-existing-companies", {
+        body: { force: false },
+      });
+
+      if (error) throw error;
+
+      const synced = Number((data as any)?.synced ?? 0);
+      const failed = Number((data as any)?.failed ?? 0);
+      const skipped = Number((data as any)?.skipped ?? 0);
+
+      if (failed > 0) {
+        toast.warning(`Agendor: ${synced} sincronizadas, ${failed} com erro e ${skipped} ignoradas.`);
+      } else {
+        toast.success(`Agendor: ${synced} empresas sincronizadas${skipped ? ` e ${skipped} ignoradas` : ""}.`);
+      }
+
+      await logAdminAction(user!.id, "agendor_sync_existing_companies_clicked", undefined, {
+        synced,
+        failed,
+        skipped,
+      });
+      qc.invalidateQueries({ queryKey: ["admin-companies"] });
+    } catch (error) {
+      console.error("agendor-sync-existing-companies invoke error", error);
+      toast.error("Não foi possível sincronizar com o Agendor.");
+    } finally {
+      setIsSyncingAgendor(false);
+    }
+  }
+
   async function saveEdit() {
     if (!editTarget?.subscription || !editPlan) return;
     const plan = plansQuery.data?.find((p) => p.id === editPlan);
@@ -301,6 +335,16 @@ export default function AdminCompanies() {
             ))}
           </SelectContent>
         </Select>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={syncExistingCompaniesToAgendor}
+          disabled={isSyncingAgendor}
+          className="w-full sm:w-auto"
+        >
+          <RefreshCw className={`h-4 w-4 ${isSyncingAgendor ? "animate-spin" : ""}`} />
+          {isSyncingAgendor ? "Sincronizando..." : "Sincronizar Agendor"}
+        </Button>
       </div>
 
       <Card className="bg-card/60 border-border/60">
