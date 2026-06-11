@@ -21,7 +21,7 @@ import AdminSaaSFinance from "@/components/admin/AdminSaaSFinance";
 import AdminControl from "@/components/admin/AdminControl";
 import AdminPlans from "@/components/admin/AdminPlans";
 import AdminMetrics from "@/components/admin/AdminMetrics";
-import AdminAgendorSync from "@/components/admin/AdminAgendorSync";
+import AdminAgendorSync from "@/components/admin/agendor/SyncPanel";
 
 type Tab = "dashboard" | "companies" | "subscriptions" | "finance" | "metrics" | "control" | "plans" | "agendor";
 
