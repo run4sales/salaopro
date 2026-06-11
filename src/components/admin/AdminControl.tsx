@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ShieldAlert } from "lucide-react";
+import AdminAgendorSync from "./agendor/SyncPanel";
 
 type LogRow = {
   id: string;
@@ -45,6 +46,8 @@ export default function AdminControl() {
 
   return (
     <div className="space-y-6">
+      <AdminAgendorSync />
+
       <Card className="bg-card/60 border-border/60">
         <CardHeader>
           <div className="flex items-center gap-2">
