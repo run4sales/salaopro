@@ -12,7 +12,6 @@ import {
   TrendingUp,
   ShieldAlert,
   Settings as SettingsIcon,
-  RefreshCw,
 } from "lucide-react";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminCompanies from "@/components/admin/AdminCompanies";
@@ -21,9 +20,8 @@ import AdminSaaSFinance from "@/components/admin/AdminSaaSFinance";
 import AdminControl from "@/components/admin/AdminControl";
 import AdminPlans from "@/components/admin/AdminPlans";
 import AdminMetrics from "@/components/admin/AdminMetrics";
-import AdminAgendorSync from "@/components/admin/agendor/SyncPanel";
 
-type Tab = "dashboard" | "companies" | "subscriptions" | "finance" | "metrics" | "control" | "plans" | "agendor";
+type Tab = "dashboard" | "companies" | "subscriptions" | "finance" | "metrics" | "control" | "plans";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard Geral", icon: LayoutDashboard },
@@ -33,7 +31,6 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "metrics", label: "Métricas", icon: TrendingUp },
   { id: "control", label: "Controle", icon: ShieldAlert },
   { id: "plans", label: "Planos", icon: SettingsIcon },
-  { id: "agendor", label: "Agendor", icon: RefreshCw },
 ];
 
 export default function SuperAdmin() {
@@ -128,7 +125,6 @@ export default function SuperAdmin() {
       {tab === "metrics" && <AdminMetrics />}
       {tab === "control" && <AdminControl />}
       {tab === "plans" && <AdminPlans />}
-      {tab === "agendor" && <AdminAgendorSync />}
     </main>
   );
 }
