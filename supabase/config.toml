@@ -2,9 +2,3 @@ project_id = "gikjhasawuhylrpchfqv"
 
 [functions.asaas-webhook]
 verify_jwt = false
-
-[functions.agendor-create-signup-lead]
-verify_jwt = false
-
-[functions.agendor-sync-existing-companies]
-verify_jwt = true

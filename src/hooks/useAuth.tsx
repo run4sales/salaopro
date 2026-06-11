@@ -134,7 +134,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         variant: "destructive",
       });
     } else {
-      const { error: agendorError } = await supabase.functions.invoke('agendor-create-signup-lead', {
+      const { error: agendorError } = await supabase.functions.invoke('agendor-sync-signup-lead', {
         body: {
           ...metadata,
           email,

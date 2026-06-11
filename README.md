@@ -71,23 +71,3 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
-
-## Integração Agendor
-
-A função Supabase `agendor-create-signup-lead` cria automaticamente uma empresa e um negócio no Agendor sempre que um cadastro de salão é concluído no formulário de signup.
-
-Configure os secrets da função antes de publicar:
-
-```sh
-supabase secrets set AGENDOR_API_KEY="seu-token-do-agendor"
-```
-
-Secrets opcionais:
-
-- `AGENDOR_OWNER_USER`: ID ou email do responsável pelo lead no Agendor.
-- `AGENDOR_LEAD_ORIGIN`: ID ou nome da origem do lead no Agendor.
-- `AGENDOR_CATEGORY`: ID ou nome da categoria da empresa no Agendor.
-- `AGENDOR_DEAL_STAGE`: sequência da etapa inicial do negócio; por padrão usa `1`.
-- `AGENDOR_FUNNEL`: ID do funil, se a etapa pertencer a um funil específico.
-
-Para sincronizar empresas já cadastradas antes da integração, acesse o painel Super Admin > Empresas e clique em **Sincronizar Agendor**. A função `agendor-sync-existing-companies` usa o usuário autenticado para validar a role `super_admin`, cria os registros pendentes no Agendor e grava os IDs retornados em `profiles` para evitar duplicidade em novas execuções.
