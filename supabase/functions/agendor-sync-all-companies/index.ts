@@ -1,7 +1,7 @@
 /* global Deno */
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-import { syncAgendorSignupLead } from '../_shared/agendor.ts';
+import { syncAgendorSignupLead } from '../_shared/agendor-crm/client.ts';
 
 type SyncRequestBody = {
   force?: boolean;
@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
         : `${synced} empresa(s) sincronizada(s) e ${failed} com erro.`,
     });
   } catch (error) {
-    console.error('agendor-sync-existing-companies error', error);
+    console.error('agendor-sync-all-companies error', error);
     return jsonResponse({ error: (error as Error).message }, 500);
   }
 });

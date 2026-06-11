@@ -1,6 +1,6 @@
 /* global Deno */
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-import { syncAgendorSignupLead, type SignupLeadBody } from '../_shared/agendor.ts';
+import { syncAgendorSignupLead, type SignupLeadBody } from '../_shared/agendor-crm/client.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });

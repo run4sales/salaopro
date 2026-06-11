@@ -8,7 +8,7 @@ A função `agendor-sync-signup-lead` recebe os dados enviados no signup e cria/
 
 ## Empresas já cadastradas
 
-Para sincronizar empresas antigas, acesse **Super Admin > Empresas** e clique em **Sincronizar Agendor**. A função `agendor-sync-existing-companies` valida a role `super_admin`, sincroniza apenas empresas sem `agendor_deal_id` e grava em `profiles`:
+Para sincronizar empresas antigas, acesse **Super Admin > Agendor** e clique em **Sincronizar Agendor**. A função `agendor-sync-all-companies` valida a role `super_admin`, sincroniza apenas empresas sem `agendor_deal_id` e grava em `profiles`:
 
 - `agendor_organization_id`
 - `agendor_deal_id`
