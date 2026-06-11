@@ -49,6 +49,30 @@ function isSettingsWrite(input: RequestInfo | URL, init?: RequestInit) {
   return url.includes(SETTINGS_REST_PATH) && ["POST", "PATCH", "PUT"].includes(method);
 }
 
+
+type SignUpCredentials = {
+  email?: string;
+  phone?: string;
+  options?: {
+    data?: JsonRecord;
+  };
+};
+
+function getAgendorSignupLeadBody(credentials: unknown, fallbackEmail?: string | null) {
+  const signupCredentials = credentials as SignUpCredentials;
+  const metadata = signupCredentials?.options?.data;
+
+  if (!metadata?.business_name) {
+    return null;
+  }
+
+  return {
+    ...metadata,
+    email: signupCredentials.email ?? fallbackEmail ?? metadata.email,
+    phone: metadata.phone ?? signupCredentials.phone,
+  };
+}
+
 const supabaseFetch: typeof fetch = (input, init) => {
   if (!isSettingsWrite(input, init)) {
     return fetch(input, init);
@@ -72,3 +96,25 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     fetch: supabaseFetch,
   }
 });
+
+type SignUpArgs = Parameters<typeof supabase.auth.signUp>;
+type SignUpResult = Awaited<ReturnType<typeof supabase.auth.signUp>>;
+
+const originalSignUp = supabase.auth.signUp.bind(supabase.auth) as (...args: SignUpArgs) => Promise<SignUpResult>;
+
+supabase.auth.signUp = (async (...args: SignUpArgs): Promise<SignUpResult> => {
+  const result = await originalSignUp(...args);
+  const agendorLeadBody = getAgendorSignupLeadBody(args[0], result.data.user?.email);
+
+  if (!result.error && agendorLeadBody) {
+    const { error: agendorError } = await supabase.functions.invoke('agendor-submit-signup-lead', {
+      body: agendorLeadBody,
+    });
+
+    if (agendorError) {
+      console.error('Erro ao enviar cadastro para o Agendor:', agendorError);
+    }
+  }
+
+  return result;
+}) as typeof supabase.auth.signUp;
