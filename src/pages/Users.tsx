@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
-import { AlertCircle, ArrowUpRight } from "lucide-react";
+import { AlertCircle, ArrowUpRight, Pencil } from "lucide-react";
+import { EditProfessionalDialog } from "@/components/users/EditProfessionalDialog";
+import { EditUserDialog } from "@/components/users/EditUserDialog";
 
 export default function Users() {
   const { profile, establishmentRole } = useAuth();
@@ -33,6 +35,9 @@ export default function Users() {
   const [profName, setProfName] = useState("");
   const [profCommission, setProfCommission] = useState("40");
   const [savingProf, setSavingProf] = useState(false);
+
+  const [editProf, setEditProf] = useState<any | null>(null);
+  const [editUser, setEditUser] = useState<any | null>(null);
 
   const isAdmin = establishmentRole === "owner" || establishmentRole === "admin";
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
@@ -284,6 +289,9 @@ export default function Users() {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setEditProf(p)}>
+                      <Pencil className="h-4 w-4 mr-1" /> Editar
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => toggleProfessional(p.id, p.active)}>
                       {p.active ? "Inativar" : "Ativar"}
                     </Button>
@@ -400,6 +408,9 @@ export default function Users() {
                 </div>
               </div>
               <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setEditUser(u)}>
+                  <Pencil className="h-4 w-4 mr-1" /> Editar
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => toggleActive(u.id, u.active)}>
                   {u.active ? "Bloquear" : "Desbloquear"}
                 </Button>
@@ -415,6 +426,18 @@ export default function Users() {
           )}
         </CardContent>
       </Card>
+
+      <EditProfessionalDialog
+        open={!!editProf}
+        onOpenChange={(v) => !v && setEditProf(null)}
+        professional={editProf}
+      />
+      <EditUserDialog
+        open={!!editUser}
+        onOpenChange={(v) => !v && setEditUser(null)}
+        establishmentId={establishmentId ?? ""}
+        user={editUser}
+      />
     </div>
   );
 }
