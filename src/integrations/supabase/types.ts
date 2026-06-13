@@ -703,6 +703,10 @@ export type Database = {
       profiles: {
         Row: {
           accepting_bookings: boolean
+          agendor_deal_id: number | null
+          agendor_organization_id: number | null
+          agendor_sync_error: string | null
+          agendor_synced_at: string | null
           business_name: string
           business_type: string
           cep: string
@@ -724,6 +728,10 @@ export type Database = {
         }
         Insert: {
           accepting_bookings?: boolean
+          agendor_deal_id?: number | null
+          agendor_organization_id?: number | null
+          agendor_sync_error?: string | null
+          agendor_synced_at?: string | null
           business_name: string
           business_type: string
           cep: string
@@ -745,6 +753,10 @@ export type Database = {
         }
         Update: {
           accepting_bookings?: boolean
+          agendor_deal_id?: number | null
+          agendor_organization_id?: number | null
+          agendor_sync_error?: string | null
+          agendor_synced_at?: string | null
           business_name?: string
           business_type?: string
           cep?: string
