@@ -426,6 +426,18 @@ export default function Users() {
           )}
         </CardContent>
       </Card>
+
+      <EditProfessionalDialog
+        open={!!editProf}
+        onOpenChange={(v) => !v && setEditProf(null)}
+        professional={editProf}
+      />
+      <EditUserDialog
+        open={!!editUser}
+        onOpenChange={(v) => !v && setEditUser(null)}
+        establishmentId={establishmentId ?? ""}
+        user={editUser}
+      />
     </div>
   );
 }
