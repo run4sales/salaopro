@@ -22,7 +22,7 @@ type ProfileRow = {
   city: string | null;
   business_type: string | null;
   plan?: string | null;
-  selected_plan_slug?: string | null;
+  
   agendor_deal_id?: number | null;
 };
 
