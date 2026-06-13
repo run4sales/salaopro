@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
           neighborhood: profile.neighborhood ?? undefined,
           city: profile.city ?? undefined,
           business_type: profile.business_type ?? undefined,
-          selected_plan: profile.selected_plan_slug ?? profile.plan ?? undefined,
+          selected_plan: profile.plan ?? undefined,
         }, apiKey);
 
         const { error: updateError } = await auth.adminClient
