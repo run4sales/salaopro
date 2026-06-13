@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
 
     let query = auth.adminClient
       .from('profiles')
-      .select('id, business_name, document, owner_name, email, phone, cep, street, neighborhood, city, business_type, plan, selected_plan_slug, agendor_deal_id')
+      .select('id, business_name, document, owner_name, email, phone, cep, street, neighborhood, city, business_type, plan, agendor_deal_id')
       .order('created_at', { ascending: true })
       .limit(limit);
 
