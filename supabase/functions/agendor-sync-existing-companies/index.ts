@@ -22,7 +22,7 @@ type ProfileRow = {
   city: string | null;
   business_type: string | null;
   plan?: string | null;
-  selected_plan_slug?: string | null;
+  
   agendor_deal_id?: number | null;
 };
 
@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
 
     let query = auth.adminClient
       .from('profiles')
-      .select('id, business_name, document, owner_name, email, phone, cep, street, neighborhood, city, business_type, plan, selected_plan_slug, agendor_deal_id')
+      .select('id, business_name, document, owner_name, email, phone, cep, street, neighborhood, city, business_type, plan, agendor_deal_id')
       .order('created_at', { ascending: true })
       .limit(limit);
 
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
           neighborhood: profile.neighborhood ?? undefined,
           city: profile.city ?? undefined,
           business_type: profile.business_type ?? undefined,
-          selected_plan: profile.selected_plan_slug ?? profile.plan ?? undefined,
+          selected_plan: profile.plan ?? undefined,
         }, apiKey);
 
         const { error: updateError } = await auth.adminClient

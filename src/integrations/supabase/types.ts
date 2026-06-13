@@ -720,7 +720,6 @@ export type Database = {
           owner_name: string
           phone: string
           plan: string | null
-          selected_plan_slug: string | null
           slug: string | null
           status: string | null
           street: string
@@ -746,7 +745,6 @@ export type Database = {
           owner_name: string
           phone: string
           plan?: string | null
-          selected_plan_slug?: string | null
           slug?: string | null
           status?: string | null
           street: string
@@ -772,7 +770,6 @@ export type Database = {
           owner_name?: string
           phone?: string
           plan?: string | null
-          selected_plan_slug?: string | null
           slug?: string | null
           status?: string | null
           street?: string
