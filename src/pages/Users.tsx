@@ -408,6 +408,9 @@ export default function Users() {
                 </div>
               </div>
               <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setEditUser(u)}>
+                  <Pencil className="h-4 w-4 mr-1" /> Editar
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => toggleActive(u.id, u.active)}>
                   {u.active ? "Bloquear" : "Desbloquear"}
                 </Button>
