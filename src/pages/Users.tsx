@@ -36,6 +36,9 @@ export default function Users() {
   const [profCommission, setProfCommission] = useState("40");
   const [savingProf, setSavingProf] = useState(false);
 
+  const [editProf, setEditProf] = useState<any | null>(null);
+  const [editUser, setEditUser] = useState<any | null>(null);
+
   const isAdmin = establishmentRole === "owner" || establishmentRole === "admin";
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
