@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
-import { AlertCircle, ArrowUpRight } from "lucide-react";
+import { AlertCircle, ArrowUpRight, Pencil } from "lucide-react";
+import { EditProfessionalDialog } from "@/components/users/EditProfessionalDialog";
+import { EditUserDialog } from "@/components/users/EditUserDialog";
 
 export default function Users() {
   const { profile, establishmentRole } = useAuth();
