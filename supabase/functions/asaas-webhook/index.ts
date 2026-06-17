@@ -74,6 +74,10 @@ Deno.serve(async (req) => {
           const base = payment.dueDate ? new Date(payment.dueDate) : new Date();
           base.setDate(base.getDate() + 30);
           updates.next_billing_at = base.toISOString();
+          // Pagamento confirmado: libera grace e bloqueio manual relacionado
+          updates.grace_started_at = null;
+          updates.grace_ends_at = null;
+          updates.grace_cycle_key = null;
 
           // Apply pending plan change (downgrade scheduled for next cycle)
           const { data: fullSub } = await admin.from('subscriptions')
