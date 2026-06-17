@@ -6,12 +6,13 @@ export type SubscriptionState =
   | "no_subscription"
   | "trial_active"
   | "trial_expiring"
+  | "trial_expired"
   | "active_paid"
   | "payment_pending"
   | "overdue"
-  | "overdue_partial"
-  | "overdue_blocked"
-  | "blocked";
+  | "grace_active"
+  | "blocked"
+  | "blocked_manual";
 
 export interface SubscriptionInfo {
   establishment_id: string;
@@ -34,6 +35,8 @@ export interface SubscriptionInfo {
   asaas_subscription_id?: string | null;
   manual_blocked_at?: string | null;
   payment_link?: string | null;
+  grace_started_at?: string | null;
+  grace_ends_at?: string | null;
 }
 
 export function useSubscription() {
@@ -58,15 +61,35 @@ export function daysBetween(target: string | null | undefined): number | null {
   return Math.ceil((new Date(target).getTime() - Date.now()) / 86_400_000);
 }
 
+/** Estados em que a loja pode operar normalmente (criar/editar/usar) */
 export function canCreateAppointments(state?: SubscriptionState) {
   if (!state) return true;
-  return ["trial_active", "trial_expiring", "active_paid", "payment_pending"].includes(state);
+  return ["trial_active", "trial_expiring", "active_paid", "payment_pending", "grace_active"].includes(state);
 }
 
 export function canCreateClients(state?: SubscriptionState) {
   return canCreateAppointments(state);
 }
 
+/** Loja totalmente bloqueada (não pode usar nada) */
 export function isFullyBlocked(state?: SubscriptionState) {
-  return ["overdue", "overdue_partial", "overdue_blocked", "blocked", "no_subscription"].includes(state ?? "no_subscription");
+  return ["blocked", "blocked_manual", "no_subscription", "trial_expired", "overdue"].includes(
+    state ?? "no_subscription"
+  );
+}
+
+/** Loja em estado bloqueado em que ainda pode pedir liberação de 48h */
+export function canRequestGrace(state?: SubscriptionState) {
+  return state === "trial_expired" || state === "overdue";
+}
+
+/** Bloqueio definitivo, sem possibilidade de liberação */
+export function isHardBlocked(state?: SubscriptionState) {
+  return state === "blocked" || state === "blocked_manual";
+}
+
+export async function requestGraceUnlock() {
+  const { data, error } = await (supabase as any).rpc("request_grace_unlock");
+  if (error) throw error;
+  return data as { ok: boolean; grace_started_at: string; grace_ends_at: string };
 }
