@@ -1137,6 +1137,9 @@ export type Database = {
           canceled_at: string | null
           created_at: string
           establishment_id: string
+          grace_cycle_key: string | null
+          grace_ends_at: string | null
+          grace_started_at: string | null
           id: string
           last_payment_at: string | null
           manual_blocked_at: string | null
@@ -1162,6 +1165,9 @@ export type Database = {
           canceled_at?: string | null
           created_at?: string
           establishment_id: string
+          grace_cycle_key?: string | null
+          grace_ends_at?: string | null
+          grace_started_at?: string | null
           id?: string
           last_payment_at?: string | null
           manual_blocked_at?: string | null
@@ -1187,6 +1193,9 @@ export type Database = {
           canceled_at?: string | null
           created_at?: string
           establishment_id?: string
+          grace_cycle_key?: string | null
+          grace_ends_at?: string | null
+          grace_started_at?: string | null
           id?: string
           last_payment_at?: string | null
           manual_blocked_at?: string | null
@@ -1285,6 +1294,7 @@ export type Database = {
         Args: { _establishment_id: string; _user_id: string }
         Returns: boolean
       }
+      request_grace_unlock: { Args: never; Returns: Json }
       slugify: { Args: { input: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
     }
