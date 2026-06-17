@@ -3,7 +3,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
 import TrialCountdownBanner from "@/components/TrialCountdownBanner";
-import TrialExpiredBanner from "@/components/TrialExpiredBanner";
+import GraceCountdownBanner from "@/components/GraceCountdownBanner";
 import StoreBlockedGate, { isStoreBlocked } from "@/components/StoreBlockedGate";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
