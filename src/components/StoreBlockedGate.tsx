@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { CreditCard, MessageCircle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { CreditCard, MessageCircle, Clock, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,9 +12,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { isFullyBlocked, useSubscription, type SubscriptionInfo } from "@/hooks/useSubscription";
+import { toast } from "@/components/ui/use-toast";
+import {
+  isFullyBlocked,
+  canRequestGrace,
+  isHardBlocked,
+  requestGraceUnlock,
+  useSubscription,
+  type SubscriptionInfo,
+} from "@/hooks/useSubscription";
 
-// Rotas permitidas mesmo com a loja bloqueada
 const ALLOWED_PATHS = ["/escolher-plano", "/checkout", "/planos"];
 const SUPPORT_WHATSAPP_URL = "https://wa.me/5511917506368";
 
@@ -27,12 +36,44 @@ export function useStoreBlocked() {
 }
 
 export default function StoreBlockedGate() {
-  const blocked = useStoreBlocked();
+  const { data } = useSubscription();
   const location = useLocation();
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [loading, setLoading] = useState(false);
 
+  const blocked = isStoreBlocked(data);
   if (!blocked) return null;
   if (ALLOWED_PATHS.some((p) => location.pathname.startsWith(p))) return null;
+
+  const state = data?.state;
+  const canGrace = canRequestGrace(state);
+  const hard = isHardBlocked(state);
+
+  const handleGrace = async () => {
+    setLoading(true);
+    try {
+      await requestGraceUnlock();
+      toast({ title: "Acesso liberado por 48h", description: "Realize o pagamento antes do prazo para evitar o bloqueio." });
+      await qc.invalidateQueries({ queryKey: ["my-subscription"] });
+    } catch (e: any) {
+      toast({ title: "Não foi possível liberar", description: e?.message ?? "Tente novamente.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const title = hard
+    ? "Ops! Algo deu errado com o seu pagamento."
+    : state === "trial_expired"
+    ? "Seu período de teste acabou."
+    : "Seu pagamento está vencido.";
+
+  const description = hard
+    ? "O seu pagamento não foi identificado, e isso levou à suspensão temporária do seu acesso ao sistema."
+    : state === "trial_expired"
+    ? "Para continuar usando, contrate um plano agora ou libere o acesso por mais 48 horas."
+    : "Para evitar o bloqueio total, realize o pagamento ou libere o acesso por mais 48 horas.";
 
   return (
     <AlertDialog open onOpenChange={() => undefined}>
@@ -42,10 +83,10 @@ export default function StoreBlockedGate() {
             <CreditCard className="h-8 w-8" />
           </div>
           <AlertDialogTitle className="text-center text-2xl font-bold leading-tight text-foreground">
-            Ops! Algo deu errado com o seu pagamento.
+            {title}
           </AlertDialogTitle>
           <AlertDialogDescription className="text-center text-base leading-relaxed text-muted-foreground">
-            O seu pagamento não foi identificado, e isso levou à suspensão temporária do seu acesso ao sistema.
+            {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -54,8 +95,22 @@ export default function StoreBlockedGate() {
             className="h-12 w-full rounded-full text-base font-semibold"
             onClick={() => navigate("/planos")}
           >
-            Pagar boleto
+            Realizar pagamento
           </AlertDialogAction>
+
+          {canGrace && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 w-full rounded-full text-base font-semibold gap-2"
+              onClick={handleGrace}
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
+              Liberar acesso por 48h
+            </Button>
+          )}
+
           <Button
             type="button"
             variant="link"
