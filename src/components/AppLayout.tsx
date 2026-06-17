@@ -41,7 +41,7 @@ export default function AppLayout() {
   return (
     <>
       <StoreBlockedGate />
-      <TrialExpiredBanner />
+      <GraceCountdownBanner />
       <TrialCountdownBanner />
       <SidebarProvider className="flex-col md:flex-row">
         <header className="h-12 flex items-center border-b border-border bg-background md:hidden">
