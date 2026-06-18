@@ -9,7 +9,6 @@ import {
   Building2,
   CreditCard,
   Banknote,
-  TrendingUp,
   ShieldAlert,
   Settings as SettingsIcon,
   RefreshCw,
@@ -20,17 +19,15 @@ import AdminSubscriptions from "@/components/admin/AdminSubscriptions";
 import AdminSaaSFinance from "@/components/admin/AdminSaaSFinance";
 import AdminControl from "@/components/admin/AdminControl";
 import AdminPlans from "@/components/admin/AdminPlans";
-import AdminMetrics from "@/components/admin/AdminMetrics";
 import AdminAgendorSync from "@/components/admin/AdminAgendorSync";
 
-type Tab = "dashboard" | "companies" | "subscriptions" | "finance" | "metrics" | "control" | "plans" | "agendor";
+type Tab = "dashboard" | "companies" | "subscriptions" | "finance" | "control" | "plans" | "agendor";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard Geral", icon: LayoutDashboard },
   { id: "companies", label: "Empresas", icon: Building2 },
   { id: "subscriptions", label: "Assinaturas", icon: CreditCard },
   { id: "finance", label: "Financeiro SaaS", icon: Banknote },
-  { id: "metrics", label: "Métricas", icon: TrendingUp },
   { id: "control", label: "Controle", icon: ShieldAlert },
   { id: "plans", label: "Planos", icon: SettingsIcon },
   { id: "agendor", label: "Agendor", icon: RefreshCw },
@@ -125,7 +122,6 @@ export default function SuperAdmin() {
       {tab === "companies" && <AdminCompanies />}
       {tab === "subscriptions" && <AdminSubscriptions />}
       {tab === "finance" && <AdminSaaSFinance />}
-      {tab === "metrics" && <AdminMetrics />}
       {tab === "control" && <AdminControl />}
       {tab === "plans" && <AdminPlans />}
       {tab === "agendor" && <AdminAgendorSync />}
