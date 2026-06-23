@@ -64,11 +64,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      const { data: linkedProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', membership.establishment_id)
-        .maybeSingle();
+      const { data: linkedProfile } = await (supabase as any)
+        .rpc('get_my_establishment_profile');
       setProfile(linkedProfile ?? null);
       setEstablishmentRole((membership.role as any) ?? null);
       setProfessionalId(membership.professional_id ?? null);
