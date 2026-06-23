@@ -1263,6 +1263,7 @@ export type Database = {
         }
         Returns: string
       }
+      get_my_establishment_profile: { Args: never; Returns: Json }
       get_my_subscription: { Args: never; Returns: Json }
       get_public_availability: {
         Args: { day: string; establishment: string; professional: string }
