@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,16 @@ import { ArrowLeft, CreditCard, FileText, QrCode, ExternalLink, CheckCircle2 } f
 import { toast } from "sonner";
 
 type BillingType = "CREDIT_CARD" | "BOLETO" | "PIX";
+
+type PlanRow = {
+  id: string;
+  slug: string;
+  name: string;
+  monthly_price: number;
+  max_clients: number | null;
+  max_users: number | null;
+  display_order: number;
+};
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -26,12 +37,39 @@ export default function Checkout() {
   const [addressNumber, setAddressNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [paymentLink, setPaymentLink] = useState<string | null>(data?.payment_link ?? null);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(data?.plan_id ?? null);
+
+  const plansQuery = useQuery({
+    queryKey: ["checkout-plans"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("subscription_plans")
+        .select("id, slug, name, monthly_price, max_clients, max_users, display_order")
+        .eq("active", true)
+        .order("display_order");
+      if (error) throw error;
+      return data as PlanRow[];
+    },
+  });
+
+  useEffect(() => {
+    if (!selectedPlanId && data?.plan_id) setSelectedPlanId(data.plan_id);
+  }, [data?.plan_id, selectedPlanId]);
+
+  useEffect(() => {
+    if (!selectedPlanId && plansQuery.data?.length) {
+      const fallback =
+        plansQuery.data.find((p) => p.slug === "profissional") ?? plansQuery.data[0];
+      setSelectedPlanId(fallback.id);
+    }
+  }, [plansQuery.data, selectedPlanId]);
+
+  const plan = plansQuery.data?.find((p) => p.id === selectedPlanId) ?? null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!data?.plan_id) {
-      toast.error("Selecione um plano antes de continuar");
-      navigate("/escolher-plano");
+    if (!selectedPlanId) {
+      toast.error("Selecione um plano para continuar");
       return;
     }
     if (cpfCnpj.replace(/\D/g, "").length < 11) {
@@ -42,7 +80,7 @@ export default function Checkout() {
     try {
       const { data: res, error } = await supabase.functions.invoke("asaas-create-subscription", {
         body: {
-          plan_id: data.plan_id,
+          plan_id: selectedPlanId,
           billing_type: billingType,
           cpf_cnpj: cpfCnpj,
           name,
@@ -64,8 +102,6 @@ export default function Checkout() {
     }
   }
 
-  const plan = data?.plan;
-
   return (
     <div className="min-h-screen bg-background text-foreground p-6">
       <div className="max-w-2xl mx-auto">
@@ -81,15 +117,44 @@ export default function Checkout() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="rounded-lg border border-border/60 bg-background/40 p-4">
-              <div className="text-sm text-muted-foreground">Plano selecionado</div>
-              <div className="text-lg font-semibold">{plan?.name ?? "Nenhum"}</div>
-              {plan && (
-                <div className="text-2xl font-bold text-primary mt-1">
-                  R${Number(plan.monthly_price).toFixed(2).replace(".", ",")}
-                  <span className="text-sm text-muted-foreground font-normal">/mês</span>
-                </div>
-              )}
+            <div className="rounded-lg border border-border/60 bg-background/40 p-4 space-y-3">
+              <div>
+                <div className="text-sm text-muted-foreground">Escolha o plano</div>
+                <div className="text-lg font-semibold">{plan?.name ?? "Selecione..."}</div>
+                {plan && (
+                  <div className="text-2xl font-bold text-primary mt-1">
+                    R${Number(plan.monthly_price).toFixed(2).replace(".", ",")}
+                    <span className="text-sm text-muted-foreground font-normal">/mês</span>
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {plansQuery.data?.map((p) => {
+                  const active = selectedPlanId === p.id;
+                  return (
+                    <button
+                      type="button"
+                      key={p.id}
+                      onClick={() => setSelectedPlanId(p.id)}
+                      className={`text-left rounded-lg border p-3 transition ${
+                        active
+                          ? "border-primary bg-primary/10 shadow-[0_0_18px_hsl(var(--primary)/0.25)]"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <div className="text-sm font-semibold">{p.name}</div>
+                      <div className="text-sm font-bold text-primary">
+                        R${Number(p.monthly_price).toFixed(2).replace(".", ",")}
+                        <span className="text-[10px] text-muted-foreground font-normal">/mês</span>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground mt-1">
+                        {p.max_clients ? `${p.max_clients} clientes` : "Clientes ilimitados"} •{" "}
+                        {p.max_users ? `${p.max_users} usuários` : "Usuários ilimitados"}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {paymentLink ? (
