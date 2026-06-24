@@ -295,6 +295,21 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
           </Button>
         </div>
       </DialogContent>
+      <ClientCreditPrompt
+        open={promptOpen}
+        onOpenChange={setPromptOpen}
+        availableCredit={availableCredit}
+        total={total}
+        onConfirm={(amount) => {
+          setUseCredit(true);
+          setCreditAmount(amount.toFixed(2));
+          setPromptOpen(false);
+        }}
+        onDecline={() => {
+          setUseCredit(false);
+          setPromptOpen(false);
+        }}
+      />
     </Dialog>
   );
 }
