@@ -106,6 +106,10 @@ export default function Sales() {
   const [adjType, setAdjType] = useState<AdjustmentType>("value");
   const [adjValue, setAdjValue] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [useCredit, setUseCredit] = useState(false);
+  const [creditAmount, setCreditAmount] = useState<string>("0");
+  const [creditPromptOpen, setCreditPromptOpen] = useState(false);
+  const [creditPromptShownFor, setCreditPromptShownFor] = useState<string>("");
 
   const { data: services } = useQuery<SimpleService[]>({
     queryKey: ["services", profile?.id],
