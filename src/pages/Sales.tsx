@@ -34,6 +34,8 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ClientCombobox } from "@/components/ClientCombobox";
+import { ClientCreditPrompt } from "@/components/clients/ClientCreditPrompt";
+import { Wallet } from "lucide-react";
 
 interface SimpleClient { id: string; name: string }
 interface SimpleService {
