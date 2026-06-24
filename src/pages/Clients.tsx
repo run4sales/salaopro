@@ -450,30 +450,41 @@ const Clients = () => {
                         <dt className="text-muted-foreground">Visitas</dt>
                         <dd className="font-medium">{client.visit_count}</dd>
                       </div>
+                      <div>
+                        <dt className="text-muted-foreground">Carteira</dt>
+                        <dd className="font-medium text-primary">R$ {Number((client as any).credit_balance ?? 0).toFixed(2)}</dd>
+                      </div>
                     </dl>
 
-                    <div className="mt-4 grid min-w-0 grid-cols-2 gap-2">
+                    <div className="mt-4 grid min-w-0 grid-cols-3 gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         className="min-w-0 px-2"
                         onClick={() => handleEditClient(client)}
                       >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Editar
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-w-0 px-2"
+                        onClick={() => setWalletClient(client)}
+                      >
+                        <Wallet className="h-4 w-4" />
                       </Button>
                       <Button
                         size="sm"
                         onClick={() => openWhatsApp(client.phone, client.name)}
                         className="min-w-0 bg-success px-2 hover:bg-success/90"
                       >
-                        <MessageCircle className="h-4 w-4 mr-2" />
-                        WhatsApp
+                        <MessageCircle className="h-4 w-4" />
                       </Button>
                     </div>
                   </article>
                 ))}
               </div>
+
 
               <div className="hidden md:block">
                 <Table className="min-w-[900px]">
