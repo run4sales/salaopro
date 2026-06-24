@@ -842,6 +842,12 @@ const Clients = () => {
           onImported={() => queryClient.invalidateQueries({ queryKey: ['clients'] })}
         />
       )}
+
+      <ClientWalletDialog
+        open={!!walletClient}
+        onOpenChange={(v) => { if (!v) setWalletClient(null); }}
+        client={walletClient}
+      />
     </div>
   );
 };
