@@ -122,7 +122,10 @@ export function AppointmentFormDialog({
     service_amount: "",
     notes: "",
     status: "scheduled",
+    new_deposit_amount: "",
+    deposit_payment_method: "Dinheiro",
   });
+  const [existingDeposit, setExistingDeposit] = useState(0);
 
   useEffect(() => {
     if (!open) return;
