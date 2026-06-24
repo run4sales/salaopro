@@ -37,6 +37,7 @@ const Clients = () => {
   const [editingClient, setEditingClient] = useState<any>(null);
   const [inactiveDaysConfig, setInactiveDaysConfig] = useState(20);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [walletClient, setWalletClient] = useState<any>(null);
 
   const [newClient, setNewClient] = useState({
     name: '',
