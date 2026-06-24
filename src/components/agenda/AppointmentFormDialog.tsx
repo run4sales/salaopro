@@ -399,6 +399,35 @@ export function AppointmentFormDialog({
             <label className="text-sm text-muted-foreground">Valor do serviço (R$)</label>
             <Input type="number" min="0" step="0.01" value={form.service_amount} onChange={e => setForm(f => ({ ...f, service_amount: e.target.value }))} placeholder="0,00" />
           </div>
+
+          <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Sinal / Adiantamento</label>
+              {existingDeposit > 0 && (
+                <span className="text-xs text-success">Já recebido: R$ {existingDeposit.toFixed(2)}</span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground">Novo sinal (R$)</label>
+                <Input type="number" min="0" step="0.01" value={form.new_deposit_amount}
+                  onChange={e => setForm(f => ({ ...f, new_deposit_amount: e.target.value }))} placeholder="0,00" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Forma de pagamento</label>
+                <Select value={form.deposit_payment_method} onValueChange={v => setForm(f => ({ ...f, deposit_payment_method: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {["Dinheiro","Pix","Débito","Crédito","Transferência"].map(m => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">O valor do sinal será creditado na carteira do cliente e lançado no caixa.</p>
+          </div>
+
           <div>
             <label className="text-sm text-muted-foreground">Status</label>
             <Select value={form.status} onValueChange={(v) => setForm(f => ({ ...f, status: v }))}>
