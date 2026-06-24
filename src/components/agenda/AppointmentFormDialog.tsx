@@ -313,6 +313,24 @@ export function AppointmentFormDialog({
       );
     }
 
+    // Registra sinal (deposit) se informado
+    const depositValue = Number(form.new_deposit_amount);
+    if (depositValue > 0 && appointmentId && form.client_id) {
+      const { error: depErr } = await (supabase as any).rpc("register_appointment_deposit", {
+        _appointment_id: appointmentId,
+        _amount: depositValue,
+        _payment_method: form.deposit_payment_method || null,
+        _note: "Sinal de agendamento",
+      });
+      if (depErr) {
+        setSaving(false);
+        toast({ title: "Agendamento salvo, mas falhou registrar sinal", description: depErr.message, variant: "destructive" });
+        onOpenChange(false);
+        onSaved?.();
+        return;
+      }
+    }
+
     setSaving(false);
     toast({ title: appointment?.id ? "Agendamento atualizado" : "Agendamento criado" });
     onOpenChange(false);
