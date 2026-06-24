@@ -171,6 +171,22 @@ export default function Sales() {
     enabled: !!profile?.id,
   });
 
+  const { data: clientCreditBalance } = useQuery<number>({
+    queryKey: ["client_credit_balance", clientId],
+    queryFn: async () => {
+      if (!clientId) return 0;
+      const { data } = await supabase
+        .from("clients")
+        .select("credit_balance")
+        .eq("id", clientId)
+        .single();
+      return Number(data?.credit_balance ?? 0);
+    },
+    enabled: !!clientId,
+  });
+
+  const availableCredit = Number(clientCreditBalance ?? 0);
+
   const filteredServices = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return services ?? [];
