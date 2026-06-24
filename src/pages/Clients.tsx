@@ -14,13 +14,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MessageCircle, Plus, Search, Edit, CalendarIcon, Settings, Upload, Download } from 'lucide-react';
+import { MessageCircle, Plus, Search, Edit, CalendarIcon, Settings, Upload, Download, Wallet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import ImportClientsDialog from '@/components/clients/ImportClientsDialog';
 import { exportClientsToXlsx, exportClientsToCsv } from '@/lib/clientImportExport';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ClientWalletDialog } from '@/components/clients/ClientWalletDialog';
 
 const Clients = () => {
   const { user, profile } = useAuth();
