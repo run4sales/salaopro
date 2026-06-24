@@ -37,6 +37,8 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
   const [submitting, setSubmitting] = useState(false);
   const [useCredit, setUseCredit] = useState(false);
   const [creditAmount, setCreditAmount] = useState("0");
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [promptShown, setPromptShown] = useState(false);
 
   const meta = methods.find((m) => m.value === method);
   const isCard = !!(meta as any)?.isCard;
