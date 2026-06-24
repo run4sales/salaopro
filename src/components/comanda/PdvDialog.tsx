@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Banknote, Smartphone, CreditCard, ArrowLeftRight, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ClientCreditPrompt } from "@/components/clients/ClientCreditPrompt";
 
 const methods = [
   { value: "Dinheiro", label: "Dinheiro", icon: Banknote },
