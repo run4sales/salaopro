@@ -298,6 +298,9 @@ export default function Sales() {
     setPaymentMethod("Dinheiro");
     setCardMachineId("");
     setInstallments("2");
+    setUseCredit(false);
+    setCreditAmount("0");
+    setCreditPromptShownFor("");
   };
 
   const onFinalize = async () => {
@@ -305,7 +308,8 @@ export default function Sales() {
     if (!clientId) { toast.error("Selecione o cliente."); return; }
     if (cart.length === 0) { toast.error("Adicione ao menos um serviço."); return; }
     if (professionalEntries.length === 0) { toast.error("Selecione ao menos um profissional."); return; }
-    if (isCard && !cardMachineId) { toast.error("Selecione a maquininha."); return; }
+    if (remainingToPay > 0 && isCard && !cardMachineId) { toast.error("Selecione a maquininha."); return; }
+    if (appliedCredit > availableCredit) { toast.error("Crédito insuficiente."); return; }
 
     setSubmitting(true);
     try {
@@ -320,11 +324,14 @@ export default function Sales() {
 
       const factor = subtotal > 0 ? grossTotal / subtotal : 1;
       const feePct = feePercentage / 100;
+      const creditFactor = grossTotal > 0 ? appliedCredit / grossTotal : 0;
       const instNum = (isCard && currentPaymentMeta?.cardType === 'credit_installment') ? parseInt(installments, 10) : null;
 
       const salesPayload = flatItems.map(({ svc, baseAmount }) => {
         const itemGross = Number((baseAmount * factor).toFixed(2));
-        const itemFee = Number((itemGross * feePct).toFixed(2));
+        const itemCredit = Number((itemGross * creditFactor).toFixed(2));
+        const itemCash = Number((itemGross - itemCredit).toFixed(2));
+        const itemFee = Number((itemCash * feePct).toFixed(2));
         return {
           establishment_id: profile.id,
           client_id: clientId,
@@ -333,11 +340,13 @@ export default function Sales() {
           amount: itemGross,
           gross_amount: itemGross,
           fee_amount: itemFee,
-          net_amount: Number((itemGross - itemFee).toFixed(2)),
-          card_machine_id: isCard ? cardMachineId : null,
-          installments: instNum,
+          net_amount: Number((itemCash - itemFee).toFixed(2)),
+          credit_used: itemCredit,
+          paid_now: itemCash,
+          card_machine_id: isCard && itemCash > 0 ? cardMachineId : null,
+          installments: itemCash > 0 ? instNum : null,
           sale_date: new Date().toISOString(),
-          payment_method: paymentMethod,
+          payment_method: itemCash > 0 ? paymentMethod : "Crédito do cliente",
           notes: notes || null,
         };
       });
@@ -345,8 +354,24 @@ export default function Sales() {
       const { data: insertedSales, error } = await supabase
         .from("sales")
         .insert(salesPayload)
-        .select("id, service_id, amount");
+        .select("id, service_id, amount, credit_used");
       if (error) throw error;
+
+      // Debita o crédito por venda (vinculado para estorno em cancelamento)
+      for (const sale of insertedSales ?? []) {
+        const credit = Number((sale as any).credit_used ?? 0);
+        if (credit > 0) {
+          const { error: cErr } = await (supabase as any).rpc("use_client_credit", {
+            _client_id: clientId,
+            _amount: credit,
+            _origin: "sale_usage",
+            _description: "Uso de crédito em venda",
+            _source: "sale",
+            _source_id: sale.id,
+          });
+          if (cErr) throw cErr;
+        }
+      }
 
       const numPros = professionalEntries.length;
       const spRows: any[] = [];
@@ -375,7 +400,11 @@ export default function Sales() {
         if (spError) throw spError;
       }
 
-      toast.success(`Venda finalizada • R$ ${grossTotal.toFixed(2)}${feeAmount > 0 ? ` (líquido R$ ${netTotal.toFixed(2)})` : ''}`);
+      toast.success(
+        `Venda finalizada • R$ ${grossTotal.toFixed(2)}` +
+        (appliedCredit > 0 ? ` (R$ ${appliedCredit.toFixed(2)} em crédito)` : '') +
+        (feeAmount > 0 ? ` • líquido R$ ${netTotal.toFixed(2)}` : '')
+      );
       resetSale();
     } catch (err: any) {
       toast.error(err?.message ?? "Não foi possível finalizar a venda.");
