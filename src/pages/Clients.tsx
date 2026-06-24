@@ -496,6 +496,7 @@ const Clients = () => {
                       <TableHead>Status</TableHead>
                       <TableHead>Origem</TableHead>
                       <TableHead>Total Gasto</TableHead>
+                      <TableHead>Carteira</TableHead>
                       <TableHead>Visitas</TableHead>
                       <TableHead>Ações</TableHead>
                     </TableRow>
@@ -509,6 +510,7 @@ const Clients = () => {
                         <TableCell>{getStatusBadge(client.last_service_date)}</TableCell>
                         <TableCell>{ACQUISITION_SOURCES.find(s => s.value === (client as any).acquisition_source)?.label || '-'}</TableCell>
                         <TableCell>R$ {Number(client.total_spent).toFixed(2)}</TableCell>
+                        <TableCell className="font-medium text-primary">R$ {Number((client as any).credit_balance ?? 0).toFixed(2)}</TableCell>
                         <TableCell>{client.visit_count}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
@@ -518,6 +520,14 @@ const Clients = () => {
                               onClick={() => handleEditClient(client)}
                             >
                               <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setWalletClient(client)}
+                              title="Carteira do cliente"
+                            >
+                              <Wallet className="h-4 w-4" />
                             </Button>
                             <Button
                               size="sm"
@@ -531,6 +541,7 @@ const Clients = () => {
                         </TableCell>
                       </TableRow>
                     ))}
+
                   </TableBody>
                 </Table>
               </div>
