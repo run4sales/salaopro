@@ -79,6 +79,22 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
     }
   }, [useCredit, availableCredit, total]);
 
+  // Reset prompt state quando o diálogo fecha
+  useEffect(() => {
+    if (!open) {
+      setPromptShown(false);
+      setPromptOpen(false);
+    }
+  }, [open]);
+
+  // Abre prompt automaticamente quando há cliente com saldo
+  useEffect(() => {
+    if (open && !promptShown && availableCredit > 0 && total > 0 && !useCredit) {
+      setPromptOpen(true);
+      setPromptShown(true);
+    }
+  }, [open, promptShown, availableCredit, total, useCredit]);
+
   const feePct = useMemo(() => {
     if (!isCard || !machineId) return 0;
     const ct = (meta as any).cardType;
