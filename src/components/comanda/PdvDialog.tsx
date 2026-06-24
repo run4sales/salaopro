@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Banknote, Smartphone, CreditCard, ArrowLeftRight, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ClientCreditPrompt } from "@/components/clients/ClientCreditPrompt";
 
 const methods = [
   { value: "Dinheiro", label: "Dinheiro", icon: Banknote },
@@ -36,6 +37,8 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
   const [submitting, setSubmitting] = useState(false);
   const [useCredit, setUseCredit] = useState(false);
   const [creditAmount, setCreditAmount] = useState("0");
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [promptShown, setPromptShown] = useState(false);
 
   const meta = methods.find((m) => m.value === method);
   const isCard = !!(meta as any)?.isCard;
@@ -75,6 +78,22 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
       setCreditAmount(Math.min(availableCredit, total).toFixed(2));
     }
   }, [useCredit, availableCredit, total]);
+
+  // Reset prompt state quando o diálogo fecha
+  useEffect(() => {
+    if (!open) {
+      setPromptShown(false);
+      setPromptOpen(false);
+    }
+  }, [open]);
+
+  // Abre prompt automaticamente quando há cliente com saldo
+  useEffect(() => {
+    if (open && !promptShown && availableCredit > 0 && total > 0 && !useCredit) {
+      setPromptOpen(true);
+      setPromptShown(true);
+    }
+  }, [open, promptShown, availableCredit, total, useCredit]);
 
   const feePct = useMemo(() => {
     if (!isCard || !machineId) return 0;
@@ -276,6 +295,21 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
           </Button>
         </div>
       </DialogContent>
+      <ClientCreditPrompt
+        open={promptOpen}
+        onOpenChange={setPromptOpen}
+        availableCredit={availableCredit}
+        total={total}
+        onConfirm={(amount) => {
+          setUseCredit(true);
+          setCreditAmount(amount.toFixed(2));
+          setPromptOpen(false);
+        }}
+        onDecline={() => {
+          setUseCredit(false);
+          setPromptOpen(false);
+        }}
+      />
     </Dialog>
   );
 }

@@ -34,6 +34,8 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ClientCombobox } from "@/components/ClientCombobox";
+import { ClientCreditPrompt } from "@/components/clients/ClientCreditPrompt";
+import { Wallet } from "lucide-react";
 
 interface SimpleClient { id: string; name: string }
 interface SimpleService {
@@ -104,6 +106,10 @@ export default function Sales() {
   const [adjType, setAdjType] = useState<AdjustmentType>("value");
   const [adjValue, setAdjValue] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [useCredit, setUseCredit] = useState(false);
+  const [creditAmount, setCreditAmount] = useState<string>("0");
+  const [creditPromptOpen, setCreditPromptOpen] = useState(false);
+  const [creditPromptShownFor, setCreditPromptShownFor] = useState<string>("");
 
   const { data: services } = useQuery<SimpleService[]>({
     queryKey: ["services", profile?.id],
@@ -165,6 +171,22 @@ export default function Sales() {
     enabled: !!profile?.id,
   });
 
+  const { data: clientCreditBalance } = useQuery<number>({
+    queryKey: ["client_credit_balance", clientId],
+    queryFn: async () => {
+      if (!clientId) return 0;
+      const { data } = await supabase
+        .from("clients")
+        .select("credit_balance")
+        .eq("id", clientId)
+        .single();
+      return Number(data?.credit_balance ?? 0);
+    },
+    enabled: !!clientId,
+  });
+
+  const availableCredit = Number(clientCreditBalance ?? 0);
+
   const filteredServices = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return services ?? [];
@@ -200,8 +222,28 @@ export default function Sales() {
     return fee ? Number(fee.fee_percentage) : 0;
   }, [isCard, cardMachineId, currentPaymentMeta, machineFees, installments]);
 
-  const feeAmount = (grossTotal * feePercentage) / 100;
-  const netTotal = grossTotal - feeAmount;
+  const appliedCredit = useCredit
+    ? Math.min(Number(creditAmount) || 0, availableCredit, grossTotal)
+    : 0;
+  const remainingToPay = Math.max(grossTotal - appliedCredit, 0);
+  const feeAmount = (remainingToPay * feePercentage) / 100;
+  const netTotal = remainingToPay - feeAmount;
+
+  // Auto-prompt quando cliente com saldo é selecionado e há itens no carrinho
+  useEffect(() => {
+    if (!clientId || availableCredit <= 0 || grossTotal <= 0) return;
+    const key = `${clientId}:${grossTotal.toFixed(2)}`;
+    if (creditPromptShownFor === key || useCredit) return;
+    setCreditPromptOpen(true);
+    setCreditPromptShownFor(key);
+  }, [clientId, availableCredit, grossTotal, useCredit, creditPromptShownFor]);
+
+  // Reset quando muda cliente
+  useEffect(() => {
+    setUseCredit(false);
+    setCreditAmount("0");
+    setCreditPromptShownFor("");
+  }, [clientId]);
 
   const addToCart = (svc: SimpleService) => {
     setCart((prev) => {
@@ -256,6 +298,9 @@ export default function Sales() {
     setPaymentMethod("Dinheiro");
     setCardMachineId("");
     setInstallments("2");
+    setUseCredit(false);
+    setCreditAmount("0");
+    setCreditPromptShownFor("");
   };
 
   const onFinalize = async () => {
@@ -263,7 +308,8 @@ export default function Sales() {
     if (!clientId) { toast.error("Selecione o cliente."); return; }
     if (cart.length === 0) { toast.error("Adicione ao menos um serviço."); return; }
     if (professionalEntries.length === 0) { toast.error("Selecione ao menos um profissional."); return; }
-    if (isCard && !cardMachineId) { toast.error("Selecione a maquininha."); return; }
+    if (remainingToPay > 0 && isCard && !cardMachineId) { toast.error("Selecione a maquininha."); return; }
+    if (appliedCredit > availableCredit) { toast.error("Crédito insuficiente."); return; }
 
     setSubmitting(true);
     try {
@@ -278,11 +324,14 @@ export default function Sales() {
 
       const factor = subtotal > 0 ? grossTotal / subtotal : 1;
       const feePct = feePercentage / 100;
+      const creditFactor = grossTotal > 0 ? appliedCredit / grossTotal : 0;
       const instNum = (isCard && currentPaymentMeta?.cardType === 'credit_installment') ? parseInt(installments, 10) : null;
 
       const salesPayload = flatItems.map(({ svc, baseAmount }) => {
         const itemGross = Number((baseAmount * factor).toFixed(2));
-        const itemFee = Number((itemGross * feePct).toFixed(2));
+        const itemCredit = Number((itemGross * creditFactor).toFixed(2));
+        const itemCash = Number((itemGross - itemCredit).toFixed(2));
+        const itemFee = Number((itemCash * feePct).toFixed(2));
         return {
           establishment_id: profile.id,
           client_id: clientId,
@@ -291,11 +340,13 @@ export default function Sales() {
           amount: itemGross,
           gross_amount: itemGross,
           fee_amount: itemFee,
-          net_amount: Number((itemGross - itemFee).toFixed(2)),
-          card_machine_id: isCard ? cardMachineId : null,
-          installments: instNum,
+          net_amount: Number((itemCash - itemFee).toFixed(2)),
+          credit_used: itemCredit,
+          paid_now: itemCash,
+          card_machine_id: isCard && itemCash > 0 ? cardMachineId : null,
+          installments: itemCash > 0 ? instNum : null,
           sale_date: new Date().toISOString(),
-          payment_method: paymentMethod,
+          payment_method: itemCash > 0 ? paymentMethod : "Crédito do cliente",
           notes: notes || null,
         };
       });
@@ -303,8 +354,24 @@ export default function Sales() {
       const { data: insertedSales, error } = await supabase
         .from("sales")
         .insert(salesPayload)
-        .select("id, service_id, amount");
+        .select("id, service_id, amount, credit_used");
       if (error) throw error;
+
+      // Debita o crédito por venda (vinculado para estorno em cancelamento)
+      for (const sale of insertedSales ?? []) {
+        const credit = Number((sale as any).credit_used ?? 0);
+        if (credit > 0) {
+          const { error: cErr } = await (supabase as any).rpc("use_client_credit", {
+            _client_id: clientId,
+            _amount: credit,
+            _origin: "sale_usage",
+            _description: "Uso de crédito em venda",
+            _source: "sale",
+            _source_id: sale.id,
+          });
+          if (cErr) throw cErr;
+        }
+      }
 
       const numPros = professionalEntries.length;
       const spRows: any[] = [];
@@ -333,7 +400,11 @@ export default function Sales() {
         if (spError) throw spError;
       }
 
-      toast.success(`Venda finalizada • R$ ${grossTotal.toFixed(2)}${feeAmount > 0 ? ` (líquido R$ ${netTotal.toFixed(2)})` : ''}`);
+      toast.success(
+        `Venda finalizada • R$ ${grossTotal.toFixed(2)}` +
+        (appliedCredit > 0 ? ` (R$ ${appliedCredit.toFixed(2)} em crédito)` : '') +
+        (feeAmount > 0 ? ` • líquido R$ ${netTotal.toFixed(2)}` : '')
+      );
       resetSale();
     } catch (err: any) {
       toast.error(err?.message ?? "Não foi possível finalizar a venda.");
@@ -574,6 +645,53 @@ export default function Sales() {
               </div>
             </div>
 
+            {/* Credit panel */}
+            {clientId && availableCredit > 0 && (
+              <div className="px-4 py-3 border-t bg-primary/5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-primary" /> Crédito disponível
+                  </span>
+                  <span className="text-sm font-semibold text-primary">R$ {availableCredit.toFixed(2)}</span>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={useCredit}
+                    onChange={(e) => {
+                      setUseCredit(e.target.checked);
+                      if (e.target.checked) {
+                        setCreditAmount(Math.min(availableCredit, grossTotal).toFixed(2));
+                      }
+                    }}
+                  />
+                  Usar crédito do cliente
+                </label>
+                {useCredit && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Valor a aplicar (R$)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      max={Math.min(availableCredit, grossTotal)}
+                      value={creditAmount}
+                      onChange={(e) => setCreditAmount(e.target.value)}
+                      className="h-9"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setCreditAmount(Math.min(availableCredit, grossTotal).toFixed(2))}
+                    >
+                      Usar tudo (R$ {Math.min(availableCredit, grossTotal).toFixed(2)})
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Totals */}
             <div className="px-4 py-3 border-t space-y-1.5 text-sm">
               <div className="flex justify-between text-muted-foreground">
@@ -590,6 +708,18 @@ export default function Sales() {
                 <span className="font-semibold">Total bruto</span>
                 <span className="text-xl font-bold">R$ {grossTotal.toFixed(2)}</span>
               </div>
+              {appliedCredit > 0 && (
+                <div className="flex justify-between text-primary">
+                  <span>Crédito aplicado</span>
+                  <span>- R$ {appliedCredit.toFixed(2)}</span>
+                </div>
+              )}
+              {appliedCredit > 0 && (
+                <div className="flex justify-between font-semibold border-t pt-1.5">
+                  <span>A pagar agora</span>
+                  <span>R$ {remainingToPay.toFixed(2)}</span>
+                </div>
+              )}
               {feeAmount > 0 && (
                 <>
                   <div className="flex justify-between text-amber-600">
@@ -679,6 +809,21 @@ export default function Sales() {
           </div>
         </aside>
       </main>
+      <ClientCreditPrompt
+        open={creditPromptOpen}
+        onOpenChange={setCreditPromptOpen}
+        availableCredit={availableCredit}
+        total={grossTotal}
+        onConfirm={(amount) => {
+          setUseCredit(true);
+          setCreditAmount(amount.toFixed(2));
+          setCreditPromptOpen(false);
+        }}
+        onDecline={() => {
+          setUseCredit(false);
+          setCreditPromptOpen(false);
+        }}
+      />
     </div>
   );
 }
