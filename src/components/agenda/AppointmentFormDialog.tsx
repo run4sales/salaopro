@@ -150,7 +150,10 @@ export function AppointmentFormDialog({
             : services.filter(s => svcIds.includes(s.id)).reduce((sum, s) => sum + (Number(s.price) || 0), 0).toFixed(2),
           notes: appointment.notes ?? "",
           status: appointment.status ?? "scheduled",
+          new_deposit_amount: "",
+          deposit_payment_method: appointment.deposit_payment_method ?? "Dinheiro",
         });
+        setExistingDeposit(Number(appointment.deposit_amount ?? 0));
       } else {
         setForm({
           client_id: "", service_ids: [], professional_ids: [],
@@ -158,7 +161,10 @@ export function AppointmentFormDialog({
           duration_minutes: "",
           service_amount: "",
           notes: "", status: "scheduled",
+          new_deposit_amount: "",
+          deposit_payment_method: "Dinheiro",
         });
+        setExistingDeposit(0);
       }
     };
     load();
