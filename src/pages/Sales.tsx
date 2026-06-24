@@ -222,8 +222,28 @@ export default function Sales() {
     return fee ? Number(fee.fee_percentage) : 0;
   }, [isCard, cardMachineId, currentPaymentMeta, machineFees, installments]);
 
-  const feeAmount = (grossTotal * feePercentage) / 100;
-  const netTotal = grossTotal - feeAmount;
+  const appliedCredit = useCredit
+    ? Math.min(Number(creditAmount) || 0, availableCredit, grossTotal)
+    : 0;
+  const remainingToPay = Math.max(grossTotal - appliedCredit, 0);
+  const feeAmount = (remainingToPay * feePercentage) / 100;
+  const netTotal = remainingToPay - feeAmount;
+
+  // Auto-prompt quando cliente com saldo é selecionado e há itens no carrinho
+  useEffect(() => {
+    if (!clientId || availableCredit <= 0 || grossTotal <= 0) return;
+    const key = `${clientId}:${grossTotal.toFixed(2)}`;
+    if (creditPromptShownFor === key || useCredit) return;
+    setCreditPromptOpen(true);
+    setCreditPromptShownFor(key);
+  }, [clientId, availableCredit, grossTotal, useCredit, creditPromptShownFor]);
+
+  // Reset quando muda cliente
+  useEffect(() => {
+    setUseCredit(false);
+    setCreditAmount("0");
+    setCreditPromptShownFor("");
+  }, [clientId]);
 
   const addToCart = (svc: SimpleService) => {
     setCart((prev) => {
