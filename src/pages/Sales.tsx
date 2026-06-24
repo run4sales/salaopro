@@ -645,6 +645,53 @@ export default function Sales() {
               </div>
             </div>
 
+            {/* Credit panel */}
+            {clientId && availableCredit > 0 && (
+              <div className="px-4 py-3 border-t bg-primary/5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-primary" /> Crédito disponível
+                  </span>
+                  <span className="text-sm font-semibold text-primary">R$ {availableCredit.toFixed(2)}</span>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={useCredit}
+                    onChange={(e) => {
+                      setUseCredit(e.target.checked);
+                      if (e.target.checked) {
+                        setCreditAmount(Math.min(availableCredit, grossTotal).toFixed(2));
+                      }
+                    }}
+                  />
+                  Usar crédito do cliente
+                </label>
+                {useCredit && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Valor a aplicar (R$)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      max={Math.min(availableCredit, grossTotal)}
+                      value={creditAmount}
+                      onChange={(e) => setCreditAmount(e.target.value)}
+                      className="h-9"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setCreditAmount(Math.min(availableCredit, grossTotal).toFixed(2))}
+                    >
+                      Usar tudo (R$ {Math.min(availableCredit, grossTotal).toFixed(2)})
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Totals */}
             <div className="px-4 py-3 border-t space-y-1.5 text-sm">
               <div className="flex justify-between text-muted-foreground">
@@ -661,6 +708,18 @@ export default function Sales() {
                 <span className="font-semibold">Total bruto</span>
                 <span className="text-xl font-bold">R$ {grossTotal.toFixed(2)}</span>
               </div>
+              {appliedCredit > 0 && (
+                <div className="flex justify-between text-primary">
+                  <span>Crédito aplicado</span>
+                  <span>- R$ {appliedCredit.toFixed(2)}</span>
+                </div>
+              )}
+              {appliedCredit > 0 && (
+                <div className="flex justify-between font-semibold border-t pt-1.5">
+                  <span>A pagar agora</span>
+                  <span>R$ {remainingToPay.toFixed(2)}</span>
+                </div>
+              )}
               {feeAmount > 0 && (
                 <>
                   <div className="flex justify-between text-amber-600">
