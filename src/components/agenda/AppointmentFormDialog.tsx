@@ -122,7 +122,10 @@ export function AppointmentFormDialog({
     service_amount: "",
     notes: "",
     status: "scheduled",
+    new_deposit_amount: "",
+    deposit_payment_method: "Dinheiro",
   });
+  const [existingDeposit, setExistingDeposit] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -147,7 +150,10 @@ export function AppointmentFormDialog({
             : services.filter(s => svcIds.includes(s.id)).reduce((sum, s) => sum + (Number(s.price) || 0), 0).toFixed(2),
           notes: appointment.notes ?? "",
           status: appointment.status ?? "scheduled",
+          new_deposit_amount: "",
+          deposit_payment_method: appointment.deposit_payment_method ?? "Dinheiro",
         });
+        setExistingDeposit(Number(appointment.deposit_amount ?? 0));
       } else {
         setForm({
           client_id: "", service_ids: [], professional_ids: [],
@@ -155,7 +161,10 @@ export function AppointmentFormDialog({
           duration_minutes: "",
           service_amount: "",
           notes: "", status: "scheduled",
+          new_deposit_amount: "",
+          deposit_payment_method: "Dinheiro",
         });
+        setExistingDeposit(0);
       }
     };
     load();
@@ -304,6 +313,24 @@ export function AppointmentFormDialog({
       );
     }
 
+    // Registra sinal (deposit) se informado
+    const depositValue = Number(form.new_deposit_amount);
+    if (depositValue > 0 && appointmentId && form.client_id) {
+      const { error: depErr } = await (supabase as any).rpc("register_appointment_deposit", {
+        _appointment_id: appointmentId,
+        _amount: depositValue,
+        _payment_method: form.deposit_payment_method || null,
+        _note: "Sinal de agendamento",
+      });
+      if (depErr) {
+        setSaving(false);
+        toast({ title: "Agendamento salvo, mas falhou registrar sinal", description: depErr.message, variant: "destructive" });
+        onOpenChange(false);
+        onSaved?.();
+        return;
+      }
+    }
+
     setSaving(false);
     toast({ title: appointment?.id ? "Agendamento atualizado" : "Agendamento criado" });
     onOpenChange(false);
@@ -372,6 +399,35 @@ export function AppointmentFormDialog({
             <label className="text-sm text-muted-foreground">Valor do serviço (R$)</label>
             <Input type="number" min="0" step="0.01" value={form.service_amount} onChange={e => setForm(f => ({ ...f, service_amount: e.target.value }))} placeholder="0,00" />
           </div>
+
+          <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Sinal / Adiantamento</label>
+              {existingDeposit > 0 && (
+                <span className="text-xs text-success">Já recebido: R$ {existingDeposit.toFixed(2)}</span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground">Novo sinal (R$)</label>
+                <Input type="number" min="0" step="0.01" value={form.new_deposit_amount}
+                  onChange={e => setForm(f => ({ ...f, new_deposit_amount: e.target.value }))} placeholder="0,00" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Forma de pagamento</label>
+                <Select value={form.deposit_payment_method} onValueChange={v => setForm(f => ({ ...f, deposit_payment_method: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {["Dinheiro","Pix","Débito","Crédito","Transferência"].map(m => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">O valor do sinal será creditado na carteira do cliente e lançado no caixa.</p>
+          </div>
+
           <div>
             <label className="text-sm text-muted-foreground">Status</label>
             <Select value={form.status} onValueChange={(v) => setForm(f => ({ ...f, status: v }))}>

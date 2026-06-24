@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Smartphone, CreditCard, ArrowLeftRight } from "lucide-react";
+import { Banknote, Smartphone, CreditCard, ArrowLeftRight, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,8 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
   const [machineId, setMachineId] = useState("");
   const [installments, setInstallments] = useState("2");
   const [submitting, setSubmitting] = useState(false);
+  const [useCredit, setUseCredit] = useState(false);
+  const [creditAmount, setCreditAmount] = useState("0");
 
   const meta = methods.find((m) => m.value === method);
   const isCard = !!(meta as any)?.isCard;
@@ -53,6 +56,26 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
     },
   });
 
+  const { data: clientCredit } = useQuery({
+    queryKey: ["client_credit_balance", comanda?.client_id],
+    queryFn: async () => {
+      if (!comanda?.client_id) return 0;
+      const { data } = await supabase.from("clients").select("credit_balance").eq("id", comanda.client_id).single();
+      return Number(data?.credit_balance ?? 0);
+    },
+    enabled: !!comanda?.client_id && open,
+  });
+
+  const availableCredit = Number(clientCredit ?? 0);
+  const appliedCredit = useCredit ? Math.min(Number(creditAmount) || 0, availableCredit, total) : 0;
+  const remainingToPay = Math.max(total - appliedCredit, 0);
+
+  useEffect(() => {
+    if (useCredit && (!creditAmount || Number(creditAmount) === 0)) {
+      setCreditAmount(Math.min(availableCredit, total).toFixed(2));
+    }
+  }, [useCredit, availableCredit, total]);
+
   const feePct = useMemo(() => {
     if (!isCard || !machineId) return 0;
     const ct = (meta as any).cardType;
@@ -63,22 +86,26 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
     return f ? Number(f.fee_percentage) : 0;
   }, [isCard, machineId, meta, fees, installments]);
 
-  const feeAmount = total * (feePct / 100);
-  const netTotal = total - feeAmount;
+  const feeAmount = remainingToPay * (feePct / 100);
+  const netTotal = remainingToPay - feeAmount;
 
   const finalize = async () => {
-    if (isCard && !machineId) { toast.error("Selecione a maquininha"); return; }
+    if (remainingToPay > 0 && isCard && !machineId) { toast.error("Selecione a maquininha"); return; }
     if (items.length === 0) return;
+    if (appliedCredit > availableCredit) { toast.error("Crédito insuficiente"); return; }
     setSubmitting(true);
     try {
       const subtotalSum = items.reduce((s, i) => s + Number(i.total), 0);
       const factor = subtotalSum > 0 ? total / subtotalSum : 1;
+      const creditFactor = total > 0 ? appliedCredit / total : 0;
       const feeRatio = feePct / 100;
       const instNum = isCard && (meta as any).cardType === "credit_installment" ? parseInt(installments, 10) : null;
 
       const salesPayload = items.map((it) => {
         const itemGross = Number((Number(it.total) * factor).toFixed(2));
-        const itemFee = Number((itemGross * feeRatio).toFixed(2));
+        const itemCredit = Number((itemGross * creditFactor).toFixed(2));
+        const itemCash = Number((itemGross - itemCredit).toFixed(2));
+        const itemFee = Number((itemCash * feeRatio).toFixed(2));
         return {
           establishment_id: establishmentId,
           client_id: comanda.client_id,
@@ -88,16 +115,34 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
           amount: itemGross,
           gross_amount: itemGross,
           fee_amount: itemFee,
-          net_amount: Number((itemGross - itemFee).toFixed(2)),
-          card_machine_id: isCard ? machineId : null,
-          installments: instNum,
+          net_amount: Number((itemCash - itemFee).toFixed(2)),
+          credit_used: itemCredit,
+          paid_now: itemCash,
+          card_machine_id: isCard && itemCash > 0 ? machineId : null,
+          installments: itemCash > 0 ? instNum : null,
           sale_date: new Date().toISOString(),
-          payment_method: method,
+          payment_method: itemCash > 0 ? method : "Crédito do cliente",
         };
       });
 
-      const { data: insertedSales, error } = await supabase.from("sales").insert(salesPayload).select("id, service_id, amount");
+      const { data: insertedSales, error } = await supabase.from("sales").insert(salesPayload).select("id, service_id, amount, credit_used");
       if (error) throw error;
+
+      // Aplica débito de crédito por venda (mantém histórico vinculado ao sale_id para estorno em cancelamento)
+      for (const sale of insertedSales ?? []) {
+        const credit = Number((sale as any).credit_used ?? 0);
+        if (credit > 0) {
+          const { error: cErr } = await (supabase as any).rpc("use_client_credit", {
+            _client_id: comanda.client_id,
+            _amount: credit,
+            _origin: "sale_usage",
+            _description: "Uso de crédito em venda",
+            _source: "sale",
+            _source_id: sale.id,
+          });
+          if (cErr) throw cErr;
+        }
+      }
 
       const sp = (insertedSales ?? []).map((sale: any) => {
         const it = items.find((i) => i.service_id === sale.service_id);
@@ -117,7 +162,7 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
         await supabase.from("appointments").update({ status: "completed" }).eq("id", comanda.appointment_id);
       }
 
-      toast.success(`Pagamento confirmado — R$ ${total.toFixed(2)}`);
+      toast.success(`Pagamento confirmado — R$ ${total.toFixed(2)}${appliedCredit > 0 ? ` (R$ ${appliedCredit.toFixed(2)} em crédito)` : ""}`);
       onPaid();
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao finalizar");
@@ -128,55 +173,96 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[92svh] overflow-y-auto">
         <DialogHeader><DialogTitle>Finalizar pagamento</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-2">
-            {methods.map((m) => {
-              const I = m.icon;
-              return (
-                <button
-                  key={m.value}
-                  type="button"
-                  onClick={() => setMethod(m.value)}
-                  className={cn(
-                    "rounded-lg border p-2 flex flex-col items-center gap-1 text-xs hover:border-primary transition",
-                    method === m.value && "border-primary bg-primary/10"
-                  )}
-                >
-                  <I className="h-4 w-4" />{m.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {isCard && (
-            <div className="space-y-2">
-              <Label className="text-xs">Maquininha</Label>
-              <Select value={machineId} onValueChange={setMachineId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {(machines ?? []).map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {(meta as any).cardType === "credit_installment" && (
-                <>
-                  <Label className="text-xs">Parcelas</Label>
-                  <Select value={installments} onValueChange={setInstallments}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (
-                        <SelectItem key={n} value={String(n)}>{n}x</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </>
+          {availableCredit > 0 && (
+            <div className="rounded-lg border bg-primary/5 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-primary" /> Crédito do cliente
+                </span>
+                <span className="text-sm font-semibold text-primary">R$ {availableCredit.toFixed(2)}</span>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={useCredit} onChange={(e) => setUseCredit(e.target.checked)} />
+                Usar crédito do cliente
+              </label>
+              {useCredit && (
+                <div>
+                  <Label className="text-xs">Valor a aplicar (R$)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    max={Math.min(availableCredit, total)}
+                    value={creditAmount}
+                    onChange={(e) => setCreditAmount(e.target.value)}
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => setCreditAmount(Math.min(availableCredit, total).toFixed(2))}>
+                      Usar tudo
+                    </Button>
+                  </div>
+                </div>
               )}
             </div>
           )}
 
+          {remainingToPay > 0 && (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                {methods.map((m) => {
+                  const I = m.icon;
+                  return (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => setMethod(m.value)}
+                      className={cn(
+                        "rounded-lg border p-2 flex flex-col items-center gap-1 text-xs hover:border-primary transition",
+                        method === m.value && "border-primary bg-primary/10"
+                      )}
+                    >
+                      <I className="h-4 w-4" />{m.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {isCard && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Maquininha</Label>
+                  <Select value={machineId} onValueChange={setMachineId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      {(machines ?? []).map((m: any) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {(meta as any).cardType === "credit_installment" && (
+                    <>
+                      <Label className="text-xs">Parcelas</Label>
+                      <Select value={installments} onValueChange={setInstallments}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (
+                            <SelectItem key={n} value={String(n)}>{n}x</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
           <div className="rounded-lg border p-3 text-sm space-y-1">
             <div className="flex justify-between"><span>Total</span><span>R$ {total.toFixed(2)}</span></div>
+            {appliedCredit > 0 && (
+              <div className="flex justify-between text-primary"><span>Crédito aplicado</span><span>- R$ {appliedCredit.toFixed(2)}</span></div>
+            )}
+            <div className="flex justify-between font-semibold border-t pt-1"><span>A pagar agora</span><span>R$ {remainingToPay.toFixed(2)}</span></div>
             {feeAmount > 0 && (
               <>
                 <div className="flex justify-between text-muted-foreground"><span>Taxa ({feePct}%)</span><span>- R$ {feeAmount.toFixed(2)}</span></div>

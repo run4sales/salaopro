@@ -142,6 +142,8 @@ export type Database = {
           appointment_date: string
           client_id: string
           created_at: string
+          deposit_amount: number
+          deposit_payment_method: string | null
           duration_minutes: number | null
           establishment_id: string
           id: string
@@ -156,6 +158,8 @@ export type Database = {
           appointment_date: string
           client_id: string
           created_at?: string
+          deposit_amount?: number
+          deposit_payment_method?: string | null
           duration_minutes?: number | null
           establishment_id: string
           id?: string
@@ -170,6 +174,8 @@ export type Database = {
           appointment_date?: string
           client_id?: string
           created_at?: string
+          deposit_amount?: number
+          deposit_payment_method?: string | null
           duration_minutes?: number | null
           establishment_id?: string
           id?: string
@@ -356,6 +362,66 @@ export type Database = {
         }
         Relationships: []
       }
+      client_credit_transactions: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          establishment_id: string
+          id: string
+          origin: string
+          payment_method: string | null
+          source: string | null
+          source_id: string | null
+          type: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          establishment_id: string
+          id?: string
+          origin?: string
+          payment_method?: string | null
+          source?: string | null
+          source_id?: string | null
+          type: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          establishment_id?: string
+          id?: string
+          origin?: string
+          payment_method?: string | null
+          source?: string | null
+          source_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_credit_transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_credit_transactions_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           acquisition_source: string | null
@@ -364,6 +430,7 @@ export type Database = {
           birth_day: number | null
           birth_month: number | null
           created_at: string
+          credit_balance: number
           email: string | null
           establishment_id: string
           gender: string | null
@@ -387,6 +454,7 @@ export type Database = {
           birth_day?: number | null
           birth_month?: number | null
           created_at?: string
+          credit_balance?: number
           email?: string | null
           establishment_id: string
           gender?: string | null
@@ -410,6 +478,7 @@ export type Database = {
           birth_day?: number | null
           birth_month?: number | null
           created_at?: string
+          credit_balance?: number
           email?: string | null
           establishment_id?: string
           gender?: string | null
@@ -818,6 +887,7 @@ export type Database = {
           card_machine_id: string | null
           client_id: string
           created_at: string
+          credit_used: number
           establishment_id: string
           fee_amount: number
           gross_amount: number | null
@@ -825,6 +895,7 @@ export type Database = {
           installments: number | null
           net_amount: number | null
           notes: string | null
+          paid_now: number | null
           payment_method: string | null
           professional_id: string | null
           sale_date: string
@@ -836,6 +907,7 @@ export type Database = {
           card_machine_id?: string | null
           client_id: string
           created_at?: string
+          credit_used?: number
           establishment_id: string
           fee_amount?: number
           gross_amount?: number | null
@@ -843,6 +915,7 @@ export type Database = {
           installments?: number | null
           net_amount?: number | null
           notes?: string | null
+          paid_now?: number | null
           payment_method?: string | null
           professional_id?: string | null
           sale_date?: string
@@ -854,6 +927,7 @@ export type Database = {
           card_machine_id?: string | null
           client_id?: string
           created_at?: string
+          credit_used?: number
           establishment_id?: string
           fee_amount?: number
           gross_amount?: number | null
@@ -861,6 +935,7 @@ export type Database = {
           installments?: number | null
           net_amount?: number | null
           notes?: string | null
+          paid_now?: number | null
           payment_method?: string | null
           professional_id?: string | null
           sale_date?: string
@@ -1251,6 +1326,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_client_credit: {
+        Args: {
+          _amount: number
+          _client_id: string
+          _description?: string
+          _origin?: string
+          _payment_method?: string
+          _source?: string
+          _source_id?: string
+        }
+        Returns: string
+      }
       create_public_booking: {
         Args: {
           client_name: string
@@ -1295,9 +1382,33 @@ export type Database = {
         Args: { _establishment_id: string; _user_id: string }
         Returns: boolean
       }
+      refund_client_credit: {
+        Args: { _source: string; _source_id: string }
+        Returns: undefined
+      }
+      register_appointment_deposit: {
+        Args: {
+          _amount: number
+          _appointment_id: string
+          _note?: string
+          _payment_method?: string
+        }
+        Returns: undefined
+      }
       request_grace_unlock: { Args: never; Returns: Json }
       slugify: { Args: { input: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
+      use_client_credit: {
+        Args: {
+          _amount: number
+          _client_id: string
+          _description?: string
+          _origin?: string
+          _source?: string
+          _source_id?: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "establishment" | "super_admin"

@@ -14,13 +14,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MessageCircle, Plus, Search, Edit, CalendarIcon, Settings, Upload, Download } from 'lucide-react';
+import { MessageCircle, Plus, Search, Edit, CalendarIcon, Settings, Upload, Download, Wallet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import ImportClientsDialog from '@/components/clients/ImportClientsDialog';
 import { exportClientsToXlsx, exportClientsToCsv } from '@/lib/clientImportExport';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ClientWalletDialog } from '@/components/clients/ClientWalletDialog';
 
 const Clients = () => {
   const { user, profile } = useAuth();
@@ -36,6 +37,7 @@ const Clients = () => {
   const [editingClient, setEditingClient] = useState<any>(null);
   const [inactiveDaysConfig, setInactiveDaysConfig] = useState(20);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [walletClient, setWalletClient] = useState<any>(null);
 
   const [newClient, setNewClient] = useState({
     name: '',
@@ -448,30 +450,41 @@ const Clients = () => {
                         <dt className="text-muted-foreground">Visitas</dt>
                         <dd className="font-medium">{client.visit_count}</dd>
                       </div>
+                      <div>
+                        <dt className="text-muted-foreground">Carteira</dt>
+                        <dd className="font-medium text-primary">R$ {Number((client as any).credit_balance ?? 0).toFixed(2)}</dd>
+                      </div>
                     </dl>
 
-                    <div className="mt-4 grid min-w-0 grid-cols-2 gap-2">
+                    <div className="mt-4 grid min-w-0 grid-cols-3 gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         className="min-w-0 px-2"
                         onClick={() => handleEditClient(client)}
                       >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Editar
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-w-0 px-2"
+                        onClick={() => setWalletClient(client)}
+                      >
+                        <Wallet className="h-4 w-4" />
                       </Button>
                       <Button
                         size="sm"
                         onClick={() => openWhatsApp(client.phone, client.name)}
                         className="min-w-0 bg-success px-2 hover:bg-success/90"
                       >
-                        <MessageCircle className="h-4 w-4 mr-2" />
-                        WhatsApp
+                        <MessageCircle className="h-4 w-4" />
                       </Button>
                     </div>
                   </article>
                 ))}
               </div>
+
 
               <div className="hidden md:block">
                 <Table className="min-w-[900px]">
@@ -483,6 +496,7 @@ const Clients = () => {
                       <TableHead>Status</TableHead>
                       <TableHead>Origem</TableHead>
                       <TableHead>Total Gasto</TableHead>
+                      <TableHead>Carteira</TableHead>
                       <TableHead>Visitas</TableHead>
                       <TableHead>Ações</TableHead>
                     </TableRow>
@@ -496,6 +510,7 @@ const Clients = () => {
                         <TableCell>{getStatusBadge(client.last_service_date)}</TableCell>
                         <TableCell>{ACQUISITION_SOURCES.find(s => s.value === (client as any).acquisition_source)?.label || '-'}</TableCell>
                         <TableCell>R$ {Number(client.total_spent).toFixed(2)}</TableCell>
+                        <TableCell className="font-medium text-primary">R$ {Number((client as any).credit_balance ?? 0).toFixed(2)}</TableCell>
                         <TableCell>{client.visit_count}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
@@ -505,6 +520,14 @@ const Clients = () => {
                               onClick={() => handleEditClient(client)}
                             >
                               <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setWalletClient(client)}
+                              title="Carteira do cliente"
+                            >
+                              <Wallet className="h-4 w-4" />
                             </Button>
                             <Button
                               size="sm"
@@ -518,6 +541,7 @@ const Clients = () => {
                         </TableCell>
                       </TableRow>
                     ))}
+
                   </TableBody>
                 </Table>
               </div>
@@ -818,6 +842,12 @@ const Clients = () => {
           onImported={() => queryClient.invalidateQueries({ queryKey: ['clients'] })}
         />
       )}
+
+      <ClientWalletDialog
+        open={!!walletClient}
+        onOpenChange={(v) => { if (!v) setWalletClient(null); }}
+        client={walletClient}
+      />
     </div>
   );
 };
