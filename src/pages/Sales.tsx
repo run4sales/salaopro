@@ -809,6 +809,21 @@ export default function Sales() {
           </div>
         </aside>
       </main>
+      <ClientCreditPrompt
+        open={creditPromptOpen}
+        onOpenChange={setCreditPromptOpen}
+        availableCredit={availableCredit}
+        total={grossTotal}
+        onConfirm={(amount) => {
+          setUseCredit(true);
+          setCreditAmount(amount.toFixed(2));
+          setCreditPromptOpen(false);
+        }}
+        onDecline={() => {
+          setUseCredit(false);
+          setCreditPromptOpen(false);
+        }}
+      />
     </div>
   );
 }
