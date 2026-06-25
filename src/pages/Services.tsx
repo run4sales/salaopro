@@ -644,6 +644,27 @@ const Services = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={!!deletingService} onOpenChange={(open) => !open && setDeletingService(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir serviço?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir <strong>{deletingService?.name}</strong>? Essa ação não poderá ser desfeita.
+                O histórico em vendas e agendamentos anteriores será preservado, mas o serviço deixará de aparecer em novos cadastros.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deletingService && deleteServiceMutation.mutate(deletingService.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );
