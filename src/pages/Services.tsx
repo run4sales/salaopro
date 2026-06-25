@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Search, Upload } from 'lucide-react';
+import { Plus, Pencil, Search, Upload, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ImportServicesDialog } from '@/components/services/ImportServicesDialog';
 
 
@@ -63,6 +73,7 @@ const Services = () => {
   });
 
   const [editingService, setEditingService] = useState<any>(null);
+  const [deletingService, setDeletingService] = useState<any>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [serviceSearch, setServiceSearch] = useState('');
   const [debouncedServiceSearch, setDebouncedServiceSearch] = useState('');
@@ -113,6 +124,7 @@ const Services = () => {
         .select('*')
         .eq('establishment_id', profile.id)
         .eq('kind', 'service')
+        .eq('active', true)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -209,6 +221,25 @@ const Services = () => {
     },
     onError: () => {
       toast({ title: 'Erro ao atualizar serviço', description: 'Tente novamente em instantes.', variant: 'destructive' });
+    },
+  });
+
+  const deleteServiceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // Soft delete: inativa para preservar histórico de vendas/agendamentos
+      const { error } = await supabase
+        .from('services')
+        .update({ active: false })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+      setDeletingService(null);
+      toast({ title: 'Serviço excluído', description: 'O serviço não aparecerá mais em novos agendamentos ou vendas.' });
+    },
+    onError: (e: any) => {
+      toast({ title: 'Erro ao excluir serviço', description: e?.message ?? 'Tente novamente.', variant: 'destructive' });
     },
   });
 
@@ -434,9 +465,14 @@ const Services = () => {
                       <TableCell>{Number(s.commission_solo ?? 0)}%</TableCell>
                       <TableCell>{s.active ? 'Ativo' : 'Inativo'}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => setEditingService({ ...s, duration_minutes: formatDurationInput(s.duration_minutes) })}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => setEditingService({ ...s, duration_minutes: formatDurationInput(s.duration_minutes) })}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setDeletingService(s)} aria-label="Excluir serviço">
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -608,6 +644,27 @@ const Services = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={!!deletingService} onOpenChange={(open) => !open && setDeletingService(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir serviço?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir <strong>{deletingService?.name}</strong>? Essa ação não poderá ser desfeita.
+                O histórico em vendas e agendamentos anteriores será preservado, mas o serviço deixará de aparecer em novos cadastros.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deletingService && deleteServiceMutation.mutate(deletingService.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );

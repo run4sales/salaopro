@@ -104,13 +104,41 @@ export default function Plans() {
 
   const { sub, plan, pendingPlan, userCount, clientCount } = subQuery.data ?? {} as any;
 
+  // Define se a loja precisa de ação de pagamento/assinatura no plano atual
+  const needsPaymentAction = !!sub && (
+    !sub.asaas_subscription_id ||
+    ["past_due", "overdue", "trial", "canceled"].includes(String(sub.status ?? "")) ||
+    !!sub.manual_blocked_at === false && (
+      (sub.next_billing_at && new Date(sub.next_billing_at) < new Date()) ||
+      (sub.status === "trial" && sub.trial_ends_at && new Date(sub.trial_ends_at) < new Date())
+    )
+  );
+  const hasPendingInvoice = !!sub?.payment_link && sub?.status !== "active";
+
+  function payCurrentPlan() {
+    if (hasPendingInvoice && sub?.payment_link) {
+      window.open(sub.payment_link, "_blank", "noopener,noreferrer");
+      return;
+    }
+    // Cria/reativa assinatura no Asaas pelo plano atual (ou pelo plano clicado)
+    try {
+      if (plan?.slug) localStorage.setItem("signup_plan_slug", plan.slug);
+    } catch {}
+    navigate("/checkout");
+  }
+
   async function migrate(target: Plan) {
     if (!sub) {
       toast.info("Você ainda não possui assinatura ativa.");
+      try { localStorage.setItem("signup_plan_slug", target.slug); } catch {}
       navigate("/checkout");
       return;
     }
-    if (plan?.id === target.id) return;
+    // Se for o plano atual, comportamento = pagar / criar assinatura
+    if (plan?.id === target.id) {
+      payCurrentPlan();
+      return;
+    }
 
     const isUpgrade = Number(target.monthly_price) >= Number(sub.monthly_amount ?? 0);
     if (!confirm(
@@ -247,20 +275,35 @@ export default function Plans() {
                       </li>
                     ))}
                   </ul>
-                  <Button
-                    className="w-full"
-                    variant={current ? "outline" : "default"}
-                    disabled={current || migrating === p.id}
-                    onClick={() => migrate(p)}
-                  >
-                    {migrating === p.id ? (
-                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Migrando...</>
-                    ) : current ? (
-                      "Plano atual"
+                  {current ? (
+                    needsPaymentAction ? (
+                      <Button
+                        className="w-full"
+                        variant="default"
+                        onClick={payCurrentPlan}
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        {hasPendingInvoice ? "Pagar agora" : "Criar assinatura"}
+                      </Button>
                     ) : (
-                      <>Migrar para {p.name} <ArrowUpRight className="h-4 w-4 ml-1" /></>
-                    )}
-                  </Button>
+                      <Button className="w-full" variant="outline" disabled>
+                        Plano atual
+                      </Button>
+                    )
+                  ) : (
+                    <Button
+                      className="w-full"
+                      variant="default"
+                      disabled={migrating === p.id}
+                      onClick={() => migrate(p)}
+                    >
+                      {migrating === p.id ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Migrando...</>
+                      ) : (
+                        <>Migrar para {p.name} <ArrowUpRight className="h-4 w-4 ml-1" /></>
+                      )}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );

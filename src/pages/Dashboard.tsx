@@ -91,7 +91,10 @@ const Dashboard = () => {
       const monthRevenue = (salesMonthRes.data ?? []).reduce((s, x) => s + Number(x.amount), 0);
 
       const expectedToday = appts
-        .filter(a => a.status !== 'cancelled' && a.status !== 'no_show')
+        .filter(a => {
+          const st = String(a.status ?? '').toLowerCase();
+          return st !== 'cancelled' && st !== 'canceled' && st !== 'no_show';
+        })
         .reduce((s, a) => s + Number((serviceMap.get(a.service_id) as any)?.price ?? 0), 0);
 
       // Inactive clients (>20d)
