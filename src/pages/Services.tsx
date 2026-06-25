@@ -224,6 +224,25 @@ const Services = () => {
     },
   });
 
+  const deleteServiceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // Soft delete: inativa para preservar histórico de vendas/agendamentos
+      const { error } = await supabase
+        .from('services')
+        .update({ active: false })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+      setDeletingService(null);
+      toast({ title: 'Serviço excluído', description: 'O serviço não aparecerá mais em novos agendamentos ou vendas.' });
+    },
+    onError: (e: any) => {
+      toast({ title: 'Erro ao excluir serviço', description: e?.message ?? 'Tente novamente.', variant: 'destructive' });
+    },
+  });
+
   const addProfessionalMutation = useMutation({
     mutationFn: async (payload: typeof newProfessional) => {
       const insertData = {
