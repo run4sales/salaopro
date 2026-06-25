@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Upload, Package } from 'lucide-react';
+import { Plus, Pencil, Upload, Package, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ImportServicesDialog } from '@/components/services/ImportServicesDialog';
 
 const Products = () => {
@@ -37,6 +47,7 @@ const Products = () => {
     active: true,
   });
   const [editing, setEditing] = useState<any>(null);
+  const [deleting, setDeleting] = useState<any>(null);
   const [importOpen, setImportOpen] = useState(false);
 
   if (!user) return <Navigate to="/auth" replace />;
@@ -54,6 +65,7 @@ const Products = () => {
         .select('*')
         .eq('establishment_id', profile.id)
         .eq('kind', 'product')
+        .eq('active', true)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
