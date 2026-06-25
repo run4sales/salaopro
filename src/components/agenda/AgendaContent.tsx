@@ -192,7 +192,6 @@ export default function AgendaContent() {
         .eq("establishment_id", establishmentId)
         .gte("appointment_date", range.start.toISOString())
         .lte("appointment_date", range.end.toISOString())
-        .or("status.is.null,status.not.in.(canceled,cancelled)")
         .order("appointment_date", { ascending: true });
 
       const fetchAppointmentsByProfessional = async () => {
@@ -228,7 +227,6 @@ export default function AgendaContent() {
             .in("id", ids)
             .gte("appointment_date", range.start.toISOString())
             .lte("appointment_date", range.end.toISOString())
-            .or("status.is.null,status.not.in.(canceled,cancelled)")
             .order("appointment_date", { ascending: true });
 
           if (linkedRes.error) return linkedRes;
