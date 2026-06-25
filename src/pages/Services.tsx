@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Search, Upload } from 'lucide-react';
+import { Plus, Pencil, Search, Upload, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ImportServicesDialog } from '@/components/services/ImportServicesDialog';
 
 
@@ -63,6 +73,7 @@ const Services = () => {
   });
 
   const [editingService, setEditingService] = useState<any>(null);
+  const [deletingService, setDeletingService] = useState<any>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [serviceSearch, setServiceSearch] = useState('');
   const [debouncedServiceSearch, setDebouncedServiceSearch] = useState('');
