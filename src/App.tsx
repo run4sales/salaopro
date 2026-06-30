@@ -23,6 +23,7 @@ import PublicBooking from "./pages/PublicBooking";
 import AppLayout from "./components/AppLayout";
 import SuperAdmin from "./pages/SuperAdmin";
 import Attendances from "./pages/Attendances";
+import EmployeeAttendances from "./pages/EmployeeAttendances";
 import Users from "./pages/Users";
 import SelectPlan from "./pages/SelectPlan";
 import Checkout from "./pages/Checkout";
@@ -31,6 +32,12 @@ import Plans from "./pages/Plans";
 const queryClient = new QueryClient();
 
 const employeeAllowedRoutes = new Set(["/agenda", "/atendimentos"]);
+
+
+function AttendancesRoute() {
+  const { establishmentRole } = useAuth();
+  return establishmentRole === "employee" ? <EmployeeAttendances /> : <Attendances />;
+}
 
 function RoleProtectedRoute({ children }: { children: ReactNode }) {
   const { establishmentRole, loading } = useAuth();
@@ -69,7 +76,7 @@ const App = () => (
                 <Route path="/sales" element={<RoleProtectedRoute><Sales /></RoleProtectedRoute>} />
                 <Route path="/expenses" element={<RoleProtectedRoute><Expenses /></RoleProtectedRoute>} />
                 <Route path="/agenda" element={<Agenda />} />
-                <Route path="/atendimentos" element={<Attendances />} />
+                <Route path="/atendimentos" element={<AttendancesRoute />} />
                 <Route path="/reports" element={<RoleProtectedRoute><Reports /></RoleProtectedRoute>} />
                 <Route path="/metrics" element={<RoleProtectedRoute><Metrics /></RoleProtectedRoute>} />
                 <Route path="/settings" element={<RoleProtectedRoute><Settings /></RoleProtectedRoute>} />

@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, ShoppingBag, Play } from "lucide-react";
+import { Clock, ShoppingBag, Play, UserX } from "lucide-react";
 import { ComandaSheet } from "@/components/comanda/ComandaSheet";
 
 function elapsed(from: string) {
@@ -15,9 +15,28 @@ function elapsed(from: string) {
   return h > 0 ? `${h}h ${m % 60}m` : `${m}m`;
 }
 
-export default function Attendances() {
-  const { profile } = useAuth();
-  const establishmentId = profile?.id as string | undefined;
+export default function EmployeeAttendances() {
+  const { user, profile, establishmentRole, professionalId } = useAuth();
+  const establishmentIdFromProfile = profile?.id as string | undefined;
+  const isEmployee = establishmentRole === "employee";
+  const contextQuery = useQuery({
+    queryKey: ["employee-attendance-context", user?.id, establishmentIdFromProfile, professionalId],
+    enabled: isEmployee && !!user?.id && !establishmentIdFromProfile,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("establishment_users")
+        .select("establishment_id, professional_id")
+        .eq("user_id", user!.id)
+        .eq("active", true)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { establishment_id?: string | null; professional_id?: string | null } | null;
+    },
+  });
+
+  const establishmentId = establishmentIdFromProfile ?? contextQuery.data?.establishment_id ?? undefined;
+  const effectiveProfessionalId = professionalId ?? contextQuery.data?.professional_id ?? null;
+  const effectiveEmployeeWithoutProfessional = isEmployee && !effectiveProfessionalId;
   const qc = useQueryClient();
   const [selectedComanda, setSelectedComanda] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
@@ -26,19 +45,45 @@ export default function Attendances() {
   useEffect(() => { const id = setInterval(() => setTick((t) => t + 1), 30000); return () => clearInterval(id); }, []);
 
   const { data } = useQuery({
-    queryKey: ["attendances", establishmentId],
-    enabled: !!establishmentId,
+    queryKey: ["attendances", establishmentId, isEmployee, effectiveProfessionalId],
+    enabled: !!establishmentId && (!isEmployee || !!effectiveProfessionalId),
     queryFn: async () => {
-      const [comandasRes, clientsRes, apptsRes, profsRes] = await Promise.all([
-        supabase.from("comandas").select("*").eq("establishment_id", establishmentId!).in("status", ["open", "awaiting_payment"]).order("opened_at"),
-        supabase.from("clients").select("id, name").eq("establishment_id", establishmentId!),
-        supabase.from("appointments").select("id, professional_id, service_id, appointment_date").eq("establishment_id", establishmentId!),
-        supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId!),
+      const comandasQuery = supabase
+        .from("comandas")
+        .select("*")
+        .eq("establishment_id", establishmentId!)
+        .in("status", ["open", "awaiting_payment"])
+        .order("opened_at");
+
+      const comandasRes = await comandasQuery;
+      const comandas = comandasRes.data ?? [];
+      const appointmentIds = [...new Set(comandas.map((c: any) => c.appointment_id).filter(Boolean))];
+
+      const [apptsRes, profsRes] = await Promise.all([
+        appointmentIds.length
+          ? supabase.from("appointments").select("id, professional_id, service_id, appointment_date").eq("establishment_id", establishmentId!).in("id", appointmentIds)
+          : Promise.resolve({ data: [], error: null }),
+        isEmployee && effectiveProfessionalId
+          ? supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId!).eq("id", effectiveProfessionalId)
+          : supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId!),
       ]);
+
       const apptMap = new Map((apptsRes.data ?? []).map((a: any) => [a.id, a]));
+      const filteredComandas = isEmployee && effectiveProfessionalId
+        ? comandas.filter((c: any) => {
+            if (c.professional_id === effectiveProfessionalId) return true;
+            const appt: any = apptMap.get(c.appointment_id);
+            return appt?.professional_id === effectiveProfessionalId;
+          })
+        : comandas;
+      const clientIds = [...new Set(filteredComandas.map((c: any) => c.client_id).filter(Boolean))];
+      const clientsRes = clientIds.length
+        ? await supabase.from("clients").select("id, name").eq("establishment_id", establishmentId!).in("id", clientIds)
+        : { data: [], error: null };
+
       const clientMap = new Map((clientsRes.data ?? []).map((c: any) => [c.id, c.name]));
       const profMap = new Map((profsRes.data ?? []).map((p: any) => [p.id, p.name]));
-      return { comandas: comandasRes.data ?? [], apptMap, clientMap, profMap };
+      return { comandas: filteredComandas, apptMap, clientMap, profMap };
     },
   });
 
@@ -67,6 +112,18 @@ export default function Attendances() {
 
   if (!establishmentId) return <div className="p-6 text-sm text-muted-foreground">Carregando...</div>;
 
+  if (effectiveEmployeeWithoutProfessional) {
+    return (
+      <main className="container mx-auto px-4 py-6">
+        <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">
+          <UserX className="h-8 w-8 mx-auto mb-2 opacity-60" />
+          <div className="font-medium text-foreground">Perfil funcionário sem profissional vinculado</div>
+          <p className="mt-1">Peça para a administração vincular seu usuário a um profissional para visualizar seus atendimentos.</p>
+        </CardContent></Card>
+      </main>
+    );
+  }
+
   return (
     <main className="container mx-auto px-4 py-6 space-y-6">
       <header>
@@ -77,8 +134,8 @@ export default function Attendances() {
       {cards.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">
           <ShoppingBag className="h-8 w-8 mx-auto mb-2 opacity-60" />
-          Nenhum atendimento em andamento.<br />
-          Inicie um atendimento na Agenda para abrir uma comanda.
+          {isEmployee ? "Você ainda não possui atendimentos agendados." : "Nenhum atendimento em andamento."}<br />
+          {!isEmployee && "Inicie um atendimento na Agenda para abrir uma comanda."}
         </CardContent></Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
