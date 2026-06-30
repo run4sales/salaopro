@@ -78,38 +78,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Defer profile fetching with setTimeout to prevent deadlock
-        if (session?.user) {
-          setTimeout(async () => {
-            await fetchProfile(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-          setEstablishmentRole(null);
-          setProfessionalId(null);
-        }
-        
-        setLoading(false);
-      }
-    );
+    let active = true;
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+    const loadFor = async (s: Session | null) => {
+      if (!active) return;
+      setSession(s);
+      setUser(s?.user ?? null);
+      if (s?.user) {
+        setLoading(true);
+        await fetchProfile(s.user.id);
+      } else {
+        setProfile(null);
+        setEstablishmentRole(null);
+        setProfessionalId(null);
       }
-      setLoading(false);
+      if (active) setLoading(false);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      // Defer to avoid deadlocks inside the auth callback
+      setTimeout(() => { void loadFor(s); }, 0);
     });
 
-    return () => subscription.unsubscribe();
+    supabase.auth.getSession().then(({ data: { session: s } }) => { void loadFor(s); });
+
+    return () => { active = false; subscription.unsubscribe(); };
   }, []);
 
   const signUp = async (email: string, password: string, metadata?: any) => {
