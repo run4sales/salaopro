@@ -74,18 +74,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      const { data: linkedProfile, error: linkedProfileError } = await (supabase as any)
-        .rpc('get_my_establishment_profile');
-
-      if (linkedProfileError) {
-        console.warn('Erro ao buscar perfil do estabelecimento vinculado:', linkedProfileError);
-      }
-
       // Funcionários precisam pelo menos do establishment_id para carregar agenda/atendimentos.
-      // Se a RPC não retornar o perfil por qualquer inconsistência temporária, não deixe a tela presa.
-      setProfile(linkedProfile ?? { id: membership.establishment_id });
       setEstablishmentRole((membership.role as any) ?? null);
       setProfessionalId(membership.professional_id ?? null);
+      setProfile({ id: membership.establishment_id });
+
+      // Enriquece dados do salão sem bloquear a liberação da tela do funcionário.
+      void (async () => {
+        const { data: linkedProfile, error: linkedProfileError } = await (supabase as any)
+          .rpc('get_my_establishment_profile');
+
+        if (linkedProfileError) {
+          console.warn('Erro ao buscar perfil do estabelecimento vinculado:', linkedProfileError);
+          return;
+        }
+
+        if (linkedProfile) {
+          setProfile(linkedProfile);
+        }
+      })();
     } catch (error) {
       console.error('Error fetching profile:', error);
       setProfile(null);
