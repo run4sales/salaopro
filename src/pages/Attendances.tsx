@@ -16,10 +16,27 @@ function elapsed(from: string) {
 }
 
 export default function Attendances() {
-  const { profile, establishmentRole, professionalId } = useAuth();
-  const establishmentId = profile?.id as string | undefined;
+  const { user, profile, establishmentRole, professionalId } = useAuth();
+  const establishmentIdFromProfile = profile?.id as string | undefined;
   const isEmployee = establishmentRole === "employee";
-  const employeeWithoutProfessional = isEmployee && !professionalId;
+  const contextQuery = useQuery({
+    queryKey: ["employee-attendance-context", user?.id, establishmentIdFromProfile, professionalId],
+    enabled: isEmployee && !!user?.id && !establishmentIdFromProfile,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("establishment_users")
+        .select("establishment_id, professional_id")
+        .eq("user_id", user!.id)
+        .eq("active", true)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { establishment_id?: string | null; professional_id?: string | null } | null;
+    },
+  });
+
+  const establishmentId = establishmentIdFromProfile ?? contextQuery.data?.establishment_id ?? undefined;
+  const effectiveProfessionalId = professionalId ?? contextQuery.data?.professional_id ?? null;
+  const effectiveEmployeeWithoutProfessional = isEmployee && !effectiveProfessionalId;
   const qc = useQueryClient();
   const [selectedComanda, setSelectedComanda] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
@@ -28,8 +45,8 @@ export default function Attendances() {
   useEffect(() => { const id = setInterval(() => setTick((t) => t + 1), 30000); return () => clearInterval(id); }, []);
 
   const { data } = useQuery({
-    queryKey: ["attendances", establishmentId, isEmployee, professionalId],
-    enabled: !!establishmentId && (!isEmployee || !!professionalId),
+    queryKey: ["attendances", establishmentId, isEmployee, effectiveProfessionalId],
+    enabled: !!establishmentId && (!isEmployee || !!effectiveProfessionalId),
     queryFn: async () => {
       const comandasQuery = supabase
         .from("comandas")
@@ -46,17 +63,17 @@ export default function Attendances() {
         appointmentIds.length
           ? supabase.from("appointments").select("id, professional_id, service_id, appointment_date").eq("establishment_id", establishmentId!).in("id", appointmentIds)
           : Promise.resolve({ data: [], error: null }),
-        isEmployee && professionalId
-          ? supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId!).eq("id", professionalId)
+        isEmployee && effectiveProfessionalId
+          ? supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId!).eq("id", effectiveProfessionalId)
           : supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId!),
       ]);
 
       const apptMap = new Map((apptsRes.data ?? []).map((a: any) => [a.id, a]));
-      const filteredComandas = isEmployee && professionalId
+      const filteredComandas = isEmployee && effectiveProfessionalId
         ? comandas.filter((c: any) => {
-            if (c.professional_id === professionalId) return true;
+            if (c.professional_id === effectiveProfessionalId) return true;
             const appt: any = apptMap.get(c.appointment_id);
-            return appt?.professional_id === professionalId;
+            return appt?.professional_id === effectiveProfessionalId;
           })
         : comandas;
       const clientIds = [...new Set(filteredComandas.map((c: any) => c.client_id).filter(Boolean))];
@@ -95,7 +112,7 @@ export default function Attendances() {
 
   if (!establishmentId) return <div className="p-6 text-sm text-muted-foreground">Carregando...</div>;
 
-  if (employeeWithoutProfessional) {
+  if (effectiveEmployeeWithoutProfessional) {
     return (
       <main className="container mx-auto px-4 py-6">
         <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">

@@ -64,13 +64,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      const { data: linkedProfile, error: linkedProfileError } = await (supabase as any)
+      const { data: linkedProfile } = await (supabase as any)
         .rpc('get_my_establishment_profile');
-      if (linkedProfileError) {
-        console.warn('Could not load linked establishment profile via RPC:', linkedProfileError);
-      }
-
-      setProfile(linkedProfile ?? { id: membership.establishment_id });
+      setProfile(linkedProfile ?? null);
       setEstablishmentRole((membership.role as any) ?? null);
       setProfessionalId(membership.professional_id ?? null);
     } catch (error) {
@@ -88,20 +84,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         
+        // Defer profile fetching with setTimeout to prevent deadlock
         if (session?.user) {
-          setLoading(true);
-          // Defer profile fetching with setTimeout to prevent Supabase auth callback deadlocks,
-          // but do not render protected screens until the establishment context is loaded.
           setTimeout(async () => {
             await fetchProfile(session.user.id);
-            setLoading(false);
           }, 0);
         } else {
           setProfile(null);
           setEstablishmentRole(null);
           setProfessionalId(null);
-          setLoading(false);
         }
+        
+        setLoading(false);
       }
     );
 

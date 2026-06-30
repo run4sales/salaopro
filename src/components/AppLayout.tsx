@@ -1,6 +1,7 @@
 import { Outlet, Navigate, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
+import EmployeeSidebar from "@/components/EmployeeSidebar";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
 import TrialCountdownBanner from "@/components/TrialCountdownBanner";
 import GraceCountdownBanner from "@/components/GraceCountdownBanner";
@@ -26,6 +27,7 @@ export default function AppLayout() {
   // Apenas owners passam pelo gate de plano (funcionários do estabelecimento não escolhem plano).
   // Nunca trate role null como owner, pois funcionários chegam com role async durante o login.
   const isOwner = establishmentRole === "owner";
+  const isEmployee = establishmentRole === "employee";
   const storeBlocked = isStoreBlocked(sub);
 
   // Gate: dono precisa escolher plano se ainda não escolheu.
@@ -58,7 +60,7 @@ export default function AppLayout() {
         </header>
 
         <div className="flex min-h-[calc(100svh-3rem)] w-full min-w-0 bg-background text-foreground md:min-h-svh">
-          <AppSidebar />
+          {isEmployee ? <EmployeeSidebar /> : <AppSidebar />}
           <main className="flex min-w-0 flex-1 flex-col">
             <SubscriptionBanner />
             <div className="min-w-0 flex-1">
