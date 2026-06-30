@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Ban, Plus, CalendarDays, List, Upload } from "lucide-react";
+import { Ban, Plus, CalendarDays, List, Upload, CalendarOff, UserX } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { AgendaCalendar, AgendaEvent } from "@/components/agenda/AgendaCalendar";
 import { AppointmentFormDialog } from "@/components/agenda/AppointmentFormDialog";
@@ -370,6 +370,7 @@ export default function StableAgendaContent() {
   const selectedProfessionalName = effectiveProfessionalId
     ? professionals.find(professional => professional.id === effectiveProfessionalId)?.name ?? "Profissional"
     : "Todos os profissionais";
+  const employeeWithoutProfessional = isEmployee && !professionalId;
 
   const slug = (profile as any)?.slug as string | undefined;
   const publicLink = establishmentId ? `${window.location.origin}/${slug ?? `agendar/${establishmentId}`}` : "";
@@ -440,9 +441,19 @@ export default function StableAgendaContent() {
 
   if (!establishmentId) return <div className="rounded-md border p-6 bg-card text-sm text-muted-foreground">Carregando perfil...</div>;
 
+  if (employeeWithoutProfessional) {
+    return (
+      <div className="rounded-md border bg-card p-8 text-center text-sm text-muted-foreground">
+        <UserX className="h-10 w-10 mx-auto mb-3 opacity-60" />
+        <div className="font-medium text-foreground">Perfil funcionário sem profissional vinculado</div>
+        <p className="mt-1">Peça para a administração vincular seu usuário a um profissional para visualizar sua agenda e atendimentos.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="rounded-md border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
+      {!isEmployee && <div className="rounded-md border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-sm text-muted-foreground">Link público da agenda</div>
           <a href={publicLink} className="text-sm font-medium break-all underline underline-offset-4" target="_blank" rel="noreferrer">{publicLink}</a>
@@ -457,7 +468,7 @@ export default function StableAgendaContent() {
           <Button onClick={handleNewBlock} variant="outline"><Ban className="h-4 w-4 mr-1" /> Bloquear horário</Button>
           <Button onClick={handleNew}><Plus className="h-4 w-4 mr-1" /> Novo agendamento</Button>
         </div>
-      </div>
+      </div>}
 
       <div className="rounded-md border bg-card p-4 space-y-4">
         <div className="grid gap-4 md:grid-cols-[minmax(220px,1fr)_220px_minmax(260px,1fr)]">
@@ -520,6 +531,11 @@ export default function StableAgendaContent() {
 
       {isLoading ? (
         <div className="rounded-md border p-6 bg-card text-sm text-muted-foreground">Carregando agendamentos...</div>
+      ) : agendaData.appts.length === 0 && isEmployee ? (
+        <div className="rounded-md border bg-card p-8 text-center text-sm text-muted-foreground">
+          <CalendarOff className="h-10 w-10 mx-auto mb-3 opacity-60" />
+          Você ainda não possui atendimentos agendados.
+        </div>
       ) : viewMode === "calendar" ? (
         <AgendaCalendar
           events={events}
@@ -566,7 +582,7 @@ export default function StableAgendaContent() {
                   </TableRow>
                 );
               }) : (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Nenhum agendamento no período.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{isEmployee ? "Você ainda não possui atendimentos agendados." : "Nenhum agendamento no período."}</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
