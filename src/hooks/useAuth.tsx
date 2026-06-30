@@ -38,11 +38,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data: ownerProfile } = await supabase
+      const resetProfileContext = () => {
+        setProfile(null);
+        setEstablishmentRole(null);
+        setProfessionalId(null);
+      };
+
+      const { data: ownerProfile, error: ownerError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
+      if (ownerError) {
+        console.warn('Erro ao buscar perfil proprietário:', ownerError);
+      }
       if (ownerProfile) {
         setProfile(ownerProfile);
         setEstablishmentRole("owner");
@@ -50,23 +59,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      const { data: membershipData } = await supabase
+      const { data: membershipData, error: membershipError } = await supabase
         .from('establishment_users' as any)
         .select('role, professional_id, establishment_id')
         .eq('user_id', userId)
         .eq('active', true)
         .maybeSingle();
+      if (membershipError) {
+        console.warn('Erro ao buscar vínculo do funcionário:', membershipError);
+      }
       const membership = membershipData as any;
       if (!membership?.establishment_id) {
-        setProfile(null);
-        setEstablishmentRole(null);
-        setProfessionalId(null);
+        resetProfileContext();
         return;
       }
 
-      const { data: linkedProfile } = await (supabase as any)
+      const { data: linkedProfile, error: linkedProfileError } = await (supabase as any)
         .rpc('get_my_establishment_profile');
-      setProfile(linkedProfile ?? null);
+
+      if (linkedProfileError) {
+        console.warn('Erro ao buscar perfil do estabelecimento vinculado:', linkedProfileError);
+      }
+
+      // Funcionários precisam pelo menos do establishment_id para carregar agenda/atendimentos.
+      // Se a RPC não retornar o perfil por qualquer inconsistência temporária, não deixe a tela presa.
+      setProfile(linkedProfile ?? { id: membership.establishment_id });
       setEstablishmentRole((membership.role as any) ?? null);
       setProfessionalId(membership.professional_id ?? null);
     } catch (error) {
