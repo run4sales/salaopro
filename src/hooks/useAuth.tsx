@@ -84,18 +84,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Defer profile fetching with setTimeout to prevent deadlock
         if (session?.user) {
+          setLoading(true);
+          // Defer profile fetching with setTimeout to prevent Supabase auth callback deadlocks,
+          // but keep auth loading active until the employee/owner context is resolved.
           setTimeout(async () => {
             await fetchProfile(session.user.id);
+            setLoading(false);
           }, 0);
         } else {
           setProfile(null);
           setEstablishmentRole(null);
           setProfessionalId(null);
+          setLoading(false);
         }
-        
-        setLoading(false);
       }
     );
 
