@@ -69,9 +69,12 @@ const groups = [
 
 export default function AppSidebar() {
   const location = useLocation();
-  const { signOut, establishmentRole } = useAuth();
+  const { signOut, establishmentRole, loading } = useAuth();
   const isEmployee = establishmentRole === "employee";
   const isAdmin = establishmentRole === "owner" || establishmentRole === "admin";
+  // Until we know the role, treat the user as restricted to avoid flashing admin menus to employees
+  const roleKnown = !loading && establishmentRole !== null;
+  const restrict = !roleKnown || isEmployee;
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -97,7 +100,7 @@ export default function AppSidebar() {
         {groups.map((group) => {
           const filteredItems = group.items.filter((item) => {
             if (item.url === "/users" || item.url === "/planos") return isAdmin;
-            return !isEmployee || ["/agenda", "/atendimentos"].includes(item.url);
+            return !restrict || ["/agenda", "/atendimentos"].includes(item.url);
           });
 
           if (!filteredItems.length) return null;
