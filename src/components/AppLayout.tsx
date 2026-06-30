@@ -14,13 +14,18 @@ export default function AppLayout() {
   const { user, loading: authLoading, establishmentRole } = useAuth();
   const { data: sub, isLoading: subLoading } = useSubscription();
 
-  // Gate: usuário precisa estar autenticado
-  if (!authLoading && !user) {
+  // Gate: usuário precisa estar autenticado e com contexto de estabelecimento carregado.
+  if (authLoading) {
+    return <div className="p-6 text-sm text-muted-foreground">Carregando permissões...</div>;
+  }
+
+  if (!user) {
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
-  // Apenas owners passam pelo gate de plano (funcionários do estabelecimento não escolhem plano)
-  const isOwner = establishmentRole === "owner" || establishmentRole === null;
+  // Apenas owners passam pelo gate de plano (funcionários do estabelecimento não escolhem plano).
+  // Nunca trate role null como owner, pois funcionários chegam com role async durante o login.
+  const isOwner = establishmentRole === "owner";
   const storeBlocked = isStoreBlocked(sub);
 
   // Gate: dono precisa escolher plano se ainda não escolheu.
