@@ -22,9 +22,9 @@ Deno.serve(async (req) => {
     const adminClient = createClient(supabaseUrl, serviceKey);
 
     const token = authHeader.replace(/^Bearer\s+/i, "");
-    const { data: authData, error: authErr } = await adminClient.auth.getUser(token);
-    const callerId = authData?.user?.id;
-    if (authErr || !callerId) {
+    const { data: claimsData, error: authErr } = await userClient.auth.getClaims(token);
+    const callerId = claimsData?.claims?.sub;
+    if (authErr || !callerId || claimsData?.claims?.role !== "authenticated") {
       console.error("auth error", authErr);
       throw new Error("Usuário não autenticado");
     }
