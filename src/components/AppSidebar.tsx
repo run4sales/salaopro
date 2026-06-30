@@ -69,9 +69,12 @@ const groups = [
 
 export default function AppSidebar() {
   const location = useLocation();
-  const { signOut, establishmentRole } = useAuth();
+  const { signOut, establishmentRole, loading } = useAuth();
   const isEmployee = establishmentRole === "employee";
   const isAdmin = establishmentRole === "owner" || establishmentRole === "admin";
+  // Until we know the role, treat the user as restricted to avoid flashing admin menus to employees
+  const roleKnown = !loading && establishmentRole !== null;
+  const restrict = !roleKnown || isEmployee;
 
   const isActive = (path: string) => location.pathname === path;
 
