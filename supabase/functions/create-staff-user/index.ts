@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
 
     const { error: linkErr } = await adminClient
       .from("establishment_users")
-      .upsert({ establishment_id, user_id: userId, role, professional_id: professional.id, active: true }, { onConflict: "establishment_id,user_id" });
+      .upsert({ establishment_id, user_id: userId, role, professional_id: professional.id, active: true, email: normalizedEmail }, { onConflict: "establishment_id,user_id" });
     if (linkErr) throw linkErr;
 
     return new Response(JSON.stringify({ user_id: userId, professional_id: professional.id }), { headers: { ...CORS, "Content-Type": "application/json" } });

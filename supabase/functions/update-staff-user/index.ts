@@ -63,7 +63,8 @@ Deno.serve(async (req) => {
     if (mErr || !membership) throw new Error("Usuário não encontrado");
 
     const authUpdates: Record<string, unknown> = {};
-    if (email && String(email).trim()) authUpdates.email = String(email).trim().toLowerCase();
+    const normalizedEmail = email && String(email).trim() ? String(email).trim().toLowerCase() : undefined;
+    if (normalizedEmail) authUpdates.email = normalizedEmail;
     if (password && String(password).length > 0) {
       if (String(password).length < 6) throw new Error("Senha deve ter pelo menos 6 caracteres");
       authUpdates.password = String(password);
@@ -73,10 +74,14 @@ Deno.serve(async (req) => {
       if (aErr) throw aErr;
     }
 
-    if (role && (role === "admin" || role === "employee")) {
+    const membershipUpdates: Record<string, unknown> = {};
+    if (role && (role === "admin" || role === "employee")) membershipUpdates.role = role;
+    if (normalizedEmail) membershipUpdates.email = normalizedEmail;
+
+    if (Object.keys(membershipUpdates).length > 0) {
       const { error: rErr } = await adminClient
         .from("establishment_users")
-        .update({ role })
+        .update(membershipUpdates)
         .eq("id", membership_id);
       if (rErr) throw rErr;
     }
