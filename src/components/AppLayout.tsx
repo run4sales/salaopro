@@ -2,7 +2,7 @@ import { Outlet, Navigate, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
 import EmployeeSidebar from "@/components/EmployeeSidebar";
-import EmployeeAttendances from "@/pages/EmployeeAttendances";
+import StaffAttendances from "@/pages/StaffAttendances";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
 import TrialCountdownBanner from "@/components/TrialCountdownBanner";
 import GraceCountdownBanner from "@/components/GraceCountdownBanner";
@@ -70,7 +70,7 @@ export default function AppLayout() {
           <main className="flex min-w-0 flex-1 flex-col">
             <SubscriptionBanner />
             <div className="min-w-0 flex-1">
-              {isEmployee && location.pathname === "/atendimentos" ? <EmployeeAttendances /> : <Outlet />}
+              {isEmployee && location.pathname === "/atendimentos" ? <StaffAttendances /> : <Outlet />}
             </div>
           </main>
         </div>
