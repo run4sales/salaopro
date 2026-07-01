@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { addDays, endOfDay, format, startOfDay } from "date-fns";
-import { CalendarOff, Clock, Play, RefreshCw, UserX } from "lucide-react";
+import { AlertCircle, CalendarOff, Clock, Play, RefreshCw, UserX } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +18,20 @@ type Period = "today" | "week" | "next7";
 type EmployeeContext = {
   establishmentId: string | null;
   professionalId: string | null;
+  professionalName?: string | null;
 };
+
+const EMPLOYEE_QUERY_TIMEOUT_MS = 12000;
+
+function withTimeout<T = any>(promise: PromiseLike<T>, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => reject(new Error(`${label} demorou para responder`)), EMPLOYEE_QUERY_TIMEOUT_MS);
+    Promise.resolve(promise)
+      .then(resolve)
+      .catch(reject)
+      .finally(() => window.clearTimeout(timeout));
+  });
+}
 
 function getRange(period: Period) {
   const today = new Date();
@@ -42,12 +55,30 @@ export default function EmployeeAgendaContent() {
         return { establishmentId: profile.id as string, professionalId: authProfessionalId };
       }
 
-      const { data, error } = await (supabase as any)
-        .from("establishment_users")
-        .select("establishment_id, professional_id")
-        .eq("user_id", user!.id)
-        .eq("active", true)
-        .maybeSingle();
+      const { data: contextData, error: contextError } = await withTimeout<any>(
+        (supabase as any).rpc("get_my_employee_context"),
+        "Busca do vínculo do funcionário"
+      );
+
+      if (!contextError && contextData?.establishment_id) {
+        return {
+          establishmentId: contextData.establishment_id ?? null,
+          professionalId: authProfessionalId ?? contextData.professional_id ?? null,
+          professionalName: contextData.professional_name ?? null,
+        };
+      }
+
+      if (contextError) console.warn("Falha ao buscar contexto seguro do funcionário:", contextError);
+
+      const { data, error } = await withTimeout<any>(
+        (supabase as any)
+          .from("establishment_users")
+          .select("establishment_id, professional_id")
+          .eq("user_id", user!.id)
+          .eq("active", true)
+          .maybeSingle(),
+        "Busca alternativa do vínculo do funcionário"
+      );
 
       if (error) throw error;
       return {
@@ -55,6 +86,7 @@ export default function EmployeeAgendaContent() {
         professionalId: authProfessionalId ?? data?.professional_id ?? null,
       };
     },
+    retry: false,
   });
 
   const establishmentId = contextQuery.data?.establishmentId ?? null;
@@ -64,33 +96,22 @@ export default function EmployeeAgendaContent() {
     queryKey: ["employee-agenda-data", establishmentId, professionalId, range.start.toISOString(), range.end.toISOString()],
     enabled: !!establishmentId && !!professionalId,
     queryFn: async () => {
-      const appointmentsRes = await supabase
-        .from("appointments")
-        .select("id, establishment_id, appointment_date, duration_minutes, service_amount, status, notes, client_id, service_id, professional_id")
-        .eq("establishment_id", establishmentId!)
-        .eq("professional_id", professionalId!)
-        .gte("appointment_date", range.start.toISOString())
-        .lte("appointment_date", range.end.toISOString())
-        .order("appointment_date", { ascending: true });
+      const { data: payload, error } = await withTimeout<any>(
+        (supabase as any).rpc("get_my_employee_agenda", {
+          _start: range.start.toISOString(),
+          _end: range.end.toISOString(),
+        }),
+        "Busca da agenda do funcionário"
+      );
 
-      if (appointmentsRes.error) throw appointmentsRes.error;
-      const appointments = (appointmentsRes.data ?? []).filter((a: any) => !["canceled", "cancelled"].includes(String(a.status ?? "").toLowerCase()));
-      const clientIds = [...new Set(appointments.map((a: any) => a.client_id).filter(Boolean))];
-      const serviceIds = [...new Set(appointments.map((a: any) => a.service_id).filter(Boolean))];
-
-      const [clientsRes, servicesRes, professionalRes] = await Promise.all([
-        clientIds.length ? supabase.from("clients").select("id, name").eq("establishment_id", establishmentId!).in("id", clientIds) : Promise.resolve({ data: [], error: null }),
-        serviceIds.length ? supabase.from("services").select("id, name, duration_minutes").eq("establishment_id", establishmentId!).in("id", serviceIds) : Promise.resolve({ data: [], error: null }),
-        supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId!).eq("id", professionalId!).maybeSingle(),
-      ]);
-
+      if (error) throw error;
+      const appointments = (payload?.appointments ?? []).filter((a: any) => !["canceled", "cancelled"].includes(String(a.status ?? "").toLowerCase()));
       return {
         appointments,
-        clientMap: new Map((clientsRes.data ?? []).map((c: any) => [c.id, c.name])),
-        serviceMap: new Map((servicesRes.data ?? []).map((s: any) => [s.id, s])),
-        professionalName: (professionalRes.data as any)?.name ?? "Profissional",
+        professionalName: payload?.professional_name ?? contextQuery.data?.professionalName ?? "Profissional",
       };
     },
+    retry: false,
   });
 
   const startService = async (appointment: any) => {
@@ -101,7 +122,7 @@ export default function EmployeeAgendaContent() {
         appointment_id: appointment.id,
         client_id: appointment.client_id,
         service_id: appointment.service_id,
-        professional_id: appointment.professional_id,
+        professional_id: appointment.professional_id ?? professionalId,
       });
       toast({ title: "Atendimento iniciado", description: "Comanda aberta." });
       await qc.invalidateQueries({ queryKey: ["employee-agenda-data"] });
@@ -113,6 +134,16 @@ export default function EmployeeAgendaContent() {
 
   if (contextQuery.isLoading) {
     return <div className="rounded-md border p-6 bg-card text-sm text-muted-foreground">Carregando vínculo do funcionário...</div>;
+  }
+
+  if (contextQuery.isError) {
+    return (
+      <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">
+        <AlertCircle className="h-10 w-10 mx-auto mb-3 opacity-60" />
+        <div className="font-medium text-foreground">Não foi possível carregar seu vínculo</div>
+        <p className="mt-1">Tente atualizar a tela. Se continuar, peça para a administração revisar seu usuário profissional.</p>
+      </CardContent></Card>
+    );
   }
 
   if (!professionalId) {
@@ -132,7 +163,7 @@ export default function EmployeeAgendaContent() {
       <div className="rounded-md border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-sm text-muted-foreground">Área do funcionário</div>
-          <div className="text-sm font-medium">{agendaQuery.data?.professionalName ?? "Seus agendamentos"}</div>
+          <div className="text-sm font-medium">{agendaQuery.data?.professionalName ?? contextQuery.data?.professionalName ?? "Seus agendamentos"}</div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select value={period} onValueChange={(value) => setPeriod(value as Period)}>
@@ -151,6 +182,12 @@ export default function EmployeeAgendaContent() {
 
       {agendaQuery.isLoading ? (
         <div className="rounded-md border p-6 bg-card text-sm text-muted-foreground">Carregando seus agendamentos...</div>
+      ) : agendaQuery.isError ? (
+        <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">
+          <AlertCircle className="h-10 w-10 mx-auto mb-3 opacity-60" />
+          <div className="font-medium text-foreground">Não foi possível carregar sua agenda</div>
+          <p className="mt-1">Atualize a tela ou avise a administração caso o problema continue.</p>
+        </CardContent></Card>
       ) : appointments.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">
           <CalendarOff className="h-10 w-10 mx-auto mb-3 opacity-60" />
@@ -160,14 +197,13 @@ export default function EmployeeAgendaContent() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {appointments.map((appointment: any) => {
             const status = normalizeStatus(appointment.status);
-            const service: any = agendaQuery.data?.serviceMap.get(appointment.service_id);
             return (
               <Card key={appointment.id}>
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <div className="font-semibold">{agendaQuery.data?.clientMap.get(appointment.client_id) ?? "Cliente"}</div>
-                      <div className="text-sm text-muted-foreground">{service?.name ?? "Serviço"}</div>
+                      <div className="font-semibold">{appointment.client_name ?? "Cliente"}</div>
+                      <div className="text-sm text-muted-foreground">{appointment.service_name ?? "Serviço"}</div>
                     </div>
                     <Badge variant={STATUS_VARIANTS[status] ?? "secondary"}>{STATUS_LABELS[status] ?? "Agendado"}</Badge>
                   </div>

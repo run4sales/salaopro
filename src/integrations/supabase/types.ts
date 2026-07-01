@@ -1350,6 +1350,12 @@ export type Database = {
         }
         Returns: string
       }
+      get_my_employee_agenda: {
+        Args: { _end: string; _start: string }
+        Returns: Json
+      }
+      get_my_employee_attendances: { Args: never; Returns: Json }
+      get_my_employee_context: { Args: never; Returns: Json }
       get_my_establishment_profile: { Args: never; Returns: Json }
       get_my_subscription: { Args: never; Returns: Json }
       get_public_availability: {
