@@ -19,6 +19,18 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTH_QUERY_TIMEOUT_MS = 12000;
+
+function withTimeout<T = any>(promise: PromiseLike<T>, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => reject(new Error(`${label} demorou para responder`)), AUTH_QUERY_TIMEOUT_MS);
+    Promise.resolve(promise)
+      .then(resolve)
+      .catch(reject)
+      .finally(() => window.clearTimeout(timeout));
+  });
+}
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -44,11 +56,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setProfessionalId(null);
       };
 
-      const { data: ownerProfile, error: ownerError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+      const { data: ownerProfile, error: ownerError } = await withTimeout<any>(
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle() as any,
+        'Busca do perfil proprietário'
+      );
       if (ownerError) {
         console.warn('Erro ao buscar perfil proprietário:', ownerError);
       }
@@ -59,12 +74,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      const { data: membershipData, error: membershipError } = await supabase
-        .from('establishment_users' as any)
-        .select('role, professional_id, establishment_id')
-        .eq('user_id', userId)
-        .eq('active', true)
-        .maybeSingle();
+      const { data: employeeContext, error: employeeContextError } = await withTimeout<any>(
+        (supabase as any).rpc('get_my_employee_context'),
+        'Busca do vínculo do funcionário'
+      );
+
+      if (employeeContextError) {
+        console.warn('Erro ao buscar contexto seguro do funcionário:', employeeContextError);
+      }
+
+      const context = employeeContext as any;
+
+      const membershipResult = context?.establishment_id
+        ? { data: context, error: null }
+        : await withTimeout<any>(
+            supabase
+              .from('establishment_users' as any)
+              .select('role, professional_id, establishment_id')
+              .eq('user_id', userId)
+              .eq('active', true)
+              .maybeSingle() as any,
+            'Busca alternativa do vínculo do funcionário'
+          );
+
+      const { data: membershipData, error: membershipError } = membershipResult as any;
       if (membershipError) {
         console.warn('Erro ao buscar vínculo do funcionário:', membershipError);
       }
@@ -77,12 +110,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Funcionários precisam pelo menos do establishment_id para carregar agenda/atendimentos.
       setEstablishmentRole((membership.role as any) ?? null);
       setProfessionalId(membership.professional_id ?? null);
-      setProfile({ id: membership.establishment_id });
+      setProfile({
+        id: membership.establishment_id,
+        business_name: membership.business_name,
+        slug: membership.slug,
+        accepting_bookings: membership.accepting_bookings,
+      });
 
       // Enriquece dados do salão sem bloquear a liberação da tela do funcionário.
       void (async () => {
-        const { data: linkedProfile, error: linkedProfileError } = await (supabase as any)
-          .rpc('get_my_establishment_profile');
+        const { data: linkedProfile, error: linkedProfileError } = await withTimeout<any>(
+          (supabase as any).rpc('get_my_establishment_profile'),
+          'Busca de dados do estabelecimento vinculado'
+        );
 
         if (linkedProfileError) {
           console.warn('Erro ao buscar perfil do estabelecimento vinculado:', linkedProfileError);
