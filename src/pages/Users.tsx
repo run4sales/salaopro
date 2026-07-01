@@ -48,7 +48,7 @@ export default function Users() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("establishment_users")
-        .select("id, user_id, role, active, professional_id, created_at")
+        .select("id, user_id, role, active, professional_id, email, created_at")
         .eq("establishment_id", establishmentId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -403,6 +403,7 @@ export default function Users() {
               <div>
                 <div className="font-medium">{u.professional?.name ?? "Sem profissional"}</div>
                 <div className="text-sm text-muted-foreground">
+                  {u.email ? `Email: ${u.email} • ` : "Email não disponível • "}
                   Perfil: {u.role === "admin" ? "Administrador" : "Funcionário"} •{" "}
                   {u.active ? "Ativo" : "Bloqueado"}
                 </div>

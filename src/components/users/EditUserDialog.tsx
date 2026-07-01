@@ -14,6 +14,7 @@ interface UserRow {
   role: "admin" | "employee" | string;
   professional_id?: string | null;
   professional?: { name?: string } | null;
+  email?: string | null;
 }
 
 interface Props {
@@ -36,7 +37,7 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
     if (!user) return;
     setName(user.professional?.name ?? "");
     setRole((user.role as any) === "admin" ? "admin" : "employee");
-    setEmail("");
+    setEmail(user.email ?? "");
     setPassword("");
   }, [user]);
 
@@ -84,12 +85,12 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
           </div>
 
           <div>
-            <Label>Novo e-mail (opcional)</Label>
+            <Label>E-mail</Label>
             <Input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Deixe em branco para manter"
+              placeholder="usuario@exemplo.com"
             />
           </div>
 
