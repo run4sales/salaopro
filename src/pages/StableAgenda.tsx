@@ -2,10 +2,9 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
 import StableAgendaContent from "@/components/agenda/StableAgendaContent";
-import StaffAgendaContent from "@/components/agenda/StaffAgendaContent";
 
 export default function StableAgenda() {
-  const { user, establishmentRole } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     document.title = "Agenda | Beauty Core";
@@ -26,7 +25,7 @@ export default function StableAgenda() {
         </div>
       </header>
       <main className="container mx-auto px-4 py-10 space-y-6">
-        {establishmentRole === "employee" ? <StaffAgendaContent /> : <StableAgendaContent />}
+        <StableAgendaContent />
       </main>
     </div>
   );

@@ -1,8 +1,6 @@
 import { Outlet, Navigate, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
-import EmployeeSidebar from "@/components/EmployeeSidebar";
-import StaffAttendances from "@/pages/StaffAttendances";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
 import TrialCountdownBanner from "@/components/TrialCountdownBanner";
 import GraceCountdownBanner from "@/components/GraceCountdownBanner";
@@ -16,25 +14,14 @@ export default function AppLayout() {
   const { user, loading: authLoading, establishmentRole } = useAuth();
   const { data: sub, isLoading: subLoading } = useSubscription();
 
-  // Gate: usuário precisa estar autenticado e com contexto de estabelecimento carregado.
-  if (authLoading) {
-    return <div className="p-6 text-sm text-muted-foreground">Carregando permissões...</div>;
-  }
-
-  if (!user) {
+  // Gate: usuário precisa estar autenticado
+  if (!authLoading && !user) {
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
-  // Apenas owners passam pelo gate de plano (funcionários do estabelecimento não escolhem plano).
-  // Nunca trate role null como owner, pois funcionários chegam com role async durante o login.
-  const isOwner = establishmentRole === "owner";
-  const isEmployee = establishmentRole === "employee";
-  const employeeAllowedRoutes = new Set(["/agenda", "/atendimentos"]);
+  // Apenas owners passam pelo gate de plano (funcionários do estabelecimento não escolhem plano)
+  const isOwner = establishmentRole === "owner" || establishmentRole === null;
   const storeBlocked = isStoreBlocked(sub);
-
-  if (isEmployee && !employeeAllowedRoutes.has(location.pathname)) {
-    return <Navigate to="/agenda" replace />;
-  }
 
   // Gate: dono precisa escolher plano se ainda não escolheu.
   // Se a loja já está bloqueada, o modal obrigatório deve prevalecer nas áreas internas.
@@ -66,11 +53,11 @@ export default function AppLayout() {
         </header>
 
         <div className="flex min-h-[calc(100svh-3rem)] w-full min-w-0 bg-background text-foreground md:min-h-svh">
-          {isEmployee ? <EmployeeSidebar /> : <AppSidebar />}
+          <AppSidebar />
           <main className="flex min-w-0 flex-1 flex-col">
             <SubscriptionBanner />
             <div className="min-w-0 flex-1">
-              {isEmployee && location.pathname === "/atendimentos" ? <StaffAttendances /> : <Outlet />}
+              <Outlet />
             </div>
           </main>
         </div>
