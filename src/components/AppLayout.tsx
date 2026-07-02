@@ -29,7 +29,7 @@ export default function AppLayout() {
   // Nunca trate role null como owner, pois funcionários chegam com role async durante o login.
   const isOwner = establishmentRole === "owner";
   const isEmployee = establishmentRole === "employee";
-  const employeeAllowedRoutes = new Set(["/agenda", "/atendimentos"]);
+  const employeeAllowedRoutes = new Set(["/agenda", "/atendimentos", "/services", "/products", "/sales"]);
   const storeBlocked = isStoreBlocked(sub);
 
   if (isEmployee && !employeeAllowedRoutes.has(location.pathname)) {
