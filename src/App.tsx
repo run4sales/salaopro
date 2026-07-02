@@ -30,7 +30,7 @@ import Plans from "./pages/Plans";
 
 const queryClient = new QueryClient();
 
-const employeeAllowedRoutes = new Set(["/agenda", "/atendimentos"]);
+const employeeAllowedRoutes = new Set(["/agenda", "/atendimentos", "/services", "/products", "/sales"]);
 
 function RoleProtectedRoute({ children }: { children: ReactNode }) {
   const { establishmentRole, loading } = useAuth();

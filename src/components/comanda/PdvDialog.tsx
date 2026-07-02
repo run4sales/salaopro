@@ -10,6 +10,7 @@ import { Banknote, Smartphone, CreditCard, ArrowLeftRight, Wallet } from "lucide
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ClientCreditPrompt } from "@/components/clients/ClientCreditPrompt";
+import { useAuth } from "@/hooks/useAuth";
 
 const methods = [
   { value: "Dinheiro", label: "Dinheiro", icon: Banknote },
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId, total, onPaid }: Props) {
+  const { user } = useAuth();
   const [method, setMethod] = useState<typeof methods[number]["value"]>("Dinheiro");
   const [machineId, setMachineId] = useState("");
   const [installments, setInstallments] = useState("2");
@@ -109,6 +111,7 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
   const netTotal = remainingToPay - feeAmount;
 
   const finalize = async () => {
+    if (!user) { toast.error("Faça login para finalizar a venda."); return; }
     if (remainingToPay > 0 && isCard && !machineId) { toast.error("Selecione a maquininha"); return; }
     if (items.length === 0) return;
     if (appliedCredit > availableCredit) { toast.error("Crédito insuficiente"); return; }
@@ -141,6 +144,7 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
           installments: itemCash > 0 ? instNum : null,
           sale_date: new Date().toISOString(),
           payment_method: itemCash > 0 ? method : "Crédito do cliente",
+          created_by_user_id: user.id,
         };
       });
 

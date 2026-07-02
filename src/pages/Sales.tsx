@@ -348,6 +348,7 @@ export default function Sales() {
           sale_date: new Date().toISOString(),
           payment_method: itemCash > 0 ? paymentMethod : "Crédito do cliente",
           notes: notes || null,
+          created_by_user_id: user.id,
         };
       });
 

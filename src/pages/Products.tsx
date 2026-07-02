@@ -34,7 +34,8 @@ import {
 import { ImportServicesDialog } from '@/components/services/ImportServicesDialog';
 
 const Products = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, establishmentRole } = useAuth();
+  const isEmployee = establishmentRole === 'employee';
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -153,9 +154,9 @@ const Products = () => {
             <h1 className="text-2xl font-bold">Produtos</h1>
             <p className="text-muted-foreground">Cadastre produtos, preços e controle de estoque</p>
           </div>
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
+          {!isEmployee && <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4 mr-2" /> Importar XLSX/CSV
-          </Button>
+          </Button>}
         </div>
       </header>
 
@@ -172,7 +173,7 @@ const Products = () => {
       )}
 
       <main className="container mx-auto px-4 py-8 space-y-8">
-        <Card>
+        {!isEmployee && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" /> Cadastrar Produto
@@ -212,7 +213,7 @@ const Products = () => {
               </div>
             </form>
           </CardContent>
-        </Card>
+        </Card>}
 
         <Card>
           <CardHeader>
@@ -232,7 +233,7 @@ const Products = () => {
                     <TableHead>Venda</TableHead>
                     <TableHead>Estoque</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    {!isEmployee && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -249,7 +250,7 @@ const Products = () => {
                       <TableCell>
                         <Badge variant={p.active ? 'default' : 'outline'}>{p.active ? 'Ativo' : 'Inativo'}</Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      {!isEmployee && <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button variant="ghost" size="sm" onClick={() => setEditing(p)}>
                             <Pencil className="h-4 w-4" />
@@ -258,7 +259,7 @@ const Products = () => {
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
-                      </TableCell>
+                      </TableCell>}
                     </TableRow>
                   ))}
                 </TableBody>

@@ -59,7 +59,8 @@ const formatDurationLabel = (minutes: number | string | null | undefined) => {
 };
 
 const Services = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, establishmentRole } = useAuth();
+  const isEmployee = establishmentRole === 'employee';
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -345,9 +346,9 @@ const Services = () => {
               <p className="text-muted-foreground">Cadastre e gerencie seus serviços e valores</p>
             </div>
           </div>
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
+          {!isEmployee && <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4 mr-2" /> Importar XLSX/CSV
-          </Button>
+          </Button>}
         </div>
       </header>
 
@@ -364,7 +365,7 @@ const Services = () => {
       {/* Content */}
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Create Service */}
-        <Card>
+        {!isEmployee && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" />
@@ -409,7 +410,7 @@ const Services = () => {
               </div>
             </form>
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* Services List */}
         <Card>
@@ -453,7 +454,7 @@ const Services = () => {
                     <TableHead>Duração</TableHead>
                     <TableHead>Comissão</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    {!isEmployee && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -464,7 +465,7 @@ const Services = () => {
                       <TableCell>{formatDurationLabel(s.duration_minutes)}</TableCell>
                       <TableCell>{Number(s.commission_solo ?? 0)}%</TableCell>
                       <TableCell>{s.active ? 'Ativo' : 'Inativo'}</TableCell>
-                      <TableCell className="text-right">
+                      {!isEmployee && <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => setEditingService({ ...s, duration_minutes: formatDurationInput(s.duration_minutes) })}>
                             <Pencil className="h-4 w-4" />
@@ -473,7 +474,7 @@ const Services = () => {
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
-                      </TableCell>
+                      </TableCell>}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -485,7 +486,7 @@ const Services = () => {
         {/* Profissionais agora são gerenciados na aba Usuários */}
 
         {/* Vincular Serviço x Profissional */}
-        <Card>
+        {!isEmployee && <Card>
           <CardHeader>
             <CardTitle>Vincular Serviço a Profissional</CardTitle>
             <CardDescription>Escolha um serviço e um profissional para vincular</CardDescription>
@@ -554,7 +555,7 @@ const Services = () => {
               </Table>
             </div>
           </CardContent>
-        </Card>
+        </Card>}
         {/* Edit Service Dialog */}
         <Dialog open={!!editingService} onOpenChange={(open) => { if (!open) setEditingService(null); }}>
           <DialogContent className="max-w-lg">

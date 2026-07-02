@@ -153,10 +153,6 @@ export default function StableAgendaContent() {
         .eq("active", true)
         .order("name");
 
-      if (isEmployee && professionalId) {
-        query = query.eq("id", professionalId);
-      }
-
       const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as Professional[];
@@ -269,10 +265,6 @@ export default function StableAgendaContent() {
         .eq("establishment_id", establishmentId)
         .eq("active", true)
         .order("name");
-
-      if (isEmployee && professionalId) {
-        professionalsQuery = professionalsQuery.eq("id", professionalId);
-      }
 
       const blocksQuery = effectiveProfessionalId
         ? (supabase as any)
@@ -453,22 +445,29 @@ export default function StableAgendaContent() {
 
   return (
     <div className="space-y-6">
-      {!isEmployee && <div className="rounded-md border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-sm text-muted-foreground">Link público da agenda</div>
-          <a href={publicLink} className="text-sm font-medium break-all underline underline-offset-4" target="_blank" rel="noreferrer">{publicLink}</a>
-        </div>
+      <div className="rounded-md border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
+        {!isEmployee ? (
+          <div className="min-w-0">
+            <div className="text-sm text-muted-foreground">Link público da agenda</div>
+            <a href={publicLink} className="text-sm font-medium break-all underline underline-offset-4" target="_blank" rel="noreferrer">{publicLink}</a>
+          </div>
+        ) : (
+          <div className="min-w-0">
+            <div className="text-sm text-muted-foreground">Área do funcionário</div>
+            <div className="text-sm font-medium">Você visualiza apenas sua agenda, mas pode criar agendamentos para a loja.</div>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2 items-center">
           <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as any)} variant="outline" size="sm">
             <ToggleGroupItem value="calendar" aria-label="Calendário"><CalendarDays className="h-4 w-4 mr-1" />Calendário</ToggleGroupItem>
             <ToggleGroupItem value="list" aria-label="Lista"><List className="h-4 w-4 mr-1" />Lista</ToggleGroupItem>
           </ToggleGroup>
-          <Button onClick={copyLink} variant="outline">Copiar link</Button>
-          <Button onClick={() => setImportOpen(true)} variant="outline"><Upload className="h-4 w-4 mr-1" /> Importar</Button>
-          <Button onClick={handleNewBlock} variant="outline"><Ban className="h-4 w-4 mr-1" /> Bloquear horário</Button>
+          {!isEmployee && <Button onClick={copyLink} variant="outline">Copiar link</Button>}
+          {!isEmployee && <Button onClick={() => setImportOpen(true)} variant="outline"><Upload className="h-4 w-4 mr-1" /> Importar</Button>}
+          {!isEmployee && <Button onClick={handleNewBlock} variant="outline"><Ban className="h-4 w-4 mr-1" /> Bloquear horário</Button>}
           <Button onClick={handleNew}><Plus className="h-4 w-4 mr-1" /> Novo agendamento</Button>
         </div>
-      </div>}
+      </div>
 
       <div className="rounded-md border bg-card p-4 space-y-4">
         <div className="grid gap-4 md:grid-cols-[minmax(220px,1fr)_220px_minmax(260px,1fr)]">

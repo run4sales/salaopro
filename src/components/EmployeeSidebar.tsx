@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { Calendar, LogOut, PlayCircle } from "lucide-react";
+import { Calendar, DollarSign, LogOut, Package, PlayCircle, Scissors } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarSeparator } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,6 +7,9 @@ import { useAuth } from "@/hooks/useAuth";
 const employeeItems = [
   { title: "Agenda", url: "/agenda", icon: Calendar },
   { title: "Atendimentos", url: "/atendimentos", icon: PlayCircle },
+  { title: "Serviços", url: "/services", icon: Scissors },
+  { title: "Produtos", url: "/products", icon: Package },
+  { title: "Vendas (PDV)", url: "/sales", icon: DollarSign },
 ];
 
 export default function EmployeeSidebar() {
