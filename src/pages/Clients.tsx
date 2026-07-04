@@ -14,9 +14,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MessageCircle, Plus, Search, Edit, CalendarIcon, Settings, Upload, Download, Wallet } from 'lucide-react';
+import { Cake, MessageCircle, Plus, Search, Edit, CalendarIcon, Settings, Upload, Download, Wallet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { addDays, format, startOfWeek } from 'date-fns';
 import { cn } from '@/lib/utils';
 import ImportClientsDialog from '@/components/clients/ImportClientsDialog';
 import { exportClientsToXlsx, exportClientsToCsv } from '@/lib/clientImportExport';
@@ -31,6 +31,7 @@ const Clients = () => {
   const queryClient = useQueryClient();
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [birthdayFilter, setBirthdayFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
@@ -117,6 +118,59 @@ const Clients = () => {
     enabled: !!profile?.id,
   });
 
+  const getBirthdayParts = (birthDate?: string | null) => {
+    if (!birthDate) return null;
+
+    const [, month, day] = birthDate.split('T')[0]?.split('-').map(Number) ?? [];
+
+    if (!day || !month) return null;
+
+    return { day, month };
+  };
+
+  const formatBirthday = (birthDate?: string | null) => {
+    const birthday = getBirthdayParts(birthDate);
+
+    if (!birthday) return '-';
+
+    return `${String(birthday.day).padStart(2, '0')}/${String(birthday.month).padStart(2, '0')}`;
+  };
+
+  const isBirthdayInCurrentWeek = (birthDate?: string | null) => {
+    const birthday = getBirthdayParts(birthDate);
+
+    if (!birthday) return false;
+
+    const today = new Date();
+    const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+
+    return Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)).some(
+      (date) => date.getDate() === birthday.day && date.getMonth() + 1 === birthday.month
+    );
+  };
+
+  const matchesBirthdayFilter = (birthDate?: string | null) => {
+    if (birthdayFilter === 'all') return true;
+
+    const birthday = getBirthdayParts(birthDate);
+
+    if (!birthday) return false;
+
+    const today = new Date();
+    const currentDay = today.getDate();
+    const currentMonth = today.getMonth() + 1;
+
+    if (birthdayFilter === 'today') {
+      return birthday.day === currentDay && birthday.month === currentMonth;
+    }
+
+    if (birthdayFilter === 'month') {
+      return birthday.month === currentMonth;
+    }
+
+    return isBirthdayInCurrentWeek(birthDate);
+  };
+
   // Filter and search clients
   const filteredClients = allClients?.filter(client => {
     // Search filter
@@ -126,6 +180,8 @@ const Clients = () => {
       (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase()));
     
     if (!matchesSearch) return false;
+
+    if (!matchesBirthdayFilter(client.birth_date)) return false;
 
     // Inactive filter
     if (filterType === 'inactive') {
@@ -391,6 +447,49 @@ const Clients = () => {
           </CardContent>
         </Card>
 
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Cake className="h-4 w-4" />
+              Filtros de aniversário
+            </div>
+            <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap">
+              <Button
+                type="button"
+                variant={birthdayFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setBirthdayFilter('all')}
+              >
+                Todos
+              </Button>
+              <Button
+                type="button"
+                variant={birthdayFilter === 'today' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setBirthdayFilter('today')}
+              >
+                Aniversariantes de hoje
+              </Button>
+              <Button
+                type="button"
+                variant={birthdayFilter === 'week' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setBirthdayFilter('week')}
+              >
+                Aniversariantes da semana
+              </Button>
+              <Button
+                type="button"
+                variant={birthdayFilter === 'month' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setBirthdayFilter('month')}
+              >
+                Aniversariantes do mês
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Clients Table */}
         {isLoading ? (
           <Card>
@@ -404,6 +503,8 @@ const Clients = () => {
               <p className="text-muted-foreground mb-4">
                 {searchTerm 
                   ? 'Nenhum cliente encontrado com os termos de busca.'
+                  : birthdayFilter !== 'all'
+                    ? 'Nenhum cliente encontrado para o filtro de aniversário selecionado.'
                   : filterType === 'inactive' 
                     ? 'Nenhum cliente inativo encontrado.'
                     : 'Nenhum cliente cadastrado ainda.'
@@ -438,6 +539,10 @@ const Clients = () => {
                     </div>
 
                     <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <dt className="text-muted-foreground">Aniversário</dt>
+                        <dd className="font-medium">{formatBirthday(client.birth_date)}</dd>
+                      </div>
                       <div>
                         <dt className="text-muted-foreground">Origem</dt>
                         <dd className="font-medium">{ACQUISITION_SOURCES.find(s => s.value === (client as any).acquisition_source)?.label || '-'}</dd>
@@ -494,6 +599,7 @@ const Clients = () => {
                       <TableHead>Telefone</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Aniversário</TableHead>
                       <TableHead>Origem</TableHead>
                       <TableHead>Total Gasto</TableHead>
                       <TableHead>Carteira</TableHead>
@@ -508,6 +614,7 @@ const Clients = () => {
                         <TableCell>{client.phone}</TableCell>
                         <TableCell>{client.email || '-'}</TableCell>
                         <TableCell>{getStatusBadge(client.last_service_date)}</TableCell>
+                        <TableCell>{formatBirthday(client.birth_date)}</TableCell>
                         <TableCell>{ACQUISITION_SOURCES.find(s => s.value === (client as any).acquisition_source)?.label || '-'}</TableCell>
                         <TableCell>R$ {Number(client.total_spent).toFixed(2)}</TableCell>
                         <TableCell className="font-medium text-primary">R$ {Number((client as any).credit_balance ?? 0).toFixed(2)}</TableCell>
