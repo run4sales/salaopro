@@ -57,9 +57,12 @@ const Auth = () => {
 
   const isResetPasswordMode = authMode === 'reset-password';
 
+  const nextParam = searchParams.get('next');
+  const safeNext = nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
+
   // Redirect if user is already logged in, except while finishing password recovery.
   if (user && !isResetPasswordMode) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={safeNext ?? "/dashboard"} replace />;
   }
 
   const handleLogin = async (e: React.FormEvent) => {

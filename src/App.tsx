@@ -27,6 +27,7 @@ import Users from "./pages/Users";
 import SelectPlan from "./pages/SelectPlan";
 import Checkout from "./pages/Checkout";
 import Plans from "./pages/Plans";
+import OAuthConsent from "./pages/OAuthConsent";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route path="/" element={<Index />} />
               <Route path="/agendar/:establishmentId" element={<PublicBooking />} />
               <Route path="/:slug" element={<PublicBooking />} />
