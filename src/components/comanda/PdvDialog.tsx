@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ClientCreditPrompt } from "@/components/clients/ClientCreditPrompt";
 import { useAuth } from "@/hooks/useAuth";
-import { insertSalesWithAuditFallback } from "@/lib/salesAuditInsert";
 
 const methods = [
   { value: "Dinheiro", label: "Dinheiro", icon: Banknote },
@@ -149,7 +148,7 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
         };
       });
 
-      const { data: insertedSales, error } = await insertSalesWithAuditFallback(salesPayload);
+      const { data: insertedSales, error } = await supabase.from("sales").insert(salesPayload).select("id, service_id, amount, credit_used");
       if (error) throw error;
 
       // Aplica débito de crédito por venda (mantém histórico vinculado ao sale_id para estorno em cancelamento)

@@ -35,7 +35,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ClientCombobox } from "@/components/ClientCombobox";
 import { ClientCreditPrompt } from "@/components/clients/ClientCreditPrompt";
-import { insertSalesWithAuditFallback } from "@/lib/salesAuditInsert";
 import { Wallet } from "lucide-react";
 
 interface SimpleClient { id: string; name: string }
@@ -353,7 +352,10 @@ export default function Sales() {
         };
       });
 
-      const { data: insertedSales, error } = await insertSalesWithAuditFallback(salesPayload);
+      const { data: insertedSales, error } = await supabase
+        .from("sales")
+        .insert(salesPayload)
+        .select("id, service_id, amount, credit_used");
       if (error) throw error;
 
       // Debita o crédito por venda (vinculado para estorno em cancelamento)
