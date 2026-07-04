@@ -24,7 +24,7 @@ const withoutAuditUserColumns = (payload: SaleInsertPayload[]) =>
     return sanitizedSale;
   });
 
-export const insertSalesWithCreatorFallback = async (payload: SaleInsertPayload[]) => {
+export const insertSalesWithAuditFallback = async (payload: SaleInsertPayload[]) => {
   const insertSales = (salesPayload: SaleInsertPayload[]) =>
     supabase.from("sales").insert(salesPayload).select("id, service_id, amount, credit_used");
 

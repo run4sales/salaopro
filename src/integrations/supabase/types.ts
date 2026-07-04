@@ -887,7 +887,6 @@ export type Database = {
           card_machine_id: string | null
           client_id: string
           created_at: string
-          created_by_user_id: string | null
           credit_used: number
           establishment_id: string
           fee_amount: number
@@ -901,7 +900,6 @@ export type Database = {
           professional_id: string | null
           sale_date: string
           service_id: string
-          updated_by_user_id: string | null
         }
         Insert: {
           amount: number
@@ -909,7 +907,6 @@ export type Database = {
           card_machine_id?: string | null
           client_id: string
           created_at?: string
-          created_by_user_id?: string | null
           credit_used?: number
           establishment_id: string
           fee_amount?: number
@@ -923,7 +920,6 @@ export type Database = {
           professional_id?: string | null
           sale_date?: string
           service_id: string
-          updated_by_user_id?: string | null
         }
         Update: {
           amount?: number
@@ -931,7 +927,6 @@ export type Database = {
           card_machine_id?: string | null
           client_id?: string
           created_at?: string
-          created_by_user_id?: string | null
           credit_used?: number
           establishment_id?: string
           fee_amount?: number
@@ -945,7 +940,6 @@ export type Database = {
           professional_id?: string | null
           sale_date?: string
           service_id?: string
-          updated_by_user_id?: string | null
         }
         Relationships: [
           {
@@ -953,20 +947,6 @@ export type Database = {
             columns: ["appointment_id"]
             isOneToOne: false
             referencedRelation: "appointments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_created_by_user_id_fkey"
-            columns: ["created_by_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_updated_by_user_id_fkey"
-            columns: ["updated_by_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {

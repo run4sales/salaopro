@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ClientCombobox } from "@/components/ClientCombobox";
 import { ClientCreditPrompt } from "@/components/clients/ClientCreditPrompt";
-import { insertSalesWithCreatorFallback } from "@/lib/salesInsert";
+import { insertSalesWithAuditFallback } from "@/lib/salesAuditInsert";
 import { Wallet } from "lucide-react";
 
 interface SimpleClient { id: string; name: string }
@@ -353,7 +353,7 @@ export default function Sales() {
         };
       });
 
-      const { data: insertedSales, error } = await insertSalesWithCreatorFallback(salesPayload);
+      const { data: insertedSales, error } = await insertSalesWithAuditFallback(salesPayload);
       if (error) throw error;
 
       // Debita o crédito por venda (vinculado para estorno em cancelamento)
