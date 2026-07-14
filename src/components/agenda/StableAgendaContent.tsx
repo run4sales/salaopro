@@ -332,6 +332,12 @@ export default function StableAgendaContent() {
     professionals,
   }, [data, professionals]);
 
+  const blockDialogProfessionals = useMemo(() => {
+    if (!isEmployee) return agendaData.professionals;
+
+    return agendaData.professionals.filter((professional: Professional) => professional.id === professionalId);
+  }, [agendaData.professionals, isEmployee, professionalId]);
+
   const events: AgendaEvent[] = useMemo(() => {
     const appointmentEvents = agendaData.appts.map((a: any) => {
       const svc: any = agendaData.serviceMap.get(a.service_id);
@@ -454,7 +460,7 @@ export default function StableAgendaContent() {
         ) : (
           <div className="min-w-0">
             <div className="text-sm text-muted-foreground">Área do funcionário</div>
-            <div className="text-sm font-medium">Você visualiza apenas sua agenda, mas pode criar agendamentos para a loja.</div>
+            <div className="text-sm font-medium">Você visualiza sua agenda e pode bloquear seus horários indisponíveis.</div>
           </div>
         )}
         <div className="flex flex-wrap gap-2 items-center">
@@ -464,7 +470,7 @@ export default function StableAgendaContent() {
           </ToggleGroup>
           {!isEmployee && <Button onClick={copyLink} variant="outline">Copiar link</Button>}
           {!isEmployee && <Button onClick={() => setImportOpen(true)} variant="outline"><Upload className="h-4 w-4 mr-1" /> Importar</Button>}
-          {!isEmployee && <Button onClick={handleNewBlock} variant="outline"><Ban className="h-4 w-4 mr-1" /> Bloquear horário</Button>}
+          <Button onClick={handleNewBlock} variant="outline" disabled={isEmployee && blockDialogProfessionals.length === 0}><Ban className="h-4 w-4 mr-1" /> Bloquear horário</Button>
           <Button onClick={handleNew}><Plus className="h-4 w-4 mr-1" /> Novo agendamento</Button>
         </div>
       </div>
@@ -608,7 +614,7 @@ export default function StableAgendaContent() {
           open={blockOpen}
           onOpenChange={setBlockOpen}
           establishmentId={establishmentId}
-          professionals={agendaData.professionals}
+          professionals={blockDialogProfessionals}
           initialDate={initialSlot}
           block={selectedBlock}
           onSaved={refresh}
