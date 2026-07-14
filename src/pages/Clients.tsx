@@ -7,14 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Cake, MessageCircle, Plus, Search, Edit, CalendarIcon, Settings, Upload, Download, Wallet } from 'lucide-react';
+import { Cake, MessageCircle, Plus, Search, Edit, CalendarIcon, Settings, Upload, Download, Wallet, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addDays, format, startOfWeek } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,7 @@ import ImportClientsDialog from '@/components/clients/ImportClientsDialog';
 import { exportClientsToXlsx, exportClientsToCsv } from '@/lib/clientImportExport';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ClientWalletDialog } from '@/components/clients/ClientWalletDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 const Clients = () => {
   const { user, profile } = useAuth();
@@ -39,6 +40,7 @@ const Clients = () => {
   const [inactiveDaysConfig, setInactiveDaysConfig] = useState(20);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [walletClient, setWalletClient] = useState<any>(null);
+  const [deletingClient, setDeletingClient] = useState<any>(null);
 
   const [newClient, setNewClient] = useState({
     name: '',
@@ -304,6 +306,37 @@ const Clients = () => {
     },
   });
 
+
+  // Delete client mutation
+  const deleteClientMutation = useMutation({
+    mutationFn: async (clientId: string) => {
+      if (!profile?.id) throw new Error('Estabelecimento não identificado.');
+
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', clientId)
+        .eq('establishment_id', profile.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      setDeletingClient(null);
+      toast({
+        title: 'Cliente excluído!',
+        description: 'O cliente foi removido com sucesso.',
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Erro ao excluir cliente',
+        description: 'Tente novamente em alguns instantes.',
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Update settings mutation
   const updateSettingsMutation = useMutation({
     mutationFn: async (inactiveDays: number) => {
@@ -352,6 +385,11 @@ const Clients = () => {
 
   const handleSaveSettings = () => {
     updateSettingsMutation.mutate(inactiveDaysConfig);
+  };
+
+  const handleDeleteClient = () => {
+    if (!deletingClient?.id) return;
+    deleteClientMutation.mutate(deletingClient.id);
   };
 
   const openWhatsApp = (phone: string, name: string) => {
@@ -561,7 +599,7 @@ const Clients = () => {
                       </div>
                     </dl>
 
-                    <div className="mt-4 grid min-w-0 grid-cols-3 gap-2">
+                    <div className="mt-4 grid min-w-0 grid-cols-4 gap-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -584,6 +622,14 @@ const Clients = () => {
                         className="min-w-0 bg-success px-2 hover:bg-success/90"
                       >
                         <MessageCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="min-w-0 px-2"
+                        onClick={() => setDeletingClient(client)}
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </article>
@@ -643,6 +689,14 @@ const Clients = () => {
                             >
                               <MessageCircle className="h-4 w-4 mr-1" />
                               WhatsApp
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => setDeletingClient(client)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Excluir
                             </Button>
                           </div>
                         </TableCell>
@@ -949,6 +1003,28 @@ const Clients = () => {
           onImported={() => queryClient.invalidateQueries({ queryKey: ['clients'] })}
         />
       )}
+
+
+      <AlertDialog open={!!deletingClient} onOpenChange={(open) => { if (!open) setDeletingClient(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O cliente {deletingClient?.name ? <strong>{deletingClient.name}</strong> : 'selecionado'} será removido da sua base.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteClientMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteClient}
+              disabled={deleteClientMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteClientMutation.isPending ? 'Excluindo...' : 'Excluir cliente'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ClientWalletDialog
         open={!!walletClient}
