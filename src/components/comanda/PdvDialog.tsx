@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { ClientCreditPrompt } from "@/components/clients/ClientCreditPrompt";
 import { useAuth } from "@/hooks/useAuth";
 import { insertSalesWithCreatorFallback } from "@/lib/salesInsert";
+import { syncSaleCommissions } from "@/lib/commissions";
 
 const methods = [
   { value: "Dinheiro", label: "Dinheiro", icon: Banknote },
@@ -168,18 +169,31 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
         }
       }
 
-      const sp = (insertedSales ?? []).map((sale: any) => {
-        const it = items.find((i) => i.service_id === sale.service_id);
-        return {
-          establishment_id: establishmentId,
-          sale_id: sale.id,
-          professional_id: it?.professional_id,
-          role: "solo",
-          commission_percentage: Number(it?.commission_percentage ?? 0),
-          commission_amount: Number((Number(sale.amount) * Number(it?.commission_percentage ?? 0) / 100).toFixed(2)),
-        };
-      }).filter((r) => r.professional_id);
-      if (sp.length) await supabase.from("sale_professionals").insert(sp);
+      const appointmentProfessionalIds = comanda.appointment_id
+        ? await supabase
+            .from("appointment_professionals")
+            .select("professional_id")
+            .eq("appointment_id", comanda.appointment_id)
+            .then(({ data, error }) => {
+              if (error) throw error;
+              return (data ?? []).map((row) => row.professional_id);
+            })
+        : [];
+
+      await Promise.all((insertedSales ?? []).map((sale: any, index: number) => {
+        const item = items[index] ?? items.find((candidate) => candidate.service_id === sale.service_id);
+        const professionals = appointmentProfessionalIds.length > 0
+          ? appointmentProfessionalIds.map((professionalId) => ({ professional_id: professionalId, role: "solo" }))
+          : [{ professional_id: item?.professional_id, role: "solo" }];
+
+        return syncSaleCommissions({
+          establishmentId,
+          saleId: sale.id,
+          serviceCommissionPercentage: Number(item?.commission_percentage ?? 0),
+          baseAmount: Number(sale.amount ?? 0),
+          professionals,
+        });
+      }));
 
       await supabase.from("comandas").update({ status: "paid", closed_at: new Date().toISOString(), total }).eq("id", comanda.id);
       if (comanda.appointment_id) {
