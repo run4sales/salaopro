@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { ClientCombobox } from "@/components/ClientCombobox";
 import { ClientCreditPrompt } from "@/components/clients/ClientCreditPrompt";
 import { insertSalesWithCreatorFallback } from "@/lib/salesInsert";
+import { syncSaleCommissions } from "@/lib/commissions";
 import { Wallet } from "lucide-react";
 
 interface SimpleClient { id: string; name: string }
@@ -372,32 +373,18 @@ export default function Sales() {
         }
       }
 
-      const numPros = professionalEntries.length;
-      const spRows: any[] = [];
-      (insertedSales || []).forEach((sale: any) => {
+      await Promise.all((insertedSales || []).map((sale: any) => {
         const svc = flatItems.find(f => f.svc.id === sale.service_id)?.svc;
-        if (!svc) return;
-        const share = Number(sale.amount) / numPros;
-        professionalEntries.forEach((entry) => {
-          const pro = professionals?.find(p => p.id === entry.professional_id);
-          if (!pro || pro.commission_type === 'fixed_daily') return;
-          const pct = pro.commission_type === 'custom_percentage' ? pro.custom_percentage : svc.commission_solo;
-          const commission_amount = share * (pct / 100);
-          spRows.push({
-            establishment_id: profile.id,
-            sale_id: sale.id,
-            professional_id: entry.professional_id,
-            role: entry.role,
-            commission_percentage: pct,
-            commission_amount: Number(commission_amount.toFixed(2)),
-          });
-        });
-      });
+        if (!svc) return Promise.resolve();
 
-      if (spRows.length > 0) {
-        const { error: spError } = await supabase.from("sale_professionals").insert(spRows);
-        if (spError) throw spError;
-      }
+        return syncSaleCommissions({
+          establishmentId: profile.id,
+          saleId: sale.id,
+          serviceCommissionPercentage: Number(svc.commission_solo ?? 0),
+          baseAmount: Number(sale.amount ?? 0),
+          professionals: professionalEntries,
+        });
+      }));
 
       toast.success(
         `Venda finalizada • R$ ${grossTotal.toFixed(2)}` +
