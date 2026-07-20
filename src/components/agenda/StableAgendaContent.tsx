@@ -159,7 +159,7 @@ export default function StableAgendaContent() {
     },
   });
 
-  const { data: businessHours = { open: DEFAULT_OPENING_TIME, close: DEFAULT_CLOSING_TIME, workingDays: DEFAULT_WORKING_DAYS } } = useQuery({
+  const { data: businessHours = { open: DEFAULT_OPENING_TIME, close: DEFAULT_CLOSING_TIME, workingDays: DEFAULT_WORKING_DAYS, weekly: buildDefaultWeeklyHours() } } = useQuery({
     queryKey: ["business-hours", establishmentId],
     enabled: !!establishmentId,
     queryFn: async () => {
@@ -168,10 +168,24 @@ export default function StableAgendaContent() {
         .select(BUSINESS_HOURS_SELECT)
         .eq("establishment_id", establishmentId)
         .maybeSingle();
+      const legacyOpen = normalizeTimeValue(data?.opening_time, DEFAULT_OPENING_TIME);
+      const legacyClose = normalizeTimeValue(data?.closing_time, DEFAULT_CLOSING_TIME);
+      const legacyDays = normalizeWorkingDays(data?.working_days);
+      const weekly: WeeklyHours = normalizeWeeklyHours(data?.weekly_hours, {
+        openingTime: legacyOpen,
+        closingTime: legacyClose,
+        workingDays: legacyDays,
+      });
+      const bounds = getWeeklyBounds(weekly);
+      const workingDays: number[] = [];
+      for (let d = 0; d <= 6; d++) {
+        if (weekly[String(d)]?.open) workingDays.push(d);
+      }
       return {
-        open: normalizeTimeValue(data?.opening_time, DEFAULT_OPENING_TIME),
-        close: normalizeTimeValue(data?.closing_time, DEFAULT_CLOSING_TIME),
-        workingDays: normalizeWorkingDays(data?.working_days),
+        open: bounds.open,
+        close: bounds.close,
+        workingDays: workingDays.length ? workingDays : legacyDays,
+        weekly,
       };
     },
   });
