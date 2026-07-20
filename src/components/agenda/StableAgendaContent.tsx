@@ -20,7 +20,7 @@ import { AppointmentDetailsDialog } from "@/components/agenda/AppointmentDetails
 import { AppointmentBlockDialog } from "@/components/agenda/AppointmentBlockDialog";
 import ImportAppointmentsDialog from "@/components/agenda/ImportAppointmentsDialog";
 import { STATUS_LABELS, STATUS_VARIANTS, STATUS_OPTIONS, normalizeStatus } from "@/lib/appointmentStatus";
-import { BUSINESS_HOURS_SELECT, DEFAULT_CLOSING_TIME, DEFAULT_OPENING_TIME, DEFAULT_WORKING_DAYS, normalizeTimeValue, normalizeWorkingDays } from "@/lib/businessHours";
+import { BUSINESS_HOURS_SELECT, DEFAULT_CLOSING_TIME, DEFAULT_OPENING_TIME, DEFAULT_WORKING_DAYS, buildDefaultWeeklyHours, getWeeklyBounds, normalizeTimeValue, normalizeWeeklyHours, normalizeWorkingDays, type WeeklyHours } from "@/lib/businessHours";
 
 type PeriodMode = "day" | "week" | "month" | "custom";
 type Professional = { id: string; name: string };
