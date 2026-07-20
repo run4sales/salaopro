@@ -56,9 +56,10 @@ export function ServiceSearchSelect(props: Props) {
 
   const handlePick = (svc: ServiceOption) => {
     if (props.multiple) {
-      const next = selectedIds.includes(svc.id)
-        ? selectedIds.filter((id) => id !== svc.id)
-        : [...selectedIds, svc.id];
+      const current = props.value;
+      const next = current.includes(svc.id)
+        ? current.filter((id) => id !== svc.id)
+        : [...current, svc.id];
       props.onChange(next);
     } else {
       props.onChange(svc.id, svc);
@@ -68,7 +69,7 @@ export function ServiceSearchSelect(props: Props) {
 
   const remove = (id: string) => {
     if (props.multiple) {
-      props.onChange(selectedIds.filter((x) => x !== id));
+      props.onChange(props.value.filter((x) => x !== id));
     } else {
       props.onChange("");
     }
