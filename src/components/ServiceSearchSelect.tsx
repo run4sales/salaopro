@@ -71,7 +71,7 @@ export function ServiceSearchSelect(props: Props) {
     if (props.multiple) {
       props.onChange(props.value.filter((x) => x !== id));
     } else {
-      props.onChange("");
+      props.onChange("", undefined);
     }
   };
 
