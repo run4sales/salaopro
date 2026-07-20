@@ -9,6 +9,7 @@ import { ClientCombobox } from "@/components/ClientCombobox";
 import { ServiceSearchSelect } from "@/components/ServiceSearchSelect";
 import { useToast } from "@/hooks/use-toast";
 import { STATUS_OPTIONS } from "@/lib/appointmentStatus";
+import { fitsInSchedule, getDaySchedule, type WeeklyHours } from "@/lib/businessHours";
 import { ChevronDown } from "lucide-react";
 
 type Service = { id: string; name: string; duration_minutes?: number | null; price?: number | null };
@@ -22,7 +23,7 @@ interface Props {
   services: Service[];
   professionals: Professional[];
   blocks?: AppointmentBlock[];
-  businessHours?: { openingTime: string; closingTime: string; workingDays: number[] };
+  businessHours?: { openingTime: string; closingTime: string; workingDays: number[]; weekly?: WeeklyHours };
   initialDate?: Date | null;
   appointment?: any | null;
   onSaved?: () => void;
@@ -204,19 +205,32 @@ export function AppointmentFormDialog({
 
     if (businessHours) {
       const dow = start.getDay();
-      if (!businessHours.workingDays.includes(dow)) {
-        toast({ title: "Dia fechado", description: "A loja está fechada neste dia da semana.", variant: "destructive" });
-        return;
-      }
-      const [oh, om] = businessHours.openingTime.split(":").map(Number);
-      const [ch, cm] = businessHours.closingTime.split(":").map(Number);
-      const openMin = oh * 60 + om;
-      const closeMin = ch * 60 + cm;
-      const startMin = start.getHours() * 60 + start.getMinutes();
-      const endMin = end.getHours() * 60 + end.getMinutes() + (end.getDate() !== start.getDate() ? 24 * 60 : 0);
-      if (startMin < openMin || endMin > closeMin) {
-        toast({ title: "Fora do horário", description: `O atendimento precisa ficar entre ${businessHours.openingTime} e ${businessHours.closingTime}.`, variant: "destructive" });
-        return;
+      if (businessHours.weekly) {
+        const day = getDaySchedule(businessHours.weekly, dow);
+        if (!day.open) {
+          toast({ title: "Dia fechado", description: "A loja está fechada neste dia da semana.", variant: "destructive" });
+          return;
+        }
+        if (!fitsInSchedule(start, end, businessHours.weekly)) {
+          const ranges = day.intervals.map(iv => `${iv.open}–${iv.close}`).join(", ");
+          toast({ title: "Fora do horário", description: `O atendimento precisa ficar dentro do funcionamento (${ranges}).`, variant: "destructive" });
+          return;
+        }
+      } else {
+        if (!businessHours.workingDays.includes(dow)) {
+          toast({ title: "Dia fechado", description: "A loja está fechada neste dia da semana.", variant: "destructive" });
+          return;
+        }
+        const [oh, om] = businessHours.openingTime.split(":").map(Number);
+        const [ch, cm] = businessHours.closingTime.split(":").map(Number);
+        const openMin = oh * 60 + om;
+        const closeMin = ch * 60 + cm;
+        const startMin = start.getHours() * 60 + start.getMinutes();
+        const endMin = end.getHours() * 60 + end.getMinutes() + (end.getDate() !== start.getDate() ? 24 * 60 : 0);
+        if (startMin < openMin || endMin > closeMin) {
+          toast({ title: "Fora do horário", description: `O atendimento precisa ficar entre ${businessHours.openingTime} e ${businessHours.closingTime}.`, variant: "destructive" });
+          return;
+        }
       }
     }
 

@@ -15,10 +15,13 @@ import {
   DEFAULT_CLOSING_TIME,
   DEFAULT_OPENING_TIME,
   DEFAULT_WORKING_DAYS,
-  generateBusinessSlots,
-  isWorkingDay,
+  buildDefaultWeeklyHours,
+  generateWeeklySlots,
+  isDateOpen,
   normalizeTimeValue,
+  normalizeWeeklyHours,
   normalizeWorkingDays,
+  type WeeklyHours,
 } from "@/lib/businessHours";
 
 interface Service { id: string; name: string; price: number; duration: number }
@@ -30,11 +33,7 @@ export default function PublicBooking() {
   const [resolvedId, setResolvedId] = useState<string | null>(null);
   const [salonName, setSalonName] = useState<string>("");
   const [acceptingBookings, setAcceptingBookings] = useState<boolean>(true);
-  const [businessHours, setBusinessHours] = useState({
-    openingTime: DEFAULT_OPENING_TIME,
-    closingTime: DEFAULT_CLOSING_TIME,
-    workingDays: DEFAULT_WORKING_DAYS,
-  });
+  const [weekly, setWeekly] = useState<WeeklyHours>(() => buildDefaultWeeklyHours());
   const [lookupState, setLookupState] = useState<"loading" | "ok" | "not_found">("loading");
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
@@ -68,11 +67,14 @@ export default function PublicBooking() {
         setResolvedId(salon.id);
         setSalonName(salon.business_name || "");
         setAcceptingBookings(salon.accepting_bookings !== false);
-        setBusinessHours({
-          openingTime: normalizeTimeValue(salon.opening_time, DEFAULT_OPENING_TIME),
-          closingTime: normalizeTimeValue(salon.closing_time, DEFAULT_CLOSING_TIME),
-          workingDays: normalizeWorkingDays(salon.working_days),
-        });
+        const legacyOpen = normalizeTimeValue(salon.opening_time, DEFAULT_OPENING_TIME);
+        const legacyClose = normalizeTimeValue(salon.closing_time, DEFAULT_CLOSING_TIME);
+        const legacyDays = normalizeWorkingDays(salon.working_days);
+        setWeekly(normalizeWeeklyHours(salon.weekly_hours, {
+          openingTime: legacyOpen,
+          closingTime: legacyClose,
+          workingDays: legacyDays,
+        }));
         setLookupState("ok");
         document.title = `${salon.business_name || "Agendar atendimento"} | Beauty Core`;
       };
@@ -113,7 +115,7 @@ export default function PublicBooking() {
   const totalPrice = useMemo(() => selectedServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0), [selectedServices]);
   const priceFmt = useMemo(() => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }), []);
   const primaryProfessionalId = professionalIds[0] ?? "";
-  const dayIsOpen = date ? isWorkingDay(date, businessHours.workingDays) : false;
+  const dayIsOpen = date ? isDateOpen(date, weekly) : false;
 
   useEffect(() => {
     if (!resolvedId || !primaryProfessionalId || !date) {
@@ -139,15 +141,13 @@ export default function PublicBooking() {
 
   const slots = useMemo(() => {
     if (!date) return [] as Date[];
-    return generateBusinessSlots(
+    return generateWeeklySlots(
       date,
-      businessHours.openingTime,
-      businessHours.closingTime,
+      weekly,
       Math.max(totalDuration, 30),
       30,
-      businessHours.workingDays,
     );
-  }, [businessHours, date, totalDuration]);
+  }, [weekly, date, totalDuration]);
 
   const isBooked = (d: Date) => bookedTimes.some((iso) => {
     const bd = new Date(iso);
@@ -269,7 +269,7 @@ export default function PublicBooking() {
                     selected={date}
                     onSelect={setDate}
                     mode="single"
-                    disabled={(d) => !isWorkingDay(d, businessHours.workingDays)}
+                    disabled={(d) => !isDateOpen(d, weekly)}
                     className={cn("p-3 pointer-events-auto")}
                   />
                 </PopoverContent>
