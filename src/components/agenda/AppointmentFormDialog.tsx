@@ -9,6 +9,7 @@ import { ClientCombobox } from "@/components/ClientCombobox";
 import { ServiceSearchSelect } from "@/components/ServiceSearchSelect";
 import { useToast } from "@/hooks/use-toast";
 import { STATUS_OPTIONS } from "@/lib/appointmentStatus";
+import { fitsInSchedule, getDaySchedule, type WeeklyHours } from "@/lib/businessHours";
 import { ChevronDown } from "lucide-react";
 
 type Service = { id: string; name: string; duration_minutes?: number | null; price?: number | null };
