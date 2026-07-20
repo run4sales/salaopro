@@ -55,23 +55,23 @@ export function ServiceSearchSelect(props: Props) {
   }, [services, search, maxResults]);
 
   const handlePick = (svc: ServiceOption) => {
-    if (props.multiple) {
+    if (props.multiple === true) {
       const current = props.value;
       const next = current.includes(svc.id)
         ? current.filter((id) => id !== svc.id)
         : [...current, svc.id];
       props.onChange(next);
     } else {
-      props.onChange(svc.id, svc);
+      (props as SingleProps).onChange(svc.id, svc);
       setSearch("");
     }
   };
 
   const remove = (id: string) => {
-    if (props.multiple) {
+    if (props.multiple === true) {
       props.onChange(props.value.filter((x) => x !== id));
     } else {
-      props.onChange("", undefined);
+      (props as SingleProps).onChange("");
     }
   };
 
