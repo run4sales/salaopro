@@ -61,6 +61,11 @@ export async function buildSaleCommissionRows({
     ((data ?? []) as ProfessionalCommissionConfig[]).map((professional) => [professional.id, professional]),
   );
 
+  // Divide o valor do atendimento igualmente entre os profissionais associados.
+  // A comissão de cada profissional é calculada sobre a parcela proporcional,
+  // nunca sobre o valor total quando há múltiplos profissionais.
+  const share = entries.length > 0 ? Number(baseAmount) / entries.length : Number(baseAmount);
+
   return entries
     .filter((entry) => configByProfessional.get(entry.professional_id as string)?.commission_type !== "fixed_daily")
     .map((entry) => {
@@ -75,7 +80,7 @@ export async function buildSaleCommissionRows({
         professional_id: entry.professional_id as string,
         role: entry.role ?? "solo",
         commission_percentage: percentage,
-        commission_amount: Number((Number(baseAmount) * (percentage / 100)).toFixed(2)),
+        commission_amount: Number((share * (percentage / 100)).toFixed(2)),
       };
     });
 }
