@@ -10,6 +10,7 @@ import { Plus, Trash2, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { recalcComandaTotals } from "@/lib/comanda";
 import { PdvDialog } from "./PdvDialog";
+import { ServiceSearchSelect } from "@/components/ServiceSearchSelect";
 
 interface Props {
   open: boolean;
