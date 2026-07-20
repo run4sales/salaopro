@@ -18,7 +18,7 @@ const withoutCreatedByUserId = (payload: SaleInsertPayload[]) =>
 
 export const insertSalesWithCreatorFallback = async (payload: SaleInsertPayload[]) => {
   const insertSales = (salesPayload: SaleInsertPayload[]) =>
-    supabase.from("sales").insert(salesPayload).select("id, service_id, amount, credit_used");
+    supabase.from("sales").insert(salesPayload as any).select("id, service_id, amount, credit_used");
 
   const result = await insertSales(payload);
 
