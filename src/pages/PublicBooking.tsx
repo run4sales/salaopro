@@ -15,10 +15,13 @@ import {
   DEFAULT_CLOSING_TIME,
   DEFAULT_OPENING_TIME,
   DEFAULT_WORKING_DAYS,
-  generateBusinessSlots,
-  isWorkingDay,
+  buildDefaultWeeklyHours,
+  generateWeeklySlots,
+  isDateOpen,
   normalizeTimeValue,
+  normalizeWeeklyHours,
   normalizeWorkingDays,
+  type WeeklyHours,
 } from "@/lib/businessHours";
 
 interface Service { id: string; name: string; price: number; duration: number }
