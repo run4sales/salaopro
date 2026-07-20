@@ -616,7 +616,7 @@ export default function StableAgendaContent() {
           services={agendaData.services}
           professionals={agendaData.professionals}
           blocks={agendaData.blocks}
-          businessHours={{ openingTime: businessHours.open, closingTime: businessHours.close, workingDays: businessHours.workingDays }}
+          businessHours={{ openingTime: businessHours.open, closingTime: businessHours.close, workingDays: businessHours.workingDays, weekly: businessHours.weekly }}
           initialDate={initialSlot}
           appointment={selectedAppt}
           onSaved={refresh}
