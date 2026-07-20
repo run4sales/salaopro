@@ -3,19 +3,23 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Plus, Trash2 } from "lucide-react";
 import {
   areBusinessHoursValid,
   BUSINESS_HOURS_SELECT,
   DEFAULT_CLOSING_TIME,
   DEFAULT_OPENING_TIME,
   DEFAULT_WORKING_DAYS,
-  normalizeTimeValue,
-  normalizeWorkingDays,
   WEEKDAY_LABELS,
+  buildDefaultWeeklyHours,
+  deriveLegacyFromWeekly,
+  normalizeTimeValue,
+  normalizeWeeklyHours,
+  normalizeWorkingDays,
+  type WeeklyHours,
 } from "@/lib/businessHours";
 
 interface GeneralSettingsFormProps {
@@ -35,25 +39,30 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
       if (settingsRes.error) throw settingsRes.error;
       if (profileRes.error) throw profileRes.error;
       return {
-        settings: settingsRes.data as { id: string; inactive_days_threshold: number; opening_time: string | null; closing_time: string | null; working_days: number[] | null } | null,
+        settings: settingsRes.data as any,
         accepting_bookings: (profileRes.data as any)?.accepting_bookings ?? true,
       };
     },
   });
 
   const [threshold, setThreshold] = useState<number>(20);
-  const [openTime, setOpenTime] = useState<string>(DEFAULT_OPENING_TIME);
-  const [closeTime, setCloseTime] = useState<string>(DEFAULT_CLOSING_TIME);
-  const [workingDays, setWorkingDays] = useState<number[]>(DEFAULT_WORKING_DAYS);
+  const [weekly, setWeekly] = useState<WeeklyHours>(() => buildDefaultWeeklyHours());
   const [accepting, setAccepting] = useState<boolean>(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (data?.settings?.inactive_days_threshold != null) setThreshold(Number(data.settings.inactive_days_threshold));
-    if (data?.settings?.opening_time) setOpenTime(normalizeTimeValue(data.settings.opening_time, DEFAULT_OPENING_TIME));
-    if (data?.settings?.closing_time) setCloseTime(normalizeTimeValue(data.settings.closing_time, DEFAULT_CLOSING_TIME));
-    if (data?.settings) setWorkingDays(normalizeWorkingDays(data.settings.working_days));
-    if (data) setAccepting(data.accepting_bookings);
+    if (!data) return;
+    const s = data.settings;
+    if (s?.inactive_days_threshold != null) setThreshold(Number(s.inactive_days_threshold));
+    const legacyOpen = normalizeTimeValue(s?.opening_time, DEFAULT_OPENING_TIME);
+    const legacyClose = normalizeTimeValue(s?.closing_time, DEFAULT_CLOSING_TIME);
+    const legacyDays = normalizeWorkingDays(s?.working_days ?? DEFAULT_WORKING_DAYS);
+    setWeekly(normalizeWeeklyHours(s?.weekly_hours, {
+      openingTime: legacyOpen,
+      closingTime: legacyClose,
+      workingDays: legacyDays,
+    }));
+    setAccepting(data.accepting_bookings);
   }, [data]);
 
   const toggleAccepting = async (next: boolean) => {
@@ -67,30 +76,86 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
     toast.success(next ? "Agendamentos ativados" : "Agendamentos pausados");
   };
 
-  const toggleDay = (day: number) => {
-    setWorkingDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()
-    );
+  const setDayOpen = (day: number, open: boolean) => {
+    setWeekly(prev => {
+      const key = String(day);
+      const current = prev[key] ?? { open: false, intervals: [] };
+      if (open && current.intervals.length === 0) {
+        return { ...prev, [key]: { open: true, intervals: [{ open: DEFAULT_OPENING_TIME, close: DEFAULT_CLOSING_TIME }] } };
+      }
+      return { ...prev, [key]: { ...current, open } };
+    });
+  };
+
+  const updateInterval = (day: number, idx: number, field: "open" | "close", value: string) => {
+    setWeekly(prev => {
+      const key = String(day);
+      const current = prev[key] ?? { open: true, intervals: [] };
+      const intervals = current.intervals.slice();
+      intervals[idx] = { ...intervals[idx], [field]: value };
+      return { ...prev, [key]: { ...current, intervals } };
+    });
+  };
+
+  const addInterval = (day: number) => {
+    setWeekly(prev => {
+      const key = String(day);
+      const current = prev[key] ?? { open: true, intervals: [] };
+      return {
+        ...prev,
+        [key]: {
+          open: true,
+          intervals: [...current.intervals, { open: DEFAULT_OPENING_TIME, close: DEFAULT_CLOSING_TIME }],
+        },
+      };
+    });
+  };
+
+  const removeInterval = (day: number, idx: number) => {
+    setWeekly(prev => {
+      const key = String(day);
+      const current = prev[key] ?? { open: true, intervals: [] };
+      const intervals = current.intervals.filter((_, i) => i !== idx);
+      return {
+        ...prev,
+        [key]: { open: intervals.length > 0 ? current.open : false, intervals },
+      };
+    });
   };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!areBusinessHoursValid(openTime, closeTime)) {
-      toast.error("Informe horários válidos no formato HH:mm, com abertura menor que fechamento.");
-      return;
+
+    for (const d of WEEKDAY_LABELS) {
+      const cfg = weekly[String(d.value)];
+      if (!cfg?.open) continue;
+      if (cfg.intervals.length === 0) {
+        toast.error(`${d.label}: adicione pelo menos um intervalo ou marque como fechado.`);
+        return;
+      }
+      for (const iv of cfg.intervals) {
+        if (!areBusinessHoursValid(iv.open, iv.close)) {
+          toast.error(`${d.label}: horário inválido (abertura deve ser menor que fechamento).`);
+          return;
+        }
+      }
     }
-    if (workingDays.length === 0) {
+
+    const anyOpen = WEEKDAY_LABELS.some(d => weekly[String(d.value)]?.open);
+    if (!anyOpen) {
       toast.error("Selecione pelo menos um dia de funcionamento.");
       return;
     }
 
     setSaving(true);
     try {
+      const legacy = deriveLegacyFromWeekly(weekly);
       const payload = {
         inactive_days_threshold: threshold,
-        opening_time: openTime,
-        closing_time: closeTime,
-        working_days: workingDays,
+        opening_time: legacy.openingTime,
+        closing_time: legacy.closingTime,
+        working_days: legacy.workingDays,
+        weekly_hours: weekly,
       };
       const { error } = await (supabase as any)
         .from("settings")
@@ -126,36 +191,70 @@ export function GeneralSettingsForm({ establishmentId }: GeneralSettingsFormProp
 
       <form onSubmit={onSubmit} className="space-y-6">
         <div>
-          <h3 className="text-base font-semibold">Horário de funcionamento</h3>
+          <h3 className="text-base font-semibold">Horário de funcionamento por dia</h3>
           <p className="text-sm text-muted-foreground">
-            Define o intervalo exibido na agenda. Horários fora desse intervalo ficam ocultos.
+            Defina para cada dia se o salão abre e em quais intervalos. Dias fechados não recebem agendamentos.
           </p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
-          <div className="space-y-2">
-            <Label>Abertura</Label>
-            <Input type="time" value={openTime} onChange={(e) => setOpenTime(e.target.value)} required />
-          </div>
-          <div className="space-y-2">
-            <Label>Fechamento</Label>
-            <Input type="time" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} required />
-          </div>
         </div>
 
-        <div>
-          <h3 className="text-base font-semibold">Dias de funcionamento</h3>
-          <p className="text-sm text-muted-foreground">
-            Dias não marcados ficam fechados na agenda e no link público.
-          </p>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl">
+        <div className="space-y-3">
           {WEEKDAY_LABELS.map((d) => {
-            const checked = workingDays.includes(d.value);
+            const cfg = weekly[String(d.value)] ?? { open: false, intervals: [] };
             return (
-              <label key={d.value} className="flex items-center gap-2 rounded-md border p-3 cursor-pointer hover:bg-accent/40">
-                <Checkbox checked={checked} onCheckedChange={() => toggleDay(d.value)} />
-                <span className="text-sm">{d.label}</span>
-              </label>
+              <div key={d.value} className="rounded-lg border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <Switch checked={cfg.open} onCheckedChange={(v) => setDayOpen(d.value, v)} />
+                    <div>
+                      <p className="font-medium">{d.label}</p>
+                      <p className="text-xs text-muted-foreground">{cfg.open ? "Aberto" : "Fechado"}</p>
+                    </div>
+                  </div>
+                  {cfg.open && (
+                    <Button type="button" variant="outline" size="sm" onClick={() => addInterval(d.value)}>
+                      <Plus className="mr-1 h-4 w-4" /> Adicionar intervalo
+                    </Button>
+                  )}
+                </div>
+
+                {cfg.open && (
+                  <div className="mt-3 space-y-2">
+                    {cfg.intervals.map((iv, idx) => (
+                      <div key={idx} className="flex flex-wrap items-end gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Abertura</Label>
+                          <Input
+                            type="time"
+                            value={iv.open}
+                            onChange={(e) => updateInterval(d.value, idx, "open", e.target.value)}
+                            className="w-32"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Fechamento</Label>
+                          <Input
+                            type="time"
+                            value={iv.close}
+                            onChange={(e) => updateInterval(d.value, idx, "close", e.target.value)}
+                            className="w-32"
+                          />
+                        </div>
+                        {cfg.intervals.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeInterval(d.value, idx)}
+                            aria-label="Remover intervalo"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
