@@ -31,11 +31,13 @@ export function FinanceMetrics({ establishmentId, startDate, endDate }: Props) {
         supabase
           .from("sales").select("id, client_id, service_id, amount, sale_date")
           .eq("establishment_id", establishmentId)
-          .gte("sale_date", startISO).lte("sale_date", endISO),
+          .gte("sale_date", startISO).lte("sale_date", endISO)
+          .is("deleted_at", null),
         supabase
           .from("sales").select("amount")
           .eq("establishment_id", establishmentId)
-          .gte("sale_date", prevStart.toISOString()).lte("sale_date", prevEnd.toISOString()),
+          .gte("sale_date", prevStart.toISOString()).lte("sale_date", prevEnd.toISOString())
+          .is("deleted_at", null),
         supabase.from("services").select("id, name").eq("establishment_id", establishmentId),
       ]);
       if (salesRes.error) throw salesRes.error; if (prevSalesRes.error) throw prevSalesRes.error; if (servicesRes.error) throw servicesRes.error;

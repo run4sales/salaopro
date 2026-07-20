@@ -26,6 +26,7 @@ export function ProfessionalServicesReport({ establishmentId, startDate, endDate
           .select("id, client_id, service_id, professional_id, amount, sale_date")
           .eq("establishment_id", establishmentId)
           .gte("sale_date", startISO).lte("sale_date", endISO)
+          .is("deleted_at", null)
           .order("sale_date", { ascending: false }),
         supabase.from("clients").select("id, name").eq("establishment_id", establishmentId),
         supabase.from("services").select("id, name").eq("establishment_id", establishmentId),

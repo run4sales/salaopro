@@ -29,7 +29,8 @@ export function ExpensesReport({ establishmentId, startDate, endDate }: Props) {
         supabase.from("sales")
           .select("amount")
           .eq("establishment_id", establishmentId)
-          .gte("sale_date", startISO).lte("sale_date", endISO),
+          .gte("sale_date", startISO).lte("sale_date", endISO)
+          .is("deleted_at", null),
       ]);
       if (expRes.error) throw expRes.error;
       const expenses = (expRes.data ?? []).map((e: any) => ({
