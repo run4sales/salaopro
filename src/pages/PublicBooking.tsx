@@ -67,11 +67,14 @@ export default function PublicBooking() {
         setResolvedId(salon.id);
         setSalonName(salon.business_name || "");
         setAcceptingBookings(salon.accepting_bookings !== false);
-        setBusinessHours({
-          openingTime: normalizeTimeValue(salon.opening_time, DEFAULT_OPENING_TIME),
-          closingTime: normalizeTimeValue(salon.closing_time, DEFAULT_CLOSING_TIME),
-          workingDays: normalizeWorkingDays(salon.working_days),
-        });
+        const legacyOpen = normalizeTimeValue(salon.opening_time, DEFAULT_OPENING_TIME);
+        const legacyClose = normalizeTimeValue(salon.closing_time, DEFAULT_CLOSING_TIME);
+        const legacyDays = normalizeWorkingDays(salon.working_days);
+        setWeekly(normalizeWeeklyHours(salon.weekly_hours, {
+          openingTime: legacyOpen,
+          closingTime: legacyClose,
+          workingDays: legacyDays,
+        }));
         setLookupState("ok");
         document.title = `${salon.business_name || "Agendar atendimento"} | Beauty Core`;
       };
