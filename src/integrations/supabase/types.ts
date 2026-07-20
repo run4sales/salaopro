@@ -888,6 +888,9 @@ export type Database = {
           client_id: string
           created_at: string
           credit_used: number
+          deleted_at: string | null
+          deleted_by: string | null
+          deleted_reason: string | null
           establishment_id: string
           fee_amount: number
           gross_amount: number | null
@@ -900,6 +903,8 @@ export type Database = {
           professional_id: string | null
           sale_date: string
           service_id: string
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           amount: number
@@ -908,6 +913,9 @@ export type Database = {
           client_id: string
           created_at?: string
           credit_used?: number
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deleted_reason?: string | null
           establishment_id: string
           fee_amount?: number
           gross_amount?: number | null
@@ -920,6 +928,8 @@ export type Database = {
           professional_id?: string | null
           sale_date?: string
           service_id: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           amount?: number
@@ -928,6 +938,9 @@ export type Database = {
           client_id?: string
           created_at?: string
           credit_used?: number
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deleted_reason?: string | null
           establishment_id?: string
           fee_amount?: number
           gross_amount?: number | null
@@ -940,6 +953,8 @@ export type Database = {
           professional_id?: string | null
           sale_date?: string
           service_id?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -1341,6 +1356,44 @@ export type Database = {
         }
         Returns: string
       }
+      admin_soft_delete_sale: {
+        Args: { _reason?: string; _sale_id: string }
+        Returns: undefined
+      }
+      admin_update_sale: {
+        Args: { _patch: Json; _sale_id: string }
+        Returns: {
+          amount: number
+          appointment_id: string | null
+          card_machine_id: string | null
+          client_id: string
+          created_at: string
+          credit_used: number
+          deleted_at: string | null
+          deleted_by: string | null
+          deleted_reason: string | null
+          establishment_id: string
+          fee_amount: number
+          gross_amount: number | null
+          id: string
+          installments: number | null
+          net_amount: number | null
+          notes: string | null
+          paid_now: number | null
+          payment_method: string | null
+          professional_id: string | null
+          sale_date: string
+          service_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sales"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_public_booking: {
         Args: {
           client_name: string
@@ -1385,6 +1438,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_establishment_admin: {
+        Args: { _establishment_id: string; _user_id: string }
         Returns: boolean
       }
       is_establishment_member: {

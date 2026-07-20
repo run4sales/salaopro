@@ -1,8 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Pencil, Trash2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { EditSaleDialog } from "@/components/sales/EditSaleDialog";
+import { DeleteSaleDialog } from "@/components/sales/DeleteSaleDialog";
 
 function currencyBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -27,10 +32,15 @@ interface SaleRow {
 interface SimpleItem { id: string; name: string }
 
 export function RevenueReport({ establishmentId, startDate, endDate }: Props) {
+  const { establishmentRole } = useAuth();
+  const isAdmin = establishmentRole === "owner" || establishmentRole === "admin";
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
   const startISO = useMemo(() => new Date(startDate).toISOString(), [startDate]);
   const endISO = useMemo(() => new Date(endDate).toISOString(), [endDate]);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["reports", "revenue", establishmentId, startISO, endISO],
     queryFn: async () => {
       const [salesRes, clientsRes, servicesRes] = await Promise.all([
@@ -38,17 +48,12 @@ export function RevenueReport({ establishmentId, startDate, endDate }: Props) {
           .from("sales")
           .select("id, client_id, service_id, amount, sale_date, payment_method, notes")
           .eq("establishment_id", establishmentId)
+          .is("deleted_at" as any, null)
           .gte("sale_date", startISO)
           .lte("sale_date", endISO)
           .order("sale_date", { ascending: false }),
-        supabase
-          .from("clients")
-          .select("id, name")
-          .eq("establishment_id", establishmentId),
-        supabase
-          .from("services")
-          .select("id, name")
-          .eq("establishment_id", establishmentId),
+        supabase.from("clients").select("id, name").eq("establishment_id", establishmentId),
+        supabase.from("services").select("id, name").eq("establishment_id", establishmentId),
       ]);
 
       if (salesRes.error) throw salesRes.error;
@@ -66,7 +71,6 @@ export function RevenueReport({ establishmentId, startDate, endDate }: Props) {
       }));
 
       const total = rows.reduce((acc, r) => acc + Number(r.amount || 0), 0);
-
       return { rows, total };
     },
   });
@@ -89,21 +93,52 @@ export function RevenueReport({ establishmentId, startDate, endDate }: Props) {
               <TableHead>Serviço</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Pagamento</TableHead>
+              {isAdmin && <TableHead className="text-right">Ações</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.rows.map((r) => (
+            {data.rows.map((r: any) => (
               <TableRow key={r.id}>
                 <TableCell>{format(new Date(r.sale_date), "dd/MM/yyyy")}</TableCell>
-                <TableCell>{(r as any).clientName}</TableCell>
-                <TableCell>{(r as any).serviceName}</TableCell>
+                <TableCell>{r.clientName}</TableCell>
+                <TableCell>{r.serviceName}</TableCell>
                 <TableCell className="text-right">{currencyBRL(Number(r.amount))}</TableCell>
                 <TableCell>{r.payment_method ?? "-"}</TableCell>
+                {isAdmin && (
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditId(r.id)} title="Editar">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(r.id)} title="Excluir">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+
+      {isAdmin && (
+        <>
+          <EditSaleDialog
+            open={!!editId}
+            onOpenChange={(v) => !v && setEditId(null)}
+            saleId={editId}
+            establishmentId={establishmentId}
+            onSaved={refetch}
+          />
+          <DeleteSaleDialog
+            open={!!deleteId}
+            onOpenChange={(v) => !v && setDeleteId(null)}
+            saleId={deleteId}
+            onDeleted={refetch}
+          />
+        </>
+      )}
     </div>
   );
 }

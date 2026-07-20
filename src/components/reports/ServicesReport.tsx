@@ -33,7 +33,8 @@ export function ServicesReport({ establishmentId, startDate, endDate }: Props) {
           .select("service_id, amount")
           .eq("establishment_id", establishmentId)
           .gte("sale_date", startISO)
-          .lte("sale_date", endISO),
+          .lte("sale_date", endISO)
+          .is("deleted_at", null),
         supabase
           .from("services")
           .select("id, name")

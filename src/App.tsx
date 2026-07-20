@@ -28,6 +28,7 @@ import SelectPlan from "./pages/SelectPlan";
 import Checkout from "./pages/Checkout";
 import Plans from "./pages/Plans";
 import OAuthConsent from "./pages/OAuthConsent";
+import SalesHistory from "./pages/SalesHistory";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
                 <Route path="/services" element={<RoleProtectedRoute><Services /></RoleProtectedRoute>} />
                 <Route path="/products" element={<RoleProtectedRoute><Products /></RoleProtectedRoute>} />
                 <Route path="/sales" element={<RoleProtectedRoute><Sales /></RoleProtectedRoute>} />
+                <Route path="/vendas-historico" element={<RoleProtectedRoute><SalesHistory /></RoleProtectedRoute>} />
                 <Route path="/expenses" element={<RoleProtectedRoute><Expenses /></RoleProtectedRoute>} />
                 <Route path="/agenda" element={<Agenda />} />
                 <Route path="/atendimentos" element={<Attendances />} />

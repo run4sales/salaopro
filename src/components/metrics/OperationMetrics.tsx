@@ -12,7 +12,7 @@ export function OperationMetrics({ establishmentId, startDate, endDate }: Props)
     queryKey: ["metrics", "ops", establishmentId, startISO, endISO],
     queryFn: async () => {
       const [salesRes, servicesRes, apptRes] = await Promise.all([
-        supabase.from("sales").select("service_id, sale_date, amount, client_id").eq("establishment_id", establishmentId).gte("sale_date", startISO).lte("sale_date", endISO),
+        supabase.from("sales").select("service_id, sale_date, amount, client_id").eq("establishment_id", establishmentId).gte("sale_date", startISO).lte("sale_date", endISO).is("deleted_at", null),
         supabase.from("services").select("id, name").eq("establishment_id", establishmentId),
         supabase.from("appointments").select("status").eq("establishment_id", establishmentId).gte("appointment_date", startISO).lte("appointment_date", endISO),
       ]);

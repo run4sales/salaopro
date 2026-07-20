@@ -14,7 +14,7 @@ export function InsightsMetrics({ establishmentId, startDate, endDate }: Props) 
     queryKey: ["metrics", "insights", establishmentId, startISO, endISO],
     queryFn: async () => {
       const [salesRes, servicesRes] = await Promise.all([
-        supabase.from("sales").select("service_id, client_id, amount").eq("establishment_id", establishmentId).gte("sale_date", startISO).lte("sale_date", endISO),
+        supabase.from("sales").select("service_id, client_id, amount").eq("establishment_id", establishmentId).gte("sale_date", startISO).lte("sale_date", endISO).is("deleted_at", null),
         supabase.from("services").select("id, name").eq("establishment_id", establishmentId),
       ]);
       if (salesRes.error) throw salesRes.error; if (servicesRes.error) throw servicesRes.error;

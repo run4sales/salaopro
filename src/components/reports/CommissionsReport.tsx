@@ -52,7 +52,8 @@ export function CommissionsReport({ establishmentId, startDate, endDate }: Props
       const salesRes = await supabase.from("sales")
         .select("id, service_id, amount, sale_date, client_id, appointment_id, payment_method, notes")
         .eq("establishment_id", establishmentId)
-        .gte("sale_date", startISO).lte("sale_date", endISO);
+        .gte("sale_date", startISO).lte("sale_date", endISO)
+        .is("deleted_at", null);
       if (salesRes.error) throw salesRes.error;
       const sales = (salesRes.data ?? []) as SaleRow[];
       const saleIds = sales.map((sale) => sale.id);
