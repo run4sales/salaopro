@@ -33,9 +33,6 @@ export default function PublicBooking() {
   const [resolvedId, setResolvedId] = useState<string | null>(null);
   const [salonName, setSalonName] = useState<string>("");
   const [acceptingBookings, setAcceptingBookings] = useState<boolean>(true);
-  const [businessHours, setBusinessHours] = useState({
-    openingTime: DEFAULT_OPENING_TIME,
-    closingTime: DEFAULT_CLOSING_TIME,
   const [weekly, setWeekly] = useState<WeeklyHours>(() => buildDefaultWeeklyHours());
   const [lookupState, setLookupState] = useState<"loading" | "ok" | "not_found">("loading");
   const [services, setServices] = useState<Service[]>([]);
