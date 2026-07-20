@@ -1388,6 +1388,13 @@ export type Database = {
         Args: { _establishment_id: string; _user_id: string }
         Returns: boolean
       }
+      recalculate_sale_commissions: {
+        Args: { _establishment_id?: string }
+        Returns: {
+          rows_updated: number
+          sales_affected: number
+        }[]
+      }
       refund_client_credit: {
         Args: { _source: string; _source_id: string }
         Returns: undefined
