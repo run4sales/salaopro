@@ -10,6 +10,7 @@ import { Plus, Trash2, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { recalcComandaTotals } from "@/lib/comanda";
 import { PdvDialog } from "./PdvDialog";
+import { ServiceSearchSelect } from "@/components/ServiceSearchSelect";
 
 interface Props {
   open: boolean;
@@ -169,17 +170,30 @@ export function ComandaSheet({ open, onOpenChange, comandaId, establishmentId, o
 
             <div className="rounded-lg border p-3 space-y-2">
               <Label className="text-xs uppercase text-muted-foreground">Adicionar item</Label>
-              <div className="flex gap-2">
-                <Select value={addServiceId} onValueChange={setAddServiceId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione um serviço" /></SelectTrigger>
-                  <SelectContent>
-                    {(data?.services ?? []).map((s: any) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name} — R$ {Number(s.price).toFixed(2)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button onClick={addItem} disabled={!addServiceId}><Plus className="h-4 w-4" /></Button>
-              </div>
+              <ServiceSearchSelect
+                services={(data?.services ?? []) as any}
+                value=""
+                onChange={async (id, svc) => {
+                  if (!id || !svc || !comandaId) return;
+                  const unit_price = Number(svc.price ?? 0);
+                  const pct = Number((svc as any).commission_solo ?? 0);
+                  const { error } = await supabase.from("comanda_items").insert({
+                    establishment_id: establishmentId,
+                    comanda_id: comandaId,
+                    kind: "service",
+                    service_id: svc.id,
+                    name: svc.name,
+                    qty: 1,
+                    unit_price,
+                    total: unit_price,
+                    commission_percentage: pct,
+                    commission_amount: unit_price * (pct / 100),
+                  });
+                  if (error) { toast.error(error.message); return; }
+                  refresh();
+                }}
+                placeholder="Digite o nome do serviço..."
+              />
             </div>
 
             <div className="rounded-lg border p-3 space-y-2">
