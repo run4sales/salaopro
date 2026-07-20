@@ -115,7 +115,7 @@ export default function PublicBooking() {
   const totalPrice = useMemo(() => selectedServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0), [selectedServices]);
   const priceFmt = useMemo(() => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }), []);
   const primaryProfessionalId = professionalIds[0] ?? "";
-  const dayIsOpen = date ? isWorkingDay(date, businessHours.workingDays) : false;
+  const dayIsOpen = date ? isDateOpen(date, weekly) : false;
 
   useEffect(() => {
     if (!resolvedId || !primaryProfessionalId || !date) {
