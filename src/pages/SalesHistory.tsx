@@ -11,7 +11,7 @@ import { Pencil, Trash2, ShieldAlert } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { EditSaleDialog } from "@/components/sales/EditSaleDialog";
 import { DeleteSaleDialog } from "@/components/sales/DeleteSaleDialog";
-import { Navigate } from "react-router-dom";
+
 
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
