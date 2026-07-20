@@ -23,7 +23,7 @@ interface Props {
   services: Service[];
   professionals: Professional[];
   blocks?: AppointmentBlock[];
-  businessHours?: { openingTime: string; closingTime: string; workingDays: number[] };
+  businessHours?: { openingTime: string; closingTime: string; workingDays: number[]; weekly?: WeeklyHours };
   initialDate?: Date | null;
   appointment?: any | null;
   onSaved?: () => void;
