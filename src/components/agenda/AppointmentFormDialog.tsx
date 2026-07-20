@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ClientCombobox } from "@/components/ClientCombobox";
+import { ServiceSearchSelect } from "@/components/ServiceSearchSelect";
 import { useToast } from "@/hooks/use-toast";
 import { STATUS_OPTIONS } from "@/lib/appointmentStatus";
 import { ChevronDown } from "lucide-react";
