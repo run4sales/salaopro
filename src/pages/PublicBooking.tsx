@@ -269,7 +269,7 @@ export default function PublicBooking() {
                     selected={date}
                     onSelect={setDate}
                     mode="single"
-                    disabled={(d) => !isWorkingDay(d, businessHours.workingDays)}
+                    disabled={(d) => !isDateOpen(d, weekly)}
                     className={cn("p-3 pointer-events-auto")}
                   />
                 </PopoverContent>
