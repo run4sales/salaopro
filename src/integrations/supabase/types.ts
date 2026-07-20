@@ -1067,6 +1067,7 @@ export type Database = {
           id: string
           inactive_days_threshold: number | null
           updated_at: string
+          weekly_hours: Json | null
           working_days: number[]
         }
         Insert: {
@@ -1077,6 +1078,7 @@ export type Database = {
           id?: string
           inactive_days_threshold?: number | null
           updated_at?: string
+          weekly_hours?: Json | null
           working_days?: number[]
         }
         Update: {
@@ -1087,6 +1089,7 @@ export type Database = {
           id?: string
           inactive_days_threshold?: number | null
           updated_at?: string
+          weekly_hours?: Json | null
           working_days?: number[]
         }
         Relationships: [
