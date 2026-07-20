@@ -27,6 +27,7 @@ import {
   UserCog,
   CreditCard,
   Package,
+  History,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -45,6 +46,7 @@ const groups = [
     label: "Financeiro",
     items: [
       { title: "Vendas (PDV)", url: "/sales", icon: DollarSign },
+      { title: "Histórico de Vendas", url: "/vendas-historico", icon: History },
       { title: "Despesas", url: "/expenses", icon: Receipt },
     ],
   },
@@ -99,7 +101,7 @@ export default function AppSidebar() {
       <SidebarContent>
         {groups.map((group) => {
           const filteredItems = group.items.filter((item) => {
-            if (item.url === "/users" || item.url === "/planos") return isAdmin;
+            if (item.url === "/users" || item.url === "/planos" || item.url === "/vendas-historico") return isAdmin;
             return !restrict || ["/agenda", "/atendimentos"].includes(item.url);
           });
 
