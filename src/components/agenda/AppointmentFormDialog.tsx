@@ -356,22 +356,25 @@ export function AppointmentFormDialog({
           </div>
           <div>
             <label className="text-sm text-muted-foreground">Serviços *</label>
-            <MultiSelect
-              options={services.map(s => ({ id: s.id, name: s.name }))}
-              selected={form.service_ids}
-              onChange={(value) => {
-                const selectedServices = services.filter(service => value.includes(service.id));
-                const nextDuration = selectedServices.reduce((sum, service) => sum + (Number(service.duration_minutes) || 0), 0);
-                const nextAmount = selectedServices.reduce((sum, service) => sum + (Number(service.price) || 0), 0);
-                setForm(f => ({
-                  ...f,
-                  service_ids: value,
-                  duration_minutes: nextDuration > 0 ? formatDurationInput(nextDuration) : f.duration_minutes,
-                  service_amount: nextAmount > 0 ? nextAmount.toFixed(2) : f.service_amount,
-                }));
-              }}
-              placeholder="Selecione os serviços"
-            />
+            <div className="mt-1">
+              <ServiceSearchSelect
+                multiple
+                services={services}
+                value={form.service_ids}
+                onChange={(value) => {
+                  const selectedServices = services.filter(service => value.includes(service.id));
+                  const nextDuration = selectedServices.reduce((sum, service) => sum + (Number(service.duration_minutes) || 0), 0);
+                  const nextAmount = selectedServices.reduce((sum, service) => sum + (Number(service.price) || 0), 0);
+                  setForm(f => ({
+                    ...f,
+                    service_ids: value,
+                    duration_minutes: nextDuration > 0 ? formatDurationInput(nextDuration) : f.duration_minutes,
+                    service_amount: nextAmount > 0 ? nextAmount.toFixed(2) : f.service_amount,
+                  }));
+                }}
+                placeholder="Digite o nome do serviço..."
+              />
+            </div>
             {totalDuration > 0 && (
               <p className="text-xs text-muted-foreground mt-1">Duração padrão dos serviços: {formatDurationInput(totalDuration)}</p>
             )}
