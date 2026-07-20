@@ -22,7 +22,7 @@ export function ClientMetrics({ establishmentId, startDate, endDate }: Props) {
 
       const [clientsRes, salesRes] = await Promise.all([
         supabase.from("clients").select("id, name, birth_date, created_at, last_service_date").eq("establishment_id", establishmentId),
-        supabase.from("sales").select("client_id, sale_date, amount").eq("establishment_id", establishmentId).gte("sale_date", startISO).lte("sale_date", endISO),
+        supabase.from("sales").select("client_id, sale_date, amount").eq("establishment_id", establishmentId).gte("sale_date", startISO).lte("sale_date", endISO).is("deleted_at", null),
       ]);
       if (clientsRes.error) throw clientsRes.error; if (salesRes.error) throw salesRes.error;
 
