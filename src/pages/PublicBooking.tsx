@@ -141,15 +141,13 @@ export default function PublicBooking() {
 
   const slots = useMemo(() => {
     if (!date) return [] as Date[];
-    return generateBusinessSlots(
+    return generateWeeklySlots(
       date,
-      businessHours.openingTime,
-      businessHours.closingTime,
+      weekly,
       Math.max(totalDuration, 30),
       30,
-      businessHours.workingDays,
     );
-  }, [businessHours, date, totalDuration]);
+  }, [weekly, date, totalDuration]);
 
   const isBooked = (d: Date) => bookedTimes.some((iso) => {
     const bd = new Date(iso);
