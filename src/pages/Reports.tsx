@@ -8,8 +8,7 @@ import { ProfessionalServicesReport } from "@/components/reports/ProfessionalSer
 import { CommissionsReport } from "@/components/reports/CommissionsReport";
 import { ExpensesReport } from "@/components/reports/ExpensesReport";
 import { CashFlowReport } from "@/components/reports/CashFlowReport";
-import { FinancialStrategyReport } from "@/components/reports/FinancialStrategyReport";
-import { DollarSign, Users, Wallet, TrendingDown, Banknote, BarChart3 } from "lucide-react";
+import { DollarSign, Users, Wallet, TrendingDown, Banknote } from "lucide-react";
 
 export default function Reports() {
   const { user, profile } = useAuth();
@@ -50,11 +49,8 @@ export default function Reports() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="strategic" className="space-y-4">
+        <Tabs defaultValue="revenue" className="space-y-4">
           <TabsList className="h-auto flex-wrap justify-start gap-1 bg-muted/60 p-1">
-            <TabsTrigger value="strategic" className="gap-2">
-              <BarChart3 className="h-4 w-4" /> Dashboard financeiro
-            </TabsTrigger>
             <TabsTrigger value="revenue" className="gap-2">
               <DollarSign className="h-4 w-4" /> Faturamento geral
             </TabsTrigger>
@@ -74,7 +70,6 @@ export default function Reports() {
 
           {profile?.id ? (
             <>
-              <TabsContent value="strategic"><FinancialStrategyReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
               <TabsContent value="revenue"><RevenueGeneralReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
               <TabsContent value="pro"><ProfessionalServicesReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
               <TabsContent value="commissions"><CommissionsReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
