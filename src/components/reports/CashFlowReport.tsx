@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,12 +11,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KpiCard, currencyBRL } from "./KpiCard";
-import { ArrowDownCircle, ArrowUpCircle, Scale, TrendingUp, Plus } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Scale, TrendingUp, Plus, Repeat } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, Legend } from "recharts";
 
 interface Props { establishmentId: string; startDate: Date; endDate: Date; }
+
+const RECURRENCE_FREQUENCIES = [
+  { value: "daily", label: "Diário" },
+  { value: "weekly", label: "Semanal" },
+  { value: "biweekly", label: "Quinzenal" },
+  { value: "monthly", label: "Mensal" },
+  { value: "bimonthly", label: "Bimestral" },
+  { value: "quarterly", label: "Trimestral" },
+  { value: "semiannual", label: "Semestral" },
+  { value: "annual", label: "Anual" },
+];
 
 const PAYMENT_OPTIONS = ["dinheiro", "pix", "cartão de crédito", "cartão de débito", "transferência", "boleto", "outro"];
 
@@ -25,6 +38,7 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
   const qc = useQueryClient();
 
   const [open, setOpen] = useState(false);
+  const [recurringFilter, setRecurringFilter] = useState<"all" | "recurring" | "single">("all");
   const [form, setForm] = useState({
     entry_type: "income" as "income" | "expense",
     description: "",
@@ -33,15 +47,21 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
     payment_method: "dinheiro",
     notes: "",
     entry_date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+    recurring: false,
+    frequency: "monthly",
+    end_mode: "never" as "never" | "date" | "count",
+    end_date: "",
+    max_occurrences: "",
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["reports", "cash-flow", establishmentId, startISO, endISO],
+    queryKey: ["reports", "cash-flow", establishmentId, startISO, endISO, recurringFilter],
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from("cash_flow_entries")
         .select("*")
         .eq("establishment_id", establishmentId)
+        .is("deleted_at", null)
         .gte("entry_date", startISO).lte("entry_date", endISO)
         .order("entry_date", { ascending: false });
       if (error) throw error;
@@ -75,7 +95,8 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
       }
       const methods = Array.from(byMethod.entries()).map(([name, value]) => ({ name, value }));
 
-      return { rows: list, income, expense, balance, series, methods };
+      const filteredRows = recurringFilter === "recurring" ? list.filter((r: any) => r.recurring_plan_id) : recurringFilter === "single" ? list.filter((r: any) => !r.recurring_plan_id) : list;
+      return { rows: filteredRows, income, expense, balance, series, methods };
     },
   });
 
@@ -85,7 +106,19 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
       toast({ title: "Preencha descrição e valor válido", variant: "destructive" });
       return;
     }
-    const { error } = await supabase.from("cash_flow_entries").insert({
+    const template = { description: form.description.trim(), amount: amt, category: form.category || (form.entry_type === "income" ? "Entrada manual" : "Saída manual"), payment_method: form.payment_method, notes: form.notes || null };
+    const { error } = form.recurring
+      ? await supabase.rpc("create_financial_recurrence" as never, {
+          p_tenant_id: establishmentId,
+          p_tipo: form.entry_type === "income" ? "receivable" : "payable",
+          p_frequency: form.frequency,
+          p_start_date: form.entry_date.slice(0, 10),
+          p_end_date: form.end_mode === "date" && form.end_date ? form.end_date : null,
+          p_max_occurrences: form.end_mode === "count" && form.max_occurrences ? Number(form.max_occurrences) : null,
+          p_template: template,
+          p_generate_until: form.end_mode === "never" ? format(new Date(new Date(form.entry_date).getFullYear() + 1, new Date(form.entry_date).getMonth(), new Date(form.entry_date).getDate()), "yyyy-MM-dd") : null,
+        } as never)
+      : await supabase.from("cash_flow_entries").insert({
       establishment_id: establishmentId,
       entry_type: form.entry_type,
       description: form.description.trim(),
@@ -100,7 +133,7 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
     if (error) { toast({ title: "Erro ao lançar", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Lançamento criado" });
     setOpen(false);
-    setForm({ ...form, description: "", amount: "", category: "", notes: "" });
+    setForm({ ...form, description: "", amount: "", category: "", notes: "", recurring: false, end_mode: "never", end_date: "", max_occurrences: "" });
     qc.invalidateQueries({ queryKey: ["reports", "cash-flow"] });
   };
 
@@ -109,7 +142,7 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
       toast({ title: "Não é possível excluir", description: "Lançamentos automáticos devem ser removidos na origem (venda/despesa)." });
       return;
     }
-    const { error } = await supabase.from("cash_flow_entries").delete().eq("id", id);
+    const { error } = await supabase.from("cash_flow_entries").update({ deleted_at: new Date().toISOString() }).eq("id", id);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     qc.invalidateQueries({ queryKey: ["reports", "cash-flow"] });
   };
@@ -120,7 +153,10 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="text-lg font-semibold">Fluxo de caixa</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold">Fluxo de caixa</h2>
+          <Select value={recurringFilter} onValueChange={(v: any) => setRecurringFilter(v)}><SelectTrigger className="w-[210px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas</SelectItem><SelectItem value="recurring">Apenas recorrentes</SelectItem><SelectItem value="single">Apenas não recorrentes</SelectItem></SelectContent></Select>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-2"><Plus className="h-4 w-4" /> Novo lançamento</Button>
@@ -166,6 +202,20 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
               <div>
                 <Label>Categoria (opcional)</Label>
                 <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Ex: Aporte, Compra emergencial…" />
+              </div>
+              <div className="rounded-md border p-3 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="recurring-cash-flow">Lançamento recorrente</Label>
+                  <Switch id="recurring-cash-flow" checked={form.recurring} onCheckedChange={(v) => setForm({ ...form, recurring: v })} />
+                </div>
+                {form.recurring && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div><Label>Frequência</Label><Select value={form.frequency} onValueChange={(v) => setForm({ ...form, frequency: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{RECURRENCE_FREQUENCIES.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent></Select></div>
+                    <div><Label>Encerramento</Label><Select value={form.end_mode} onValueChange={(v: any) => setForm({ ...form, end_mode: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="never">Recorrência infinita</SelectItem><SelectItem value="date">Até uma data</SelectItem><SelectItem value="count">Quantidade</SelectItem></SelectContent></Select></div>
+                    {form.end_mode === "date" && <div><Label>Data final</Label><Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} /></div>}
+                    {form.end_mode === "count" && <div><Label>Gerar ocorrências</Label><Input type="number" min="1" placeholder="12, 24, 60..." value={form.max_occurrences} onChange={(e) => setForm({ ...form, max_occurrences: e.target.value })} /></div>}
+                  </div>
+                )}
               </div>
               <div>
                 <Label>Observações</Label>
@@ -270,10 +320,10 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
                     </Badge>
                   </TableCell>
                   <TableCell><Badge variant="secondary">{r.category ?? "—"}</Badge></TableCell>
-                  <TableCell className="font-medium">{r.description}</TableCell>
+                  <TableCell className="font-medium"><div className="flex items-center gap-2">{r.description}{r.recurring_plan_id && <Badge variant="outline" className="gap-1"><Repeat className="h-3 w-3" /> Recorrente</Badge>}</div></TableCell>
                   <TableCell className="capitalize">{r.payment_method ?? "—"}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="capitalize">{r.source === "sale" ? "Venda" : r.source === "expense" ? "Despesa" : "Manual"}</Badge>
+                    <Badge variant="outline" className="capitalize">{r.source === "sale" ? "Venda" : r.source === "expense" ? "Despesa" : r.source === "recurrence" ? "Recorrência" : "Manual"}</Badge>
                   </TableCell>
                   <TableCell className={"text-right font-semibold " + (isIn ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
                     {isIn ? "+ " : "- "}{currencyBRL(Number(r.amount))}

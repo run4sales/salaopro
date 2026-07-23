@@ -323,6 +323,9 @@ export type Database = {
           id: string
           notes: string | null
           payment_method: string | null
+          recurring_plan_id: string | null
+          occurrence_date: string | null
+          deleted_at: string | null
           source: string
           source_id: string | null
           status: string
@@ -339,6 +342,9 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string | null
+          recurring_plan_id?: string | null
+          occurrence_date?: string | null
+          deleted_at?: string | null
           source?: string
           source_id?: string | null
           status?: string
@@ -355,6 +361,9 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string | null
+          recurring_plan_id?: string | null
+          occurrence_date?: string | null
+          deleted_at?: string | null
           source?: string
           source_id?: string | null
           status?: string
@@ -655,6 +664,10 @@ export type Database = {
           expense_date: string
           id: string
           notes: string | null
+          recurring_plan_id: string | null
+          occurrence_date: string | null
+          deleted_at: string | null
+          status: string
           updated_at: string
         }
         Insert: {
@@ -666,6 +679,10 @@ export type Database = {
           expense_date?: string
           id?: string
           notes?: string | null
+          recurring_plan_id?: string | null
+          occurrence_date?: string | null
+          deleted_at?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -677,6 +694,58 @@ export type Database = {
           expense_date?: string
           id?: string
           notes?: string | null
+          recurring_plan_id?: string | null
+          occurrence_date?: string | null
+          deleted_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      financial_recurrences: {
+        Row: {
+          active: boolean
+          created_at: string
+          end_date: string | null
+          frequency: string
+          id: string
+          interval_count: number
+          last_generated_date: string | null
+          max_occurrences: number | null
+          start_date: string
+          template: Json
+          tenant_id: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          end_date?: string | null
+          frequency: string
+          id?: string
+          interval_count?: number
+          last_generated_date?: string | null
+          max_occurrences?: number | null
+          start_date: string
+          template?: Json
+          tenant_id: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          end_date?: string | null
+          frequency?: string
+          id?: string
+          interval_count?: number
+          last_generated_date?: string | null
+          max_occurrences?: number | null
+          start_date?: string
+          template?: Json
+          tenant_id?: string
+          tipo?: string
           updated_at?: string
         }
         Relationships: []
