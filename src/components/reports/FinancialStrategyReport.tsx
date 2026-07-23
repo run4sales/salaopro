@@ -49,7 +49,7 @@ function downloadXlsx(name: string, rows: Record<string, any>[]) {
 }
 function exportPdf() { window.print(); }
 
-export function StrategicFinancialDashboard({ establishmentId, startDate, endDate }: Props) {
+export function FinancialStrategyReport({ establishmentId, startDate, endDate }: Props) {
   const [granularity, setGranularity] = useState<Granularity>("daily");
   const [months, setMonths] = useState("6");
   const startISO = useMemo(() => startDate.toISOString(), [startDate]);

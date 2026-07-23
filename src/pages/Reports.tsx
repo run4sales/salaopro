@@ -8,7 +8,7 @@ import { ProfessionalServicesReport } from "@/components/reports/ProfessionalSer
 import { CommissionsReport } from "@/components/reports/CommissionsReport";
 import { ExpensesReport } from "@/components/reports/ExpensesReport";
 import { CashFlowReport } from "@/components/reports/CashFlowReport";
-import { StrategicFinancialDashboard } from "@/components/reports/StrategicFinancialDashboard";
+import { FinancialStrategyReport } from "@/components/reports/FinancialStrategyReport";
 import { DollarSign, Users, Wallet, TrendingDown, Banknote, BarChart3 } from "lucide-react";
 
 export default function Reports() {
@@ -74,7 +74,7 @@ export default function Reports() {
 
           {profile?.id ? (
             <>
-              <TabsContent value="strategic"><StrategicFinancialDashboard establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
+              <TabsContent value="strategic"><FinancialStrategyReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
               <TabsContent value="revenue"><RevenueGeneralReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
               <TabsContent value="pro"><ProfessionalServicesReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
               <TabsContent value="commissions"><CommissionsReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
