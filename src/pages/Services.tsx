@@ -71,6 +71,7 @@ const Services = () => {
     description: '',
     commission_solo: '40',
     active: true,
+    available_online: true,
   });
 
   const [editingService, setEditingService] = useState<any>(null);
@@ -174,6 +175,7 @@ const Services = () => {
         commission_with_assistants: pct,
         commission_as_assistant: pct,
         active: payload.active,
+        available_online: payload.available_online,
         establishment_id: profile?.id,
       };
       const { data, error } = await supabase
@@ -186,7 +188,7 @@ const Services = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services'] });
-      setNewService({ name: '', price: '', duration_minutes: '', description: '', commission_solo: '40', active: true });
+      setNewService({ name: '', price: '', duration_minutes: '', description: '', commission_solo: '40', active: true, available_online: true });
       toast({ title: 'Serviço cadastrado!', description: 'Novo serviço adicionado com sucesso.' });
     },
     onError: () => {
@@ -208,6 +210,7 @@ const Services = () => {
           commission_with_assistants: pct,
           commission_as_assistant: pct,
           active: payload.active,
+          available_online: payload.available_online,
         })
         .eq('id', payload.id)
         .select()
@@ -401,6 +404,15 @@ const Services = () => {
                   <Input id="c-solo" type="number" min="0" max="100" step="0.01" value={newService.commission_solo} onChange={(e) => setNewService({ ...newService, commission_solo: e.target.value })} />
                 </div>
               </div>
+              <div className="space-y-2 rounded-md border p-4 md:col-span-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label htmlFor="available-online">Disponível no agendamento online</Label>
+                    <p className="text-xs text-muted-foreground">Quando desativado, o serviço ficará disponível apenas para uso interno da equipe.</p>
+                  </div>
+                  <Switch id="available-online" checked={newService.available_online} onCheckedChange={(checked) => setNewService({ ...newService, available_online: checked })} />
+                </div>
+              </div>
               <div className="flex items-center gap-3">
                 <Switch id="active" checked={newService.active} onCheckedChange={(checked) => setNewService({ ...newService, active: checked })} />
                 <Label htmlFor="active">Ativo</Label>
@@ -454,6 +466,7 @@ const Services = () => {
                     <TableHead>Duração</TableHead>
                     <TableHead>Comissão</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Agendamento online</TableHead>
                     {!isEmployee && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
@@ -465,6 +478,7 @@ const Services = () => {
                       <TableCell>{formatDurationLabel(s.duration_minutes)}</TableCell>
                       <TableCell>{Number(s.commission_solo ?? 0)}%</TableCell>
                       <TableCell>{s.active ? 'Ativo' : 'Inativo'}</TableCell>
+                      <TableCell>{s.available_online ? 'Disponível' : 'Somente interno'}</TableCell>
                       {!isEmployee && <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => setEditingService({ ...s, duration_minutes: formatDurationInput(s.duration_minutes) })}>
@@ -624,6 +638,19 @@ const Services = () => {
                     value={editingService.commission_solo}
                     onChange={(e) => setEditingService({ ...editingService, commission_solo: e.target.value })}
                   />
+                </div>
+                <div className="space-y-2 rounded-md border p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <Label htmlFor="edit-available-online">Disponível no agendamento online</Label>
+                      <p className="text-xs text-muted-foreground">Desative para manter o serviço exclusivo para uso interno.</p>
+                    </div>
+                    <Switch
+                      id="edit-available-online"
+                      checked={editingService.available_online !== false}
+                      onCheckedChange={(checked) => setEditingService({ ...editingService, available_online: checked })}
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Switch
