@@ -45,7 +45,7 @@ ALTER TABLE public.cash_flow_entries
   ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 ALTER TABLE public.cash_flow_entries DROP CONSTRAINT IF EXISTS cash_flow_entries_source_check;
-ALTER TABLE public.cash_flow_entries ADD CONSTRAINT cash_flow_entries_source_check CHECK (source IN ('sale','expense','manual','recurrence'));
+ALTER TABLE public.cash_flow_entries ADD CONSTRAINT cash_flow_entries_source_check CHECK (source IN ('sale','expense','appointment_deposit','sale_fee','manual','recurrence'));
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_expenses_recurring_occurrence
   ON public.expenses(recurring_plan_id, occurrence_date) WHERE recurring_plan_id IS NOT NULL AND deleted_at IS NULL;
