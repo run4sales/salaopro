@@ -6,7 +6,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { KpiCard, currencyBRL } from "./KpiCard";
 import { DollarSign, Receipt, TrendingUp, ShoppingCart } from "lucide-react";
-import { FinancialStrategyReport } from "./FinancialStrategyReport";
 
 interface Props {
   establishmentId: string;
@@ -72,8 +71,7 @@ export function RevenueGeneralReport({ establishmentId, startDate, endDate }: Pr
   if (!data) return null;
 
   return (
-    <div className="space-y-6">
-      <FinancialStrategyReport establishmentId={establishmentId} startDate={startDate} endDate={endDate} />
+    <div className="space-y-4">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Faturamento" value={currencyBRL(data.total)} icon={DollarSign} tone="positive" />
         <KpiCard label="Vendas" value={String(data.count)} icon={ShoppingCart} tone="accent" />
