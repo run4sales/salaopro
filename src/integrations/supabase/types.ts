@@ -1083,6 +1083,7 @@ export type Database = {
       services: {
         Row: {
           active: boolean | null
+          available_online: boolean
           commission_as_assistant: number
           commission_solo: number
           commission_with_assistants: number
@@ -1100,6 +1101,8 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          available_online?: boolean
+          available_online?: boolean
           commission_as_assistant?: number
           commission_solo?: number
           commission_with_assistants?: number
