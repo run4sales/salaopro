@@ -210,6 +210,7 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.generate_financial_recurrence(UUID, DATE) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.create_financial_recurrence(UUID, TEXT, TEXT, DATE, DATE, INTEGER, JSONB, DATE) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_financial_recurrence(UUID, TEXT, TEXT, DATE, DATE, INTEGER, JSONB, DATE) TO authenticated;
 
