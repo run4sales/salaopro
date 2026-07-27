@@ -2,15 +2,12 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
 Deno.serve(async (req) => {
-  const startedAt = Date.now();
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   const admin = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
-
-  let logId: string | null = null;
 
   try {
     const expected = Deno.env.get('ASAAS_WEBHOOK_TOKEN');
@@ -24,69 +21,33 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     const event: string = payload.event;
     const payment = payload.payment ?? {};
-    const subscriptionId: string | undefined = typeof payment.subscription === 'string'
-      ? payment.subscription
-      : payment.subscription?.id;
-    const customerId: string | undefined = typeof payment.customer === 'string'
-      ? payment.customer
-      : payment.customer?.id;
+    const subscriptionId: string | undefined = payment.subscription;
     const paymentId: string | undefined = payment.id;
-    console.info('[asaas-webhook] Evento recebido', {
-      event, paymentId, subscriptionId, customerId,
-    });
 
     // Log
-    const { data: log, error: logError } = await admin.from('asaas_webhook_logs').insert({
+    const { data: log } = await admin.from('asaas_webhook_logs').insert({
       event,
       asaas_payment_id: paymentId ?? null,
       asaas_subscription_id: subscriptionId ?? null,
       payload,
     }).select('id').single();
-    if (logError) throw logError;
-    logId = log.id;
 
-    // Locate the local subscription. Some Asaas payment events omit the
-    // subscription field, so the customer is a necessary fallback.
+    // Locate establishment
     let establishmentId: string | null = null;
     let localSubId: string | null = null;
-    let localSub: {
-      id: string;
-      establishment_id: string;
-      pending_plan_id: string | null;
-      plan_id: string | null;
-      status: string;
-    } | null = null;
     if (subscriptionId) {
-      const { data: sub, error } = await admin.from('subscriptions')
-        .select('id, establishment_id, pending_plan_id, plan_id, status')
+      const { data: sub } = await admin.from('subscriptions')
+        .select('id, establishment_id')
         .eq('asaas_subscription_id', subscriptionId).maybeSingle();
-      if (error) throw error;
-      localSub = sub;
-    }
-    if (!localSub && customerId) {
-      const { data: sub, error } = await admin.from('subscriptions')
-        .select('id, establishment_id, pending_plan_id, plan_id, status')
-        .eq('asaas_customer_id', customerId).maybeSingle();
-      if (error) throw error;
-      localSub = sub;
-    }
-    if (localSub) {
-      establishmentId = localSub.establishment_id;
-      localSubId = localSub.id;
-      console.info('[asaas-webhook] Associação encontrada', {
-        establishmentId, localSubId, subscriptionId, customerId,
-      });
+      if (sub) {
+        establishmentId = sub.establishment_id;
+        localSubId = sub.id;
+      }
     }
 
-    if (paymentId && !localSub) {
-      throw new Error(
-        `Local subscription not found (Asaas subscription: ${subscriptionId ?? 'missing'}, customer: ${customerId ?? 'missing'})`,
-      );
-    }
-
-    if (localSub && paymentId) {
+    if (establishmentId && paymentId) {
       // Upsert payment record
-      const { error: paymentError } = await admin.from('subscription_payments').upsert({
+      await admin.from('subscription_payments').upsert({
         establishment_id: establishmentId,
         subscription_id: localSubId,
         asaas_payment_id: paymentId,
@@ -101,43 +62,29 @@ Deno.serve(async (req) => {
         bank_slip_url: payment.bankSlipUrl ?? null,
         raw: payment,
       }, { onConflict: 'asaas_payment_id' });
-      if (paymentError) throw paymentError;
 
       // Update subscription state based on event
       const updates: Record<string, unknown> = {};
-      const paymentStatus = String(payment.status ?? '');
-      const isPaid = ['CONFIRMED', 'RECEIVED', 'RECEIVED_IN_CASH'].includes(paymentStatus);
       switch (event) {
         case 'PAYMENT_CONFIRMED':
         case 'PAYMENT_RECEIVED': {
           updates.status = 'active';
           updates.last_payment_at = new Date().toISOString();
           updates.canceled_at = null;
-          updates.trial_ends_at = null;
-          const base = payment.dueDate
-            ? new Date(`${payment.dueDate}T12:00:00.000Z`)
-            : new Date();
-          const billingDay = base.getUTCDate();
-          base.setUTCDate(1);
-          base.setUTCMonth(base.getUTCMonth() + 1);
-          const lastDayOfBillingMonth = new Date(Date.UTC(
-            base.getUTCFullYear(),
-            base.getUTCMonth() + 1,
-            0,
-          )).getUTCDate();
-          base.setUTCDate(Math.min(billingDay, lastDayOfBillingMonth));
+          const base = payment.dueDate ? new Date(payment.dueDate) : new Date();
+          base.setDate(base.getDate() + 30);
           updates.next_billing_at = base.toISOString();
-          // Payment-related restrictions are removed. A manual admin block is
-          // intentionally preserved and can only be removed by an admin.
+          // Pagamento confirmado: libera grace e bloqueio manual relacionado
           updates.grace_started_at = null;
           updates.grace_ends_at = null;
           updates.grace_cycle_key = null;
 
           // Apply pending plan change (downgrade scheduled for next cycle)
-          if (localSub.pending_plan_id) {
-            const { data: pp, error: planError } = await admin.from('subscription_plans')
-              .select('id, monthly_price').eq('id', localSub.pending_plan_id).maybeSingle();
-            if (planError) throw planError;
+          const { data: fullSub } = await admin.from('subscriptions')
+            .select('pending_plan_id').eq('establishment_id', establishmentId).maybeSingle();
+          if (fullSub?.pending_plan_id) {
+            const { data: pp } = await admin.from('subscription_plans')
+              .select('id, monthly_price').eq('id', fullSub.pending_plan_id).maybeSingle();
             if (pp) {
               updates.plan_id = pp.id;
               updates.monthly_amount = pp.monthly_price;
@@ -152,70 +99,25 @@ Deno.serve(async (req) => {
           break;
         case 'PAYMENT_REFUNDED':
         case 'PAYMENT_DELETED':
-        case 'PAYMENT_CANCELED':
           updates.status = 'canceled';
           break;
       }
-      // The payment status is authoritative even if Asaas introduces a new
-      // event name (for example, a cash receipt still has RECEIVED_IN_CASH).
-      if (isPaid) {
-        updates.status = 'active';
-        updates.last_payment_at = payment.paymentDate
-          ? new Date(payment.paymentDate).toISOString()
-          : new Date().toISOString();
-        updates.trial_ends_at = null;
-        updates.canceled_at = null;
-        updates.grace_started_at = null;
-        updates.grace_ends_at = null;
-        updates.grace_cycle_key = null;
-      } else if (['REFUNDED', 'DELETED', 'CANCELED'].includes(paymentStatus)) {
-        updates.status = 'canceled';
-      }
       if (Object.keys(updates).length > 0) {
-        const { error: updateError } = await admin.from('subscriptions').update(updates)
-          .eq('id', localSubId);
-        if (updateError) throw updateError;
-        console.info('[asaas-webhook] Assinatura atualizada', {
-          establishmentId,
-          event,
-          paymentStatus,
-          newStatus: updates.status,
-        });
+        await admin.from('subscriptions').update(updates)
+          .eq('establishment_id', establishmentId);
       }
-
-      const { error: syncLogError } = await admin.from('asaas_sync_logs').insert({
-        source: 'webhook',
-        establishment_id: establishmentId,
-        asaas_customer_id: customerId ?? null,
-        asaas_subscription_id: subscriptionId ?? null,
-        asaas_payment_id: paymentId,
-        previous_status: localSub.status,
-        new_status: updates.status ?? null,
-        payment_status: paymentStatus || null,
-        plan_id: (updates.plan_id as string | undefined) ?? localSub.plan_id,
-        changed: Object.keys(updates).length > 0,
-        duration_ms: Date.now() - startedAt,
-        details: { event, updates, payment },
-      });
-      if (syncLogError) throw syncLogError;
 
     }
 
-    const { error: processedError } = await admin.from('asaas_webhook_logs')
-      .update({ processed: true, error: null }).eq('id', logId);
-    if (processedError) throw processedError;
+    if (log?.id) {
+      await admin.from('asaas_webhook_logs').update({ processed: true }).eq('id', log.id);
+    }
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
     console.error('asaas-webhook error', e);
-    if (logId) {
-      await admin.from('asaas_webhook_logs').update({
-        processed: false,
-        error: (e as Error).message,
-      }).eq('id', logId);
-    }
     return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
