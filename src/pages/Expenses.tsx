@@ -1,312 +1,51 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { format, isSameMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { AlertTriangle, CalendarClock, CheckCircle2, Pencil, Plus, Search, Trash2, WalletCards } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon, Plus, Repeat, Trash2, TrendingDown } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 
-const RECURRENCE_FREQUENCIES = [
-  { value: "daily", label: "Diário" },
-  { value: "weekly", label: "Semanal" },
-  { value: "biweekly", label: "Quinzenal" },
-  { value: "monthly", label: "Mensal" },
-  { value: "bimonthly", label: "Bimestral" },
-  { value: "quarterly", label: "Trimestral" },
-  { value: "semiannual", label: "Semestral" },
-  { value: "annual", label: "Anual" },
-];
+const CATEGORIES=["Aluguel","Água","Energia","Internet","Marketing","Produtos","Funcionários","Impostos","Equipamentos","Manutenção","Outros"];
+const CENTERS=["Administrativo","Recepção","Marketing","Estoque","Serviços","Produtos"];
+const STATUS:any={pending:["Pendente","secondary"],due_today:["Vence hoje","default"],overdue:["Vencida","destructive"],partially_paid:["Parcialmente paga","outline"],paid:["Paga","secondary"],cancelled:["Cancelada","outline"]};
+const money=(v:number)=>v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+type Expense={id:string;description:string;amount:number;paid_amount:number;category:string|null;supplier:string|null;cost_center:string|null;notes:string|null;due_date:string;competence_date:string|null;expense_date:string;status:string;installment_number:number|null;installment_count:number|null;recurring_plan_id:string|null};
+const empty={description:"",amount:"",category:"Outros",supplier:"",cost_center:"Administrativo",notes:"",due_date:format(new Date(),"yyyy-MM-dd"),competence_date:format(new Date(),"yyyy-MM-dd"),installments:"1"};
 
-const CATEGORIES = [
-  "Aluguel",
-  "Energia",
-  "Água",
-  "Internet",
-  "Produtos",
-  "Salários",
-  "Marketing",
-  "Manutenção",
-  "Impostos",
-  "Outros",
-];
-
-interface Expense {
-  id: string;
-  description: string;
-  amount: number;
-  category: string | null;
-  expense_date: string;
-  notes: string | null;
-  recurring_plan_id: string | null;
-  status: string;
-  deleted_at: string | null;
+export default function Expenses(){
+ const {profile,establishmentRole}=useAuth(); const qc=useQueryClient(); const canManage=establishmentRole==="owner"||establishmentRole==="admin"; const isOwner=establishmentRole==="owner";
+ const [form,setForm]=useState<any>(empty),[editing,setEditing]=useState<Expense|null>(null),[paying,setPaying]=useState<Expense|null>(null),[busy,setBusy]=useState(false);
+ const [payment,setPayment]=useState<any>({date:format(new Date(),"yyyy-MM-dd"),amount:"",method:"pix",account:"Caixa principal",interest:"0",fine:"0",discount:"0",notes:""});
+ const [filters,setFilters]=useState<any>({q:"",status:"all",category:"all",supplier:"",center:"all",from:"",to:"",min:"",max:""});
+ useEffect(()=>{document.title="Contas a Pagar | Beauty Core"},[]);
+ const {data:expenses=[],isLoading}=useQuery<Expense[]>({queryKey:["payables",profile?.id],enabled:!!profile?.id,queryFn:async()=>{const {data,error}=await supabase.from("expenses").select("*").eq("establishment_id",profile.id).is("deleted_at",null).order("due_date" as any);if(error)throw error;return data as any}});
+ const rows=useMemo(()=>expenses.filter(e=>{const q=filters.q.toLowerCase();return(!q||e.description.toLowerCase().includes(q)||(e.supplier||"").toLowerCase().includes(q))&&(filters.status==="all"||e.status===filters.status)&&(filters.category==="all"||e.category===filters.category)&&(!filters.supplier||(e.supplier||"").toLowerCase().includes(filters.supplier.toLowerCase()))&&(filters.center==="all"||e.cost_center===filters.center)&&(!filters.from||e.due_date>=filters.from)&&(!filters.to||e.due_date<=filters.to)&&(!filters.min||e.amount>=+filters.min)&&(!filters.max||e.amount<=+filters.max)}),[expenses,filters]);
+ const totals=useMemo(()=>({open:expenses.filter(e=>!["paid","cancelled"].includes(e.status)).reduce((s,e)=>s+e.amount-e.paid_amount,0),paid:expenses.filter(e=>e.status==="paid"&&isSameMonth(new Date(e.due_date+"T12:00:00"),new Date())).reduce((s,e)=>s+e.paid_amount,0),overdue:expenses.filter(e=>e.status==="overdue").reduce((s,e)=>s+e.amount-e.paid_amount,0),today:expenses.filter(e=>e.status==="due_today").length}),[expenses]);
+ const invalidate=()=>{qc.invalidateQueries({queryKey:["payables",profile?.id]});qc.invalidateQueries({queryKey:["reports"]});qc.invalidateQueries({queryKey:["cash-flow"]})};
+ const save=async(e:React.FormEvent)=>{e.preventDefault();if(!canManage)return;setBusy(true);try{const data={...form,amount:Number(form.amount)};const {error}=editing?await (supabase as any).rpc("update_payable",{p_id:editing.id,p_changes:data}):await (supabase as any).rpc("create_payables",{p_establishment:profile.id,p_data:data,p_installments:Number(form.installments||1)});if(error)throw error;toast.success(editing?"Despesa atualizada.":"Conta a pagar criada.");setEditing(null);setForm(empty);invalidate()}catch(x:any){toast.error(x.message)}finally{setBusy(false)}};
+ const openEdit=(e:Expense)=>{setEditing(e);setForm({...empty,...e,amount:String(e.amount),installments:String(e.installment_count||1)})};
+ const doPay=async()=>{if(!paying)return;setBusy(true);try{const {error}=await (supabase as any).rpc("pay_expense",{p_id:paying.id,p_payment_date:payment.date,p_amount:Number(payment.amount),p_method:payment.method,p_account:payment.account,p_interest:Number(payment.interest||0),p_fine:Number(payment.fine||0),p_discount:Number(payment.discount||0),p_notes:payment.notes||null});if(error)throw error;toast.success("Pagamento registrado e fluxo de caixa atualizado.");setPaying(null);invalidate()}catch(x:any){toast.error(x.message)}finally{setBusy(false)}};
+ const remove=async(e:Expense)=>{if(!isOwner||!confirm(`Excluir “${e.description}”? Movimentações relacionadas também serão removidas.`))return;const {error}=await (supabase as any).rpc("delete_payable",{p_id:e.id});if(error)toast.error(error.message);else{toast.success("Despesa excluída.");invalidate()}};
+ const F=({label,k,type="text"}:{label:string;k:string;type?:string})=><div className="space-y-1"><Label>{label}</Label><Input type={type} value={form[k]||""} onChange={e=>setForm({...form,[k]:e.target.value})}/></div>;
+ return <div className="min-h-screen bg-background"><header className="border-b bg-card"><div className="container mx-auto px-4 py-6"><h1 className="text-2xl font-bold">Contas a Pagar</h1><p className="text-muted-foreground">Do previsto à quitação, com integração automática ao fluxo de caixa</p></div></header><main className="container mx-auto px-4 py-6 space-y-5">
+  <div className="grid gap-3 grid-cols-2 lg:grid-cols-4"><Metric title="Total em aberto" value={money(totals.open)} icon={WalletCards}/><Metric title="Pago no mês" value={money(totals.paid)} icon={CheckCircle2}/><Metric title="Total vencido" value={money(totals.overdue)} icon={AlertTriangle}/><Metric title="Vencem hoje" value={String(totals.today)} icon={CalendarClock}/></div>
+  {canManage&&<Card><CardHeader><CardTitle className="flex gap-2"><Plus className="h-5 w-5"/>{editing?"Editar despesa":"Nova conta a pagar"}</CardTitle></CardHeader><CardContent><form onSubmit={save} className="grid md:grid-cols-4 gap-3"><div className="md:col-span-2"><F label="Descrição" k="description"/></div><F label="Fornecedor" k="supplier"/><F label="Valor total" k="amount" type="number"/><div className="space-y-1"><Label>Categoria</Label><Select value={form.category} onValueChange={v=>setForm({...form,category:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{CATEGORIES.map(x=><SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1"><Label>Centro de custo</Label><Select value={form.cost_center} onValueChange={v=>setForm({...form,cost_center:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{CENTERS.map(x=><SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent></Select></div><F label="Competência" k="competence_date" type="date"/><F label="Vencimento" k="due_date" type="date"/>{!editing&&<F label="Parcelas" k="installments" type="number"/>}<div className="md:col-span-3 space-y-1"><Label>Observações</Label><Textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></div><div className="md:col-span-4 flex gap-2"><Button disabled={busy}>{busy?"Salvando...":"Salvar"}</Button>{editing&&<Button type="button" variant="outline" onClick={()=>{setEditing(null);setForm(empty)}}>Cancelar</Button>}</div></form></CardContent></Card>}
+  <Card><CardHeader><CardTitle>Contas</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2"><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"/><Input className="pl-9" placeholder="Descrição ou fornecedor" value={filters.q} onChange={e=>setFilters({...filters,q:e.target.value})}/></div><Select value={filters.status} onValueChange={v=>setFilters({...filters,status:v})}><SelectTrigger><SelectValue placeholder="Status"/></SelectTrigger><SelectContent><SelectItem value="all">Todos os status</SelectItem>{Object.entries(STATUS).map(([k,v]:any)=><SelectItem value={k} key={k}>{v[0]}</SelectItem>)}</SelectContent></Select><Select value={filters.category} onValueChange={v=>setFilters({...filters,category:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">Todas as categorias</SelectItem>{CATEGORIES.map(x=><SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent></Select><Input placeholder="Filtrar fornecedor" value={filters.supplier} onChange={e=>setFilters({...filters,supplier:e.target.value})}/><Input type="date" value={filters.from} onChange={e=>setFilters({...filters,from:e.target.value})}/><Input type="date" value={filters.to} onChange={e=>setFilters({...filters,to:e.target.value})}/><Input type="number" placeholder="Valor mínimo" value={filters.min} onChange={e=>setFilters({...filters,min:e.target.value})}/><Input type="number" placeholder="Valor máximo" value={filters.max} onChange={e=>setFilters({...filters,max:e.target.value})}/></div>
+   {isLoading?<p>Carregando...</p>:rows.length===0?<p className="text-sm text-muted-foreground py-6 text-center">Nenhuma conta encontrada.</p>:<div className="space-y-2">{rows.map(e=>{const st=STATUS[e.status]||STATUS.pending;const balance=e.amount-e.paid_amount;return <div key={e.id} className="rounded-lg border p-3 flex flex-col md:flex-row md:items-center gap-3"><div className="flex-1 min-w-0"><div className="flex flex-wrap gap-2 items-center"><b>{e.description}</b><Badge variant={st[1]}>{st[0]}</Badge>{e.installment_count&&e.installment_count>1&&<Badge variant="outline">{e.installment_number}/{e.installment_count}</Badge>}</div><p className="text-xs text-muted-foreground mt-1">Vence {format(new Date(e.due_date+"T12:00:00"),"dd 'de' MMMM",{locale:ptBR})} · {e.supplier||"Sem fornecedor"} · {e.category||"Sem categoria"} · {e.cost_center||"Sem centro"}</p>{e.paid_amount>0&&<p className="text-xs mt-1">Pago {money(e.paid_amount)} · Saldo {money(balance)}</p>}</div><div className="font-bold text-destructive">{money(e.amount)}</div>{canManage&&<div className="flex gap-1">{!["paid","cancelled"].includes(e.status)&&<Button size="sm" onClick={()=>{setPaying(e);setPayment({...payment,amount:String(balance)})}}>Pagar</Button>}{(e.status!=="paid"||isOwner)&&<Button size="icon" variant="ghost" onClick={()=>openEdit(e)}><Pencil className="h-4 w-4"/></Button>}{isOwner&&<Button size="icon" variant="ghost" onClick={()=>remove(e)}><Trash2 className="h-4 w-4"/></Button>}</div>}</div>})}</div>}</CardContent></Card>
+ </main>
+ <Dialog open={!!paying} onOpenChange={v=>!v&&setPaying(null)}><DialogContent><DialogHeader><DialogTitle>Registrar pagamento</DialogTitle></DialogHeader><div className="grid grid-cols-2 gap-3"><PayField label="Data" k="date" type="date" p={payment} set={setPayment}/><PayField label="Valor da dívida" k="amount" type="number" p={payment} set={setPayment}/><PayField label="Juros" k="interest" type="number" p={payment} set={setPayment}/><PayField label="Multa" k="fine" type="number" p={payment} set={setPayment}/><PayField label="Desconto" k="discount" type="number" p={payment} set={setPayment}/><div className="space-y-1"><Label>Forma de pagamento</Label><Select value={payment.method} onValueChange={v=>setPayment({...payment,method:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["pix","dinheiro","boleto","transferência","cartão"].map(x=><SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent></Select></div><div className="col-span-2"><PayField label="Conta financeira" k="account" p={payment} set={setPayment}/></div><div className="col-span-2"><PayField label="Observações" k="notes" p={payment} set={setPayment}/></div><p className="col-span-2 text-sm font-medium">Saída realizada: {money(Number(payment.amount||0)+Number(payment.interest||0)+Number(payment.fine||0)-Number(payment.discount||0))}</p></div><DialogFooter><Button variant="outline" onClick={()=>setPaying(null)}>Cancelar</Button><Button disabled={busy} onClick={doPay}>Confirmar pagamento</Button></DialogFooter></DialogContent></Dialog>
+ </div>
 }
-
-export default function Expenses() {
-  const { profile } = useAuth();
-  const qc = useQueryClient();
-
-  useEffect(() => {
-    document.title = "Despesas | Beauty Core";
-  }, []);
-
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("Outros");
-  const [notes, setNotes] = useState("");
-  const [date, setDate] = useState<Date>(new Date());
-  const [submitting, setSubmitting] = useState(false);
-  const [recurring, setRecurring] = useState(false);
-  const [frequency, setFrequency] = useState("monthly");
-  const [endMode, setEndMode] = useState<"never" | "date" | "count">("never");
-  const [endDate, setEndDate] = useState("");
-  const [maxOccurrences, setMaxOccurrences] = useState("");
-  const [recurringFilter, setRecurringFilter] = useState<"all" | "recurring" | "single">("all");
-
-  const { data: expenses } = useQuery<Expense[]>({
-    queryKey: ["expenses", profile?.id],
-    queryFn: async () => {
-      if (!profile?.id) return [];
-      const { data } = await supabase
-        .from("expenses")
-        .select("*")
-        .eq("establishment_id", profile.id)
-        .is("deleted_at", null)
-        .order("expense_date", { ascending: false });
-      return (data ?? []) as Expense[];
-    },
-    enabled: !!profile?.id,
-  });
-
-  const filteredExpenses = useMemo(() => {
-    if (recurringFilter === "recurring") return (expenses ?? []).filter((e) => e.recurring_plan_id);
-    if (recurringFilter === "single") return (expenses ?? []).filter((e) => !e.recurring_plan_id);
-    return expenses ?? [];
-  }, [expenses, recurringFilter]);
-
-  const monthTotal = useMemo(() => {
-    if (!expenses) return 0;
-    const now = new Date();
-    return expenses
-      .filter((e) => {
-        const d = new Date(e.expense_date);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      })
-      .reduce((sum, e) => sum + Number(e.amount), 0);
-  }, [expenses]);
-
-  const total = useMemo(
-    () => (filteredExpenses ?? []).reduce((s, e) => s + Number(e.amount), 0),
-    [filteredExpenses]
-  );
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profile?.id) return;
-    if (!description || !amount) {
-      toast.error("Preencha descrição e valor.");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const payload = {
-        description,
-        amount: Number(amount),
-        category,
-        notes: notes || null,
-      };
-      const { error } = recurring
-        ? await supabase.rpc("create_financial_recurrence" as never, {
-            p_tenant_id: profile.id,
-            p_tipo: "payable",
-            p_frequency: frequency,
-            p_start_date: format(date, "yyyy-MM-dd"),
-            p_end_date: endMode === "date" && endDate ? endDate : null,
-            p_max_occurrences: endMode === "count" && maxOccurrences ? Number(maxOccurrences) : null,
-            p_template: payload,
-            p_generate_until: endMode === "never" ? format(new Date(date.getFullYear() + 1, date.getMonth(), date.getDate()), "yyyy-MM-dd") : null,
-          } as never)
-        : await supabase.from("expenses").insert({
-            establishment_id: profile.id,
-            ...payload,
-            expense_date: date.toISOString(),
-            status: "confirmed",
-          });
-      if (error) throw error;
-      toast.success("Despesa registrada!");
-      setDescription("");
-      setAmount("");
-      setCategory("Outros");
-      setNotes("");
-      setDate(new Date());
-      setRecurring(false);
-      setEndMode("never");
-      setEndDate("");
-      setMaxOccurrences("");
-      qc.invalidateQueries({ queryKey: ["expenses", profile.id] });
-    } catch (err: any) {
-      toast.error(err?.message ?? "Erro ao salvar.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const onDelete = async (item: Expense) => {
-    const future = item.recurring_plan_id && confirm("OK: excluir esta e todas as próximas ocorrências. Cancelar: excluir somente esta ocorrência.");
-    const query = future
-      ? supabase.from("expenses").update({ deleted_at: new Date().toISOString() }).eq("recurring_plan_id", item.recurring_plan_id).gte("expense_date", item.expense_date)
-      : supabase.from("expenses").update({ deleted_at: new Date().toISOString() }).eq("id", item.id);
-    const { error } = await query;
-    if (error) return toast.error(error.message);
-    toast.success("Despesa excluída.");
-    qc.invalidateQueries({ queryKey: ["expenses", profile?.id] });
-  };
-
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-6">
-          <h1 className="text-2xl font-bold">Despesas</h1>
-          <p className="text-muted-foreground">Controle todos os custos do seu salão</p>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-6 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total no mês</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <TrendingDown className="h-5 w-5 text-destructive" />
-                <span className="text-2xl font-bold">R$ {monthTotal.toFixed(2)}</span>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total geral</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <span className="text-2xl font-bold">R$ {total.toFixed(2)}</span>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Plus className="h-5 w-5" /> Nova despesa</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2 md:col-span-2">
-                <Label>Descrição</Label>
-                <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex.: Conta de luz" />
-              </div>
-              <div className="space-y-2">
-                <Label>Valor (R$)</Label>
-                <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" />
-              </div>
-              <div className="space-y-2">
-                <Label>Categoria</Label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>{recurring ? "Data inicial" : "Data"}</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button type="button" variant="outline" className={cn("justify-start", !date && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date ? format(date, "dd/MM/yyyy") : "Escolher"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus className="p-3 pointer-events-auto" />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="md:col-span-2 rounded-md border p-3 space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <Label htmlFor="recurring-expense">Lançamento recorrente</Label>
-                  <Switch id="recurring-expense" checked={recurring} onCheckedChange={setRecurring} />
-                </div>
-                {recurring && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="space-y-2"><Label>Frequência</Label><Select value={frequency} onValueChange={setFrequency}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{RECURRENCE_FREQUENCIES.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent></Select></div>
-                    <div className="space-y-2"><Label>Encerramento</Label><Select value={endMode} onValueChange={(v: any) => setEndMode(v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="never">Recorrência infinita</SelectItem><SelectItem value="date">Até uma data</SelectItem><SelectItem value="count">Quantidade</SelectItem></SelectContent></Select></div>
-                    {endMode === "date" && <div className="space-y-2"><Label>Data final</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>}
-                    {endMode === "count" && <div className="space-y-2"><Label>Gerar ocorrências</Label><Input type="number" min="1" placeholder="12, 24, 60..." value={maxOccurrences} onChange={(e) => setMaxOccurrences(e.target.value)} /></div>}
-                  </div>
-                )}
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Observações</Label>
-                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-              </div>
-              <div className="md:col-span-2">
-                <Button type="submit" disabled={submitting}>
-                  {submitting ? "Salvando..." : "Registrar despesa"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between gap-3"><span>Histórico</span><Select value={recurringFilter} onValueChange={(v: any) => setRecurringFilter(v)}><SelectTrigger className="w-[210px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas</SelectItem><SelectItem value="recurring">Apenas recorrentes</SelectItem><SelectItem value="single">Apenas não recorrentes</SelectItem></SelectContent></Select></CardTitle>
-          </CardHeader>
-          <CardContent>
-            {filteredExpenses.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhuma despesa registrada ainda.</p>
-            ) : (
-              <div className="space-y-2">
-                {filteredExpenses.map((e) => (
-                  <div key={e.id} className="flex items-center justify-between gap-3 rounded-md border p-3 hover:bg-muted/40 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium truncate">{e.description}</span>
-                        {e.category && <Badge variant="secondary">{e.category}</Badge>}
-                        {e.recurring_plan_id && <Badge variant="outline" className="gap-1"><Repeat className="h-3 w-3" /> Recorrente</Badge>}
-                        {e.status === "pending" && <Badge variant="outline">Pendente</Badge>}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {format(new Date(e.expense_date), "dd 'de' MMM yyyy", { locale: ptBR })}
-                        {e.notes && ` • ${e.notes}`}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-destructive">R$ {Number(e.amount).toFixed(2)}</div>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => onDelete(e)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </main>
-    </div>
-  );
-}
+function Metric({title,value,icon:Icon}:any){return <Card><CardContent className="pt-5 flex justify-between"><div><p className="text-xs text-muted-foreground">{title}</p><p className="text-xl font-bold mt-1">{value}</p></div><Icon className="h-5 w-5 text-primary"/></CardContent></Card>}
+function PayField({label,k,p,set,type="text"}:any){return <div className="space-y-1"><Label>{label}</Label><Input type={type} step={type==="number"?"0.01":undefined} value={p[k]} onChange={e=>set({...p,[k]:e.target.value})}/></div>}
