@@ -56,17 +56,21 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const { data: profile } = await admin
+    const { data: profile, error: profileError } = await admin
       .from('profiles').select('id, business_name')
       .eq('user_id', claims.claims.sub).maybeSingle();
+    if (profileError) throw profileError;
     if (!profile) throw new Error('Profile não encontrado');
 
-    const { data: plan } = await admin
+    const { data: plan, error: planError } = await admin
       .from('subscription_plans').select('*').eq('id', body.plan_id).maybeSingle();
+    if (planError) throw planError;
     if (!plan) throw new Error('Plano inválido');
 
-    const { data: sub } = await admin
+    const { data: sub, error: subscriptionError } = await admin
       .from('subscriptions').select('*').eq('establishment_id', profile.id).maybeSingle();
+    if (subscriptionError) throw subscriptionError;
+    if (!sub) throw new Error(`Assinatura local não encontrada para ${profile.id}`);
 
     const headers = {
       'Content-Type': 'application/json',
@@ -76,6 +80,29 @@ Deno.serve(async (req) => {
 
     // 1) Customer (create or reuse)
     let customerId = sub?.asaas_customer_id as string | undefined;
+    if (customerId) {
+      const existingResponse = await fetch(`${ASAAS_BASE}/customers/${customerId}`, { headers });
+      const existingCustomer = await existingResponse.json().catch(() => ({}));
+      if (!existingResponse.ok || (existingCustomer.externalReference && existingCustomer.externalReference !== profile.id)) {
+        console.warn('[asaas-create] Customer armazenado inválido para o estabelecimento', {
+          establishmentId: profile.id,
+          customerId,
+          externalReference: existingCustomer.externalReference,
+        });
+        customerId = undefined;
+      }
+    }
+    if (!customerId) {
+      const findResponse = await fetch(
+        `${ASAAS_BASE}/customers?externalReference=${encodeURIComponent(profile.id)}&limit=100`,
+        { headers },
+      );
+      const found = await findResponse.json().catch(() => ({}));
+      if (!findResponse.ok) throw new Error(`Asaas customer lookup: ${JSON.stringify(found)}`);
+      customerId = found.data?.find((item: { externalReference?: string }) =>
+        item.externalReference === profile.id
+      )?.id;
+    }
     if (!customerId) {
       const custRes = await fetch(`${ASAAS_BASE}/customers`, {
         method: 'POST', headers,
@@ -93,12 +120,16 @@ Deno.serve(async (req) => {
       if (!custRes.ok) throw new Error(`Asaas customer: ${JSON.stringify(custJson)}`);
       customerId = custJson.id;
     }
+    console.info('[asaas-create] Customer associado', { establishmentId: profile.id, customerId });
 
     // 2) Cancel previous subscription if exists
     if (sub?.asaas_subscription_id) {
-      await fetch(`${ASAAS_BASE}/subscriptions/${sub.asaas_subscription_id}`, {
+      const cancelResponse = await fetch(`${ASAAS_BASE}/subscriptions/${sub.asaas_subscription_id}`, {
         method: 'DELETE', headers,
-      }).catch(() => {});
+      });
+      if (!cancelResponse.ok && cancelResponse.status !== 404) {
+        throw new Error(`Falha ao cancelar assinatura anterior: HTTP ${cancelResponse.status}`);
+      }
     }
 
     // 3) Create subscription (MONTHLY)
@@ -118,6 +149,12 @@ Deno.serve(async (req) => {
     });
     const subJson = await subRes.json();
     if (!subRes.ok) throw new Error(`Asaas subscription: ${JSON.stringify(subJson)}`);
+    if (subJson.externalReference !== profile.id) {
+      throw new Error(`Asaas retornou externalReference divergente para subscription ${subJson.id}`);
+    }
+    console.info('[asaas-create] Subscription criada', {
+      establishmentId: profile.id, customerId, subscriptionId: subJson.id,
+    });
 
     // 4) Get first payment link
     const paysRes = await fetch(
@@ -125,11 +162,12 @@ Deno.serve(async (req) => {
       { headers },
     );
     const paysJson = await paysRes.json();
+    if (!paysRes.ok) throw new Error(`Asaas payments: ${JSON.stringify(paysJson)}`);
     const firstPayment = paysJson?.data?.[0];
     const paymentLink = firstPayment?.invoiceUrl ?? null;
 
     // 5) Update local subscription
-    await admin.from('subscriptions').update({
+    const { data: updated, error: updateError } = await admin.from('subscriptions').update({
       plan_id: plan.id,
       monthly_amount: plan.monthly_price,
       asaas_customer_id: customerId,
@@ -140,7 +178,11 @@ Deno.serve(async (req) => {
       billing_name: body.name,
       billing_email: body.email,
       next_billing_at: subJson.nextDueDate ? new Date(subJson.nextDueDate).toISOString() : null,
-    }).eq('establishment_id', profile.id);
+    }).eq('establishment_id', profile.id).select('id').single();
+    if (updateError || !updated) throw updateError ?? new Error('Assinatura local não atualizada');
+    console.info('[asaas-create] Associação persistida', {
+      establishmentId: profile.id, customerId, subscriptionId: subJson.id,
+    });
 
     return new Response(JSON.stringify({
       ok: true,
