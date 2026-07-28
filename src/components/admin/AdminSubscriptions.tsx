@@ -1,12 +1,41 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE } from "./shared";
 import { AlertTriangle, Clock, Sparkles } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useState } from "react";
 
 type Plan = { id: string; name: string; slug: string; monthly_price: number };
 type Profile = { id: string; business_name: string; created_at: string; plan?: string | null };
+type RawSub = SubRow & { subscription_plans?: { name: string; monthly_price?: number } | null };
+type SyncItem = {
+  status?: string;
+  payment_status?: string;
+  error?: string;
+  warnings?: string[];
+};
+type SyncResponse = {
+  ok?: boolean;
+  failed?: number;
+  results?: SyncItem[];
+  error?: string;
+};
+
+async function getFunctionErrorMessage(error: unknown) {
+  const fallback = error instanceof Error ? error.message : "Erro desconhecido ao chamar a função.";
+  const context = (error as { context?: unknown } | null)?.context;
+  if (!(context instanceof Response)) return fallback;
+  try {
+    const payload = await context.clone().json() as { error?: string; message?: string };
+    return payload.error ?? payload.message ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
 type SubRow = {
   id: string;
   establishment_id: string;
@@ -22,15 +51,17 @@ type SubRow = {
 };
 
 export default function AdminSubscriptions() {
+  const queryClient = useQueryClient();
+  const [syncingId, setSyncingId] = useState<string | null>(null);
   const subsQuery = useQuery({
     queryKey: ["admin-subscriptions-full"],
     queryFn: async () => {
       const [{ data: profiles, error: profilesError }, { data: plans, error: plansError }] = await Promise.all([
-        (supabase as any)
+        supabase
           .from("profiles")
           .select("id, business_name, created_at, plan")
           .order("created_at", { ascending: false }),
-        (supabase as any).from("subscription_plans").select("id, name, slug, monthly_price"),
+        supabase.from("subscription_plans").select("id, name, slug, monthly_price"),
       ]);
       if (profilesError) throw profilesError;
       if (plansError) throw plansError;
@@ -38,13 +69,14 @@ export default function AdminSubscriptions() {
       const plansBySlug = new Map<string, Plan>();
       (plans ?? []).forEach((p: Plan) => plansBySlug.set(p.slug, p));
 
-      const { data: subs } = await (supabase as any)
+      const { data: subs, error: subsError } = await supabase
         .from("subscriptions")
         .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, plan_id, subscription_plans!subscriptions_plan_id_fkey(name, monthly_price)")
         .order("started_at", { ascending: false });
+      if (subsError) throw subsError;
 
       const subsMap = new Map<string, SubRow>();
-      (subs ?? []).forEach((s: any) => {
+      ((subs ?? []) as RawSub[]).forEach((s) => {
         subsMap.set(s.establishment_id, {
           ...s,
           plan: s.subscription_plans,
@@ -89,6 +121,38 @@ export default function AdminSubscriptions() {
     (s) => s.trial_ends_at && new Date(s.trial_ends_at).getTime() < in7days
   );
   const overdue = all.filter((s) => s.status === "past_due");
+
+  async function syncSubscription(establishmentId: string) {
+    setSyncingId(establishmentId);
+    try {
+      const { data, error } = await supabase.functions.invoke("asaas-sync-subscriptions", {
+        body: { establishment_id: establishmentId, mode: "manual" },
+      });
+      if (error) throw new Error(await getFunctionErrorMessage(error));
+      const response = data as SyncResponse | null;
+      const result = response?.results?.[0];
+      if (response?.error || result?.error || (response?.failed ?? 0) > 0) {
+        throw new Error(result?.error ?? response?.error ?? "A sincronização retornou uma falha sem detalhes.");
+      }
+      const warning = result?.warnings?.[0];
+      if (warning) {
+        toast.warning(warning);
+      }
+      toast.success(
+        `Asaas sincronizado: ${result?.payment_status ?? "sem cobrança"} · ${result?.status ?? "sem alteração"}`,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-subscriptions-full"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-companies"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-subs"] }),
+      ]);
+    } catch (error) {
+      console.error("asaas manual sync error", error);
+      toast.error(error instanceof Error ? error.message : "Não foi possível sincronizar esta assinatura com o Asaas.");
+    } finally {
+      setSyncingId(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -138,6 +202,7 @@ export default function AdminSubscriptions() {
                   <TableHead>Início</TableHead>
                   <TableHead>Fim do trial</TableHead>
                   <TableHead>Próxima cobrança</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -157,11 +222,22 @@ export default function AdminSubscriptions() {
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(s.started_at)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(s.trial_ends_at)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(s.next_billing_at)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={syncingId === s.establishment_id}
+                        onClick={() => syncSubscription(s.establishment_id)}
+                      >
+                        <RefreshCw className={`h-3.5 w-3.5 ${syncingId === s.establishment_id ? "animate-spin" : ""}`} />
+                        {syncingId === s.establishment_id ? "Sincronizando" : "Sincronizar Asaas"}
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
                 {all.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       Nenhuma assinatura registrada ainda.
                     </TableCell>
                   </TableRow>
