@@ -4,11 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/validate-public-env.mjs",
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "test:security": "node --test tests/security-hardening.test.mjs",
+    "test:security": "node --test tests/*.test.mjs",
     "audit:asaas": "node scripts/audit-asaas-subscriptions.mjs",
     "lint": "eslint .",
     "preview": "vite preview"

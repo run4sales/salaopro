@@ -1,0 +1,3 @@
+// Supabase URL and publishable key are public client identifiers, not privileged secrets.
+export const DEFAULT_SUPABASE_URL = 'https://gikjhasawuhylrpchfqv.supabase.co';
+export const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdpa2poYXNhd3VoeWxycGNoZnF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MzkwMjgsImV4cCI6MjA5MzUxNTAyOH0.Uy7YOReRKmCtfcqtfalfa0CF7zKn14DUEAxU7I1g7Mg';

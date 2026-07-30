@@ -9,7 +9,7 @@ Configure secrets somente no gerenciador de secrets do Supabase:
 - `ASAAS_WEBHOOK_TOKEN`: valor aleatório compartilhado exclusivamente com o webhook Asaas.
 - `ALLOWED_ORIGINS`: origens exatas do frontend, separadas por vírgula, sem wildcard (por exemplo, `https://app.example.com,https://staging.example.com`).
 
-Não use variáveis `VITE_*` para secrets: elas fazem parte do bundle público. As três variáveis Supabase usadas pelo frontend (URL, project ID e publishable key) precisam existir no build. Atualmente o arquivo versionado mantém a disponibilidade; só o remova depois de configurar e validar os mesmos valores no Netlify.
+Não use variáveis `VITE_*` para secrets: elas fazem parte do bundle público. O frontend prefere os valores fornecidos pelo Netlify e usa fallback versionado apenas para URL e publishable key públicas, evitando tela branca se a configuração externa faltar. Nunca inclua `service_role` nesse fallback.
 
 ## Ordem segura
 

@@ -181,9 +181,9 @@ Não houve acesso ao Supabase hospedado, banco de produção, Asaas, Agendor, Lo
 - **Local/componente:** `.env`, histórico Git e `.gitignore`.
 - **Descrição:** a remoção do `.env` ocorreu sem comprovar que o Netlify fornecia as três variáveis `VITE_SUPABASE_*`. O build foi publicado sem configuração do Supabase e a SPA falhou antes de renderizar. Os valores restaurados são URL, project ID e chave **publicável**, destinados ao bundle; nenhum `service_role` foi incluído.
 - **Impacto:** indisponibilidade total do frontend (tela branca).
-- **Correção:** restaurada a configuração pública necessária ao build e adicionado `prebuild` que interrompe o deploy se uma variável faltar ou se a URL não for HTTPS. O validador não imprime valores.
-- **Operação:** migrar esses valores para variáveis do Netlify somente após validar preview e produção; remover novamente o arquivo apenas no mesmo deploy que comprovar a configuração externa.
-- **Teste:** `npm run build` valida a configuração antes do Vite; teste AppSec garante a presença do gate.
+- **Correção:** o cliente agora prefere as variáveis do ambiente, mas possui fallback versionado somente para URL e publishable key públicas. O frontend deixa de falhar antes da renderização quando o Netlify não injeta `VITE_*`.
+- **Operação:** manter os valores do Netlify sincronizados; o fallback existe exclusivamente para disponibilidade e nunca deve receber `service_role` ou outro segredo.
+- **Teste:** regressão isolada executa o build sem `.env` e confirma a presença do fallback público.
 - **Risco residual:** nunca adicionar secrets privilegiados a variáveis `VITE_*`, pois elas são públicas no bundle.
 
 ### SEC-011 — `SECURITY DEFINER` legado sem `search_path` explícito

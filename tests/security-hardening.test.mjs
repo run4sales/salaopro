@@ -71,14 +71,3 @@ test('client page does not print customer records to the browser console', async
   const source = await read('src/pages/Clients.tsx');
   assert.doesNotMatch(source, /console\.log/);
 });
-
-test('production build validates the required public Supabase configuration', async () => {
-  const validator = await read('scripts/validate-public-env.mjs');
-  const packageJson = JSON.parse(await read('package.json'));
-
-  assert.equal(packageJson.scripts.prebuild, 'node scripts/validate-public-env.mjs');
-  assert.match(validator, /VITE_SUPABASE_URL/);
-  assert.match(validator, /VITE_SUPABASE_PUBLISHABLE_KEY/);
-  assert.match(validator, /VITE_SUPABASE_PROJECT_ID/);
-  assert.doesNotMatch(validator, /console\.log\([^)]*values/);
-});
