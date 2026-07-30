@@ -7,7 +7,7 @@
 
 ## 1. Resumo executivo
 
-Foram identificados **12 achados**: **1 crítico, 1 alto, 5 médios, 3 baixos e 2 informativos**. O achado crítico, o alto e dois baixos foram corrigidos no código; dois médios e um baixo receberam mitigação parcial. Os demais dependem de produto, plataforma ou validação dinâmica.
+Foram identificados **12 achados**: **1 crítico, 2 altos, 5 médios, 2 baixos e 2 informativos**. O achado crítico, os dois altos e um baixo foram corrigidos no código; dois médios e um baixo receberam mitigação parcial. Os demais dependem de produto, plataforma ou validação dinâmica.
 
 O caminho de maior impacto era o webhook Asaas público operar em modo *fail-open*: se `ASAAS_WEBHOOK_TOKEN` não estivesse configurado, qualquer origem poderia enviar um evento com identificadores conhecidos e alterar pagamento, assinatura, plano e bloqueio de um estabelecimento usando `service_role`. O segundo caminho era o navegador disparar até três escritas no Agendor durante um cadastro, incluindo uma função explicitamente sem JWT, permitindo spam, custo externo e inserção de PII não confiável.
 
@@ -18,9 +18,9 @@ Dados potencialmente afetados: nomes, telefones, e-mails, documentos, endereços
 | Severidade | Total | Corrigido | Aberto/parcial |
 |---|---:|---:|---:|
 | Crítica | 1 | 1 | 0 |
-| Alta | 1 | 1 | 0 |
+| Alta | 2 | 2 | 0 |
 | Média | 5 | 0 | 5 |
-| Baixa | 3 | 2 | 1 |
+| Baixa | 2 | 1 | 1 |
 | Informativa | 2 | 0 | 2 |
 
 ### Limitações
@@ -174,17 +174,17 @@ Não houve acesso ao Supabase hospedado, banco de produção, Asaas, Agendor, Lo
 - **Teste:** origens não permitidas não recebem ACAO.
 - **Risco residual:** clientes não-browser ignoram CORS.
 
-### SEC-010 — Arquivo de ambiente específico estava versionado
+### SEC-010 — Configuração pública de build sem garantia no deploy
 
-- **Severidade/status/confiança:** baixa; confirmado e corrigido; alta.
+- **Severidade/status/confiança:** alta; regressão de disponibilidade confirmada e corrigida; alta.
 - **Categoria:** CWE-200.
 - **Local/componente:** `.env`, histórico Git e `.gitignore`.
-- **Descrição:** `.env` estava rastreado. Os valores observados eram URL, project ID e chave **publicável** Supabase, não `service_role`; não são tratados como segredo, porém ligam builds ao projeto e incentivam commits futuros de secrets. Valores não são reproduzidos aqui.
-- **Impacto:** exposição de metadados e risco de futuro vazamento de credencial.
-- **Correção:** removido do índice, ignorados `.env*` e criado `.env.example` sem valores reais.
-- **Histórico/rotação:** `.env` permanece no histórico. Como não foi identificado segredo privilegiado, rotação não é obrigatória por este achado; confirmar no painel que a chave é somente publishable/anon. Se houver dúvida, rotacionar. Remover do histórico apenas em procedimento coordenado.
-- **Teste:** `git ls-files .env` deve retornar vazio; secret scanner no CI.
-- **Risco residual:** chaves antigas permanecem no histórico até limpeza coordenada.
+- **Descrição:** a remoção do `.env` ocorreu sem comprovar que o Netlify fornecia as três variáveis `VITE_SUPABASE_*`. O build foi publicado sem configuração do Supabase e a SPA falhou antes de renderizar. Os valores restaurados são URL, project ID e chave **publicável**, destinados ao bundle; nenhum `service_role` foi incluído.
+- **Impacto:** indisponibilidade total do frontend (tela branca).
+- **Correção:** restaurada a configuração pública necessária ao build e adicionado `prebuild` que interrompe o deploy se uma variável faltar ou se a URL não for HTTPS. O validador não imprime valores.
+- **Operação:** migrar esses valores para variáveis do Netlify somente após validar preview e produção; remover novamente o arquivo apenas no mesmo deploy que comprovar a configuração externa.
+- **Teste:** `npm run build` valida a configuração antes do Vite; teste AppSec garante a presença do gate.
+- **Risco residual:** nunca adicionar secrets privilegiados a variáveis `VITE_*`, pois elas são públicas no bundle.
 
 ### SEC-011 — `SECURITY DEFINER` legado sem `search_path` explícito
 
