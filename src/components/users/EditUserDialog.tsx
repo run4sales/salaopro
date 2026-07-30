@@ -43,8 +43,8 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
 
   const onSave = async () => {
     if (!user) return;
-    if (password && password.length < 6) {
-      toast({ title: "Senha inválida", description: "Mínimo 6 caracteres.", variant: "destructive" });
+    if (password && password.length < 12) {
+      toast({ title: "Senha inválida", description: "Mínimo 12 caracteres.", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -100,7 +100,7 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Mínimo 12 caracteres"
             />
           </div>
 

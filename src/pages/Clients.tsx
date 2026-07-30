@@ -71,8 +71,6 @@ const Clients = () => {
     queryFn: async () => {
       if (!profile?.id) return null;
       
-      console.log('Fetching settings for establishment:', profile.id);
-      
       const { data, error } = await supabase
         .from('settings')
         .select('*')
@@ -83,7 +81,6 @@ const Clients = () => {
         console.error('Settings error:', error);
         throw error;
       }
-      console.log('Settings data:', data);
       return data;
     },
     enabled: !!profile?.id,
@@ -102,8 +99,6 @@ const Clients = () => {
     queryFn: async () => {
       if (!profile?.id) return [];
 
-      console.log('Fetching clients for establishment:', profile.id);
-
       const { data, error } = await supabase
         .from('clients')
         .select('*')
@@ -114,7 +109,6 @@ const Clients = () => {
         console.error('Clients fetch error:', error);
         throw error;
       }
-      console.log('Clients data:', data);
       return data;
     },
     enabled: !!profile?.id,
@@ -200,8 +194,6 @@ const Clients = () => {
   // Add client mutation
   const addClientMutation = useMutation({
     mutationFn: async (clientData: typeof newClient) => {
-      console.log('Adding client with data:', clientData);
-      console.log('Profile ID:', profile?.id);
       
       const insertData = {
         name: clientData.name,
@@ -215,7 +207,6 @@ const Clients = () => {
         establishment_id: profile?.id,
       };
       
-      console.log('Insert data:', insertData);
       
       const { data, error } = await supabase
         .from('clients')
@@ -227,7 +218,6 @@ const Clients = () => {
         console.error('Insert error:', error);
         throw error;
       }
-      console.log('Client added successfully:', data);
       return data;
     },
     onSuccess: () => {

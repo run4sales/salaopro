@@ -110,10 +110,10 @@ export default function Users() {
       });
       return;
     }
-    if (password.trim().length < 6) {
+    if (password.trim().length < 12) {
       toast({
         title: "Senha inválida",
-        description: "A senha deve ter pelo menos 6 caracteres.",
+        description: "A senha deve ter pelo menos 12 caracteres.",
         variant: "destructive",
       });
       return;
@@ -349,7 +349,7 @@ export default function Users() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Mínimo 12 caracteres"
             />
           </div>
 
