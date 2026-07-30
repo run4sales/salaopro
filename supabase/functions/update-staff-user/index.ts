@@ -1,12 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, isAllowedBrowserOrigin } from "../_shared/cors.ts";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const MAX_BODY_BYTES = 16 * 1024;
+const ALLOWED_ROLES = new Set(["admin", "employee"]);
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  const cors = corsHeaders(req);
+  if (!isAllowedBrowserOrigin(req)) return new Response(JSON.stringify({ error: "Origin não permitida" }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return new Response(JSON.stringify({ error: "Método não permitido" }), { status: 405, headers: { ...cors, "Content-Type": "application/json" } });
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) return new Response(JSON.stringify({ error: "Payload muito grande" }), { status: 413, headers: { ...cors, "Content-Type": "application/json" } });
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -29,10 +32,15 @@ Deno.serve(async (req) => {
       throw new Error("Usuário não autenticado");
     }
 
-    const body = await req.json();
+    const rawBody = await req.text();
+    if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) throw new Error("Payload muito grande");
+    const body = JSON.parse(rawBody);
     const { establishment_id, membership_id, email, password, name, role } = body ?? {};
 
     if (!establishment_id || !membership_id) throw new Error("Dados obrigatórios ausentes");
+    if (role !== undefined && !ALLOWED_ROLES.has(String(role))) throw new Error("Perfil inválido");
+    if (name !== undefined && String(name).trim().length > 120) throw new Error("Dados inválidos");
+    if (email !== undefined && String(email).length > 254) throw new Error("Dados inválidos");
 
     const { data: ownerProfile } = await adminClient
       .from("profiles")
@@ -66,7 +74,7 @@ Deno.serve(async (req) => {
     const normalizedEmail = email && String(email).trim() ? String(email).trim().toLowerCase() : undefined;
     if (normalizedEmail) authUpdates.email = normalizedEmail;
     if (password && String(password).length > 0) {
-      if (String(password).length < 6) throw new Error("Senha deve ter pelo menos 6 caracteres");
+      if (String(password).length < 12) throw new Error("Senha deve ter pelo menos 12 caracteres");
       authUpdates.password = String(password);
     }
     if (Object.keys(authUpdates).length > 0) {
@@ -95,12 +103,12 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ ok: true }), {
-      headers: { ...CORS, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e.message ?? "Erro" }), {
       status: 400,
-      headers: { ...CORS, "Content-Type": "application/json" },
+      headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });
