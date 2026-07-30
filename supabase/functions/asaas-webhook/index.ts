@@ -1,8 +1,52 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
+const MAX_BODY_BYTES = 256 * 1024;
+const SUPPORTED_EVENTS = new Set([
+  'PAYMENT_CONFIRMED',
+  'PAYMENT_RECEIVED',
+  'PAYMENT_OVERDUE',
+  'PAYMENT_REFUNDED',
+  'PAYMENT_DELETED',
+]);
+
+function json(payload: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+async function tokensMatch(expected: string, received: string | null) {
+  if (!received) return false;
+  const encoder = new TextEncoder();
+  const [expectedDigest, receivedDigest] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(expected)),
+    crypto.subtle.digest('SHA-256', encoder.encode(received)),
+  ]);
+  const left = new Uint8Array(expectedDigest);
+  const right = new Uint8Array(receivedDigest);
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) difference |= left[index] ^ right[index];
+  return difference === 0;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+
+  const expected = Deno.env.get('ASAAS_WEBHOOK_TOKEN')?.trim();
+  if (!expected) {
+    console.error('asaas-webhook rejected request: ASAAS_WEBHOOK_TOKEN is not configured');
+    return json({ error: 'Webhook unavailable' }, 503);
+  }
+
+  const received = req.headers.get('asaas-access-token') ?? req.headers.get('asaas-token');
+  if (!(await tokensMatch(expected, received))) return json({ error: 'Unauthorized' }, 401);
+
+  const declaredLength = Number(req.headers.get('content-length') ?? 0);
+  if (declaredLength > MAX_BODY_BYTES) return json({ error: 'Payload too large' }, 413);
 
   const admin = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -12,15 +56,11 @@ Deno.serve(async (req) => {
   let logId: string | null = null;
 
   try {
-    const expected = Deno.env.get('ASAAS_WEBHOOK_TOKEN');
-    const received = req.headers.get('asaas-access-token') ?? req.headers.get('asaas-token');
-    if (expected && received !== expected) {
-      return new Response(JSON.stringify({ error: 'Invalid webhook token' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const rawBody = await req.text();
+    if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
+      return json({ error: 'Payload too large' }, 413);
     }
-
-    const payload = await req.json();
+    const payload = JSON.parse(rawBody);
     const event: string = payload.event;
     const payment = payload.payment ?? {};
     const subscriptionId: string | undefined = typeof payment.subscription === 'string'
@@ -30,6 +70,10 @@ Deno.serve(async (req) => {
       ? payment.customer
       : payment.customer?.id;
     const paymentId: string | undefined = payment.id;
+
+    if (!SUPPORTED_EVENTS.has(event) || !paymentId || (!subscriptionId && !customerId)) {
+      return json({ error: 'Invalid webhook payload' }, 400);
+    }
 
     // Log
     const { data: log, error: logError } = await admin.from('asaas_webhook_logs').insert({
@@ -151,9 +195,7 @@ Deno.serve(async (req) => {
       .update({ processed: true, error: null }).eq('id', logId);
     if (processedError) throw processedError;
 
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ ok: true });
   } catch (e) {
     console.error('asaas-webhook error', e);
     if (logId) {
@@ -162,8 +204,6 @@ Deno.serve(async (req) => {
         error: (e as Error).message,
       }).eq('id', logId);
     }
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ error: 'Webhook processing failed' }, 500);
   }
 });

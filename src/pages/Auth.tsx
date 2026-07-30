@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const { user, signIn, signUp, resetPassword, updatePassword } = useAuth();
@@ -91,19 +90,6 @@ const Auth = () => {
     };
 
     const { error } = await signUp(signupData.email, signupData.password, signupMetadata);
-
-    if (!error) {
-      const { error: agendorError } = await supabase.functions.invoke('agendor-sync-signup-lead', {
-        body: {
-          ...signupMetadata,
-          email: signupData.email,
-        },
-      });
-
-      if (agendorError) {
-        console.error('Erro ao enviar cadastro para o Agendor:', agendorError);
-      }
-    }
 
     setIsLoading(false);
   };

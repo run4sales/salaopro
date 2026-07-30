@@ -5,4 +5,4 @@ verify_jwt = false
 [functions.asaas-sync-subscriptions]
 verify_jwt = false
 [functions.agendor-create-signup-lead]
-verify_jwt = false
+verify_jwt = true
