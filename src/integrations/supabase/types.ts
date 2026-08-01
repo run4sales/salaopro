@@ -662,13 +662,8 @@ export type Database = {
           description: string
           establishment_id: string
           expense_date: string
-          discount: number
-          fine: number
           id: string
-          interest: number
           notes: string | null
-          payment_date: string | null
-          payment_method: string | null
           recurring_plan_id: string | null
           occurrence_date: string | null
           deleted_at: string | null
@@ -682,13 +677,8 @@ export type Database = {
           description: string
           establishment_id: string
           expense_date?: string
-          discount?: number
-          fine?: number
           id?: string
-          interest?: number
           notes?: string | null
-          payment_date?: string | null
-          payment_method?: string | null
           recurring_plan_id?: string | null
           occurrence_date?: string | null
           deleted_at?: string | null
@@ -702,13 +692,8 @@ export type Database = {
           description?: string
           establishment_id?: string
           expense_date?: string
-          discount?: number
-          fine?: number
           id?: string
-          interest?: number
           notes?: string | null
-          payment_date?: string | null
-          payment_method?: string | null
           recurring_plan_id?: string | null
           occurrence_date?: string | null
           deleted_at?: string | null
@@ -1534,33 +1519,6 @@ export type Database = {
       is_establishment_member: {
         Args: { _establishment_id: string; _user_id: string }
         Returns: boolean
-      }
-      pay_expense: {
-        Args: {
-          p_account: string
-          p_amount: number
-          p_discount?: number
-          p_fine?: number
-          p_id: string
-          p_interest?: number
-          p_method: string
-          p_notes?: string | null
-          p_payment_date: string
-        }
-        Returns: Database["public"]["Tables"]["expenses"]["Row"]
-      }
-      create_financial_recurrence: {
-        Args: {
-          p_end_date?: string | null
-          p_frequency: string
-          p_generate_until?: string | null
-          p_max_occurrences?: number | null
-          p_start_date: string
-          p_template?: Json
-          p_tenant_id: string
-          p_tipo: string
-        }
-        Returns: string
       }
       recalculate_sale_commissions: {
         Args: { _establishment_id?: string }
