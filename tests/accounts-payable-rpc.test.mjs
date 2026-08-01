@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const migration = readFileSync("supabase/migrations/20260801090000_repair_pay_expense_rpc.sql", "utf8");
+const migration = readFileSync("supabase/migrations/20260801120000_canonical_pay_expense_rpc.sql", "utf8");
 const rpcArgs = ["p_id", "p_payment_date", "p_amount", "p_method", "p_account", "p_interest", "p_fine", "p_discount", "p_notes"];
 
 test("pay_expense repair removes overloads and publishes the canonical contract", () => {
@@ -19,7 +19,7 @@ test("pay_expense always settles the expense and persists payment metadata", () 
 });
 
 test("every frontend pay_expense call sends only canonical named arguments", () => {
-  for (const file of ["src/pages/AccountsPayable.tsx", "src/pages/Expenses.tsx"]) {
+  for (const file of ["src/pages/AccountsPayablePage.tsx", "src/pages/AccountsPayable.tsx", "src/pages/Expenses.tsx"]) {
     const source = readFileSync(file, "utf8");
     const call = source.match(/rpc\(["']pay_expense["'],\s*\{([\s\S]*?)\}\)/)?.[1] ?? "";
     assert.ok(call, `missing pay_expense call in ${file}`);
