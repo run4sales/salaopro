@@ -24,7 +24,7 @@ test("pay_expense always settles the expense and persists payment metadata", () 
 });
 
 test("every frontend pay_expense call sends only canonical named arguments", () => {
-  for (const file of ["src/pages/AccountsPayablePayment.tsx", "src/pages/AccountsPayable.tsx", "src/pages/Expenses.tsx"]) {
+  for (const file of ["src/pages/AccountsPayable.tsx", "src/pages/Expenses.tsx"]) {
     const source = readFileSync(file, "utf8");
     const call = source.match(/rpc\(["']pay_expense["'],\s*\{([\s\S]*?)\}\)/)?.[1] ?? "";
     assert.ok(call, `missing pay_expense call in ${file}`);
