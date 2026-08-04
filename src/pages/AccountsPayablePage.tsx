@@ -141,8 +141,9 @@ export default function Expenses() {
       setPaying(null);
       await invalidate();
       toast.success("Pagamento registrado e fluxo de caixa atualizado.");
-    } catch (error: any) { toast.error(error.message); } finally { setBusy(false); }
+    } catch (error: any) { toast.error(friendlyPaymentError(error)); } finally { setBusy(false); }
   };
+
   const remove = async (expense: Expense) => { if (!isOwner || !confirm(`Excluir “${expense.description}”? Movimentações relacionadas também serão removidas.`)) return; const { error } = await (supabase as any).rpc("delete_payable", { p_id: expense.id }); if (error) toast.error(error.message); else { toast.success("Despesa excluída."); invalidate(); } };
 
   return <div className="min-h-screen bg-background"><header className="border-b bg-card"><div className="container mx-auto px-4 py-6"><h1 className="text-2xl font-bold">Contas a Pagar</h1><p className="text-muted-foreground">Do previsto à quitação, com integração automática ao fluxo de caixa</p></div></header><main className="container mx-auto px-4 py-6 space-y-5">
