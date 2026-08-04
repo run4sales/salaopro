@@ -316,16 +316,16 @@ export type Database = {
           amount: number
           category: string | null
           created_at: string
+          deleted_at: string | null
           description: string
           entry_date: string
           entry_type: string
           establishment_id: string
           id: string
           notes: string | null
+          occurrence_date: string | null
           payment_method: string | null
           recurring_plan_id: string | null
-          occurrence_date: string | null
-          deleted_at: string | null
           source: string
           source_id: string | null
           status: string
@@ -335,16 +335,16 @@ export type Database = {
           amount: number
           category?: string | null
           created_at?: string
+          deleted_at?: string | null
           description: string
           entry_date?: string
           entry_type: string
           establishment_id: string
           id?: string
           notes?: string | null
+          occurrence_date?: string | null
           payment_method?: string | null
           recurring_plan_id?: string | null
-          occurrence_date?: string | null
-          deleted_at?: string | null
           source?: string
           source_id?: string | null
           status?: string
@@ -354,22 +354,30 @@ export type Database = {
           amount?: number
           category?: string | null
           created_at?: string
+          deleted_at?: string | null
           description?: string
           entry_date?: string
           entry_type?: string
           establishment_id?: string
           id?: string
           notes?: string | null
+          occurrence_date?: string | null
           payment_method?: string | null
           recurring_plan_id?: string | null
-          occurrence_date?: string | null
-          deleted_at?: string | null
           source?: string
           source_id?: string | null
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cash_flow_entries_recurring_plan_id_fkey"
+            columns: ["recurring_plan_id"]
+            isOneToOne: false
+            referencedRelation: "financial_recurrences"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       client_credit_transactions: {
         Row: {
@@ -659,19 +667,14 @@ export type Database = {
           amount: number
           category: string | null
           created_at: string
+          deleted_at: string | null
           description: string
           establishment_id: string
           expense_date: string
-          discount: number
-          fine: number
           id: string
-          interest: number
           notes: string | null
-          payment_date: string | null
-          payment_method: string | null
-          recurring_plan_id: string | null
           occurrence_date: string | null
-          deleted_at: string | null
+          recurring_plan_id: string | null
           status: string
           updated_at: string
         }
@@ -679,19 +682,14 @@ export type Database = {
           amount: number
           category?: string | null
           created_at?: string
+          deleted_at?: string | null
           description: string
           establishment_id: string
           expense_date?: string
-          discount?: number
-          fine?: number
           id?: string
-          interest?: number
           notes?: string | null
-          payment_date?: string | null
-          payment_method?: string | null
-          recurring_plan_id?: string | null
           occurrence_date?: string | null
-          deleted_at?: string | null
+          recurring_plan_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -699,23 +697,26 @@ export type Database = {
           amount?: number
           category?: string | null
           created_at?: string
+          deleted_at?: string | null
           description?: string
           establishment_id?: string
           expense_date?: string
-          discount?: number
-          fine?: number
           id?: string
-          interest?: number
           notes?: string | null
-          payment_date?: string | null
-          payment_method?: string | null
-          recurring_plan_id?: string | null
           occurrence_date?: string | null
-          deleted_at?: string | null
+          recurring_plan_id?: string | null
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expenses_recurring_plan_id_fkey"
+            columns: ["recurring_plan_id"]
+            isOneToOne: false
+            referencedRelation: "financial_recurrences"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       financial_recurrences: {
         Row: {
@@ -763,7 +764,15 @@ export type Database = {
           tipo?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "financial_recurrences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       goals: {
         Row: {
@@ -1117,7 +1126,6 @@ export type Database = {
         Insert: {
           active?: boolean | null
           available_online?: boolean
-          available_online?: boolean
           commission_as_assistant?: number
           commission_solo?: number
           commission_with_assistants?: number
@@ -1135,6 +1143,7 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          available_online?: boolean
           commission_as_assistant?: number
           commission_solo?: number
           commission_with_assistants?: number
@@ -1481,6 +1490,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_financial_recurrence: {
+        Args: {
+          p_end_date?: string
+          p_frequency: string
+          p_generate_until?: string
+          p_max_occurrences?: number
+          p_start_date: string
+          p_template?: Json
+          p_tenant_id: string
+          p_tipo: string
+        }
+        Returns: string
+      }
       create_public_booking: {
         Args: {
           client_name: string
@@ -1492,6 +1514,14 @@ export type Database = {
           start_time: string
         }
         Returns: string
+      }
+      financial_recurrence_step: {
+        Args: { freq: string; mult?: number }
+        Returns: string
+      }
+      generate_financial_recurrence: {
+        Args: { p_recurrence_id: string; p_until?: string }
+        Returns: number
       }
       get_my_employee_agenda: {
         Args: { _end: string; _start: string }
@@ -1534,20 +1564,6 @@ export type Database = {
       is_establishment_member: {
         Args: { _establishment_id: string; _user_id: string }
         Returns: boolean
-      }
-      pay_expense: {
-        Args: {
-          p_account: string
-          p_amount: number
-          p_discount?: number
-          p_fine?: number
-          p_id: string
-          p_interest?: number
-          p_method: string
-          p_notes?: string | null
-          p_payment_date: string
-        }
-        Returns: Database["public"]["Tables"]["expenses"]["Row"]
       }
       recalculate_sale_commissions: {
         Args: { _establishment_id?: string }
