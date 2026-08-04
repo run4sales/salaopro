@@ -125,7 +125,18 @@ export default function Expenses() {
     } catch (error: any) { toast.error(error.message); } finally { setBusy(false); }
   };
   const openEdit = (expense: Expense) => { setEditing(expense); setForm({ description: expense.description, amount: String(expense.amount), category: expense.category || "Outros", supplier: expense.supplier || "", cost_center: expense.cost_center || "Administrativo", notes: expense.notes || "", due_date: expense.due_date, competence_date: expense.competence_date || expense.due_date, installments: String(expense.installment_count || 1), recurring: false }); };
+  const friendlyPaymentError = (error: any) => {
+    const raw = String(error?.message ?? "");
+    if (/já está paga/i.test(raw)) return "Esta conta já foi paga.";
+    if (/cancelada/i.test(raw)) return "Conta cancelada não pode ser paga.";
+    if (/não encontrada/i.test(raw)) return "Conta não encontrada. Atualize a lista e tente novamente.";
+    if (/permiss/i.test(raw)) return "Você não tem permissão para registrar pagamentos.";
+    if (/maior que zero/i.test(raw)) return "Informe um valor de pagamento maior que zero.";
+    if (/schema cache|Could not find the function/i.test(raw)) return "Não foi possível registrar o pagamento agora. Tente novamente em alguns instantes.";
+    return "Não foi possível registrar o pagamento. Revise os dados e tente novamente.";
+  };
   const pay = async () => {
+
     if (!paying) return;
     setBusy(true);
     try {
@@ -141,8 +152,9 @@ export default function Expenses() {
       setPaying(null);
       await invalidate();
       toast.success("Pagamento registrado e fluxo de caixa atualizado.");
-    } catch (error: any) { toast.error(error.message); } finally { setBusy(false); }
+    } catch (error: any) { toast.error(friendlyPaymentError(error)); } finally { setBusy(false); }
   };
+
   const remove = async (expense: Expense) => { if (!isOwner || !confirm(`Excluir “${expense.description}”? Movimentações relacionadas também serão removidas.`)) return; const { error } = await (supabase as any).rpc("delete_payable", { p_id: expense.id }); if (error) toast.error(error.message); else { toast.success("Despesa excluída."); invalidate(); } };
 
   return <div className="min-h-screen bg-background"><header className="border-b bg-card"><div className="container mx-auto px-4 py-6"><h1 className="text-2xl font-bold">Contas a Pagar</h1><p className="text-muted-foreground">Do previsto à quitação, com integração automática ao fluxo de caixa</p></div></header><main className="container mx-auto px-4 py-6 space-y-5">
