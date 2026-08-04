@@ -662,50 +662,193 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_audit_logs: {
+        Row: {
+          created_at: string
+          establishment_id: string
+          expense_id: string | null
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          operation: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          establishment_id: string
+          expense_id?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          operation: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          establishment_id?: string
+          expense_id?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          operation?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_audit_logs_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          discount: number
+          establishment_id: string
+          expense_id: string
+          final_amount: number | null
+          financial_account: string | null
+          fine: number
+          id: string
+          interest: number
+          notes: string | null
+          payment_date: string
+          payment_method: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          discount?: number
+          establishment_id: string
+          expense_id: string
+          final_amount?: number | null
+          financial_account?: string | null
+          fine?: number
+          id?: string
+          interest?: number
+          notes?: string | null
+          payment_date: string
+          payment_method?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          discount?: number
+          establishment_id?: string
+          expense_id?: string
+          final_amount?: number | null
+          financial_account?: string | null
+          fine?: number
+          id?: string
+          interest?: number
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_payments_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_payments_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
+          cancelled_at: string | null
           category: string | null
+          competence_date: string | null
+          cost_center: string | null
           created_at: string
+          created_by: string | null
           deleted_at: string | null
           description: string
+          due_date: string
           establishment_id: string
           expense_date: string
           id: string
+          installment_count: number | null
+          installment_group_id: string | null
+          installment_number: number | null
           notes: string | null
           occurrence_date: string | null
+          paid_amount: number
+          paid_at: string | null
+          paid_by: string | null
           recurring_plan_id: string | null
           status: string
+          supplier: string | null
           updated_at: string
         }
         Insert: {
           amount: number
+          cancelled_at?: string | null
           category?: string | null
+          competence_date?: string | null
+          cost_center?: string | null
           created_at?: string
+          created_by?: string | null
           deleted_at?: string | null
           description: string
+          due_date?: string
           establishment_id: string
           expense_date?: string
           id?: string
+          installment_count?: number | null
+          installment_group_id?: string | null
+          installment_number?: number | null
           notes?: string | null
           occurrence_date?: string | null
+          paid_amount?: number
+          paid_at?: string | null
+          paid_by?: string | null
           recurring_plan_id?: string | null
           status?: string
+          supplier?: string | null
           updated_at?: string
         }
         Update: {
           amount?: number
+          cancelled_at?: string | null
           category?: string | null
+          competence_date?: string | null
+          cost_center?: string | null
           created_at?: string
+          created_by?: string | null
           deleted_at?: string | null
           description?: string
+          due_date?: string
           establishment_id?: string
           expense_date?: string
           id?: string
+          installment_count?: number | null
+          installment_group_id?: string | null
+          installment_number?: number | null
           notes?: string | null
           occurrence_date?: string | null
+          paid_amount?: number
+          paid_at?: string | null
+          paid_by?: string | null
           recurring_plan_id?: string | null
           status?: string
+          supplier?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1490,6 +1633,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      assert_payable_manager: {
+        Args: { p_establishment: string }
+        Returns: undefined
+      }
       create_financial_recurrence: {
         Args: {
           p_end_date?: string
@@ -1503,6 +1650,42 @@ export type Database = {
         }
         Returns: string
       }
+      create_payables: {
+        Args: { p_data: Json; p_establishment: string; p_installments?: number }
+        Returns: {
+          amount: number
+          cancelled_at: string | null
+          category: string | null
+          competence_date: string | null
+          cost_center: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string
+          due_date: string
+          establishment_id: string
+          expense_date: string
+          id: string
+          installment_count: number | null
+          installment_group_id: string | null
+          installment_number: number | null
+          notes: string | null
+          occurrence_date: string | null
+          paid_amount: number
+          paid_at: string | null
+          paid_by: string | null
+          recurring_plan_id: string | null
+          status: string
+          supplier: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "expenses"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       create_public_booking: {
         Args: {
           client_name: string
@@ -1515,6 +1698,7 @@ export type Database = {
         }
         Returns: string
       }
+      delete_payable: { Args: { p_id: string }; Returns: undefined }
       financial_recurrence_step: {
         Args: { freq: string; mult?: number }
         Returns: string
@@ -1565,6 +1749,52 @@ export type Database = {
         Args: { _establishment_id: string; _user_id: string }
         Returns: boolean
       }
+      pay_expense: {
+        Args: {
+          p_account: string
+          p_amount: number
+          p_discount?: number
+          p_fine?: number
+          p_id: string
+          p_interest?: number
+          p_method: string
+          p_notes?: string
+          p_payment_date: string
+        }
+        Returns: {
+          amount: number
+          cancelled_at: string | null
+          category: string | null
+          competence_date: string | null
+          cost_center: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string
+          due_date: string
+          establishment_id: string
+          expense_date: string
+          id: string
+          installment_count: number | null
+          installment_group_id: string | null
+          installment_number: number | null
+          notes: string | null
+          occurrence_date: string | null
+          paid_amount: number
+          paid_at: string | null
+          paid_by: string | null
+          recurring_plan_id: string | null
+          status: string
+          supplier: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "expenses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       recalculate_sale_commissions: {
         Args: { _establishment_id?: string }
         Returns: {
@@ -1588,6 +1818,42 @@ export type Database = {
       request_grace_unlock: { Args: never; Returns: Json }
       slugify: { Args: { input: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
+      update_payable: {
+        Args: { p_changes: Json; p_id: string }
+        Returns: {
+          amount: number
+          cancelled_at: string | null
+          category: string | null
+          competence_date: string | null
+          cost_center: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string
+          due_date: string
+          establishment_id: string
+          expense_date: string
+          id: string
+          installment_count: number | null
+          installment_group_id: string | null
+          installment_number: number | null
+          notes: string | null
+          occurrence_date: string | null
+          paid_amount: number
+          paid_at: string | null
+          paid_by: string | null
+          recurring_plan_id: string | null
+          status: string
+          supplier: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "expenses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       use_client_credit: {
         Args: {
           _amount: number
