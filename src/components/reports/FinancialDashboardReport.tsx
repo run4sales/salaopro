@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { KpiCard, currencyBRL } from "./KpiCard";
+import { averageTicket, countUniqueClients, fetchRealizedSales, sumCashReceived, sumCreditUsed, sumRealizedRevenue, toPeriodRange } from "@/lib/finance/revenue";
 
 type SupabaseError = { message?: string; code?: string; details?: string; hint?: string };
 type QueryIssue = { step: string; message: string; code?: string; details?: string; hint?: string };
@@ -91,8 +92,9 @@ async function runFinancialStep<T>(step: string, issues: QueryIssue[], fn: () =>
 }
 
 export function FinancialDashboardReport({ establishmentId, startDate, endDate }: Props) {
-  const startISO = useMemo(() => startDate.toISOString(), [startDate]);
-  const endISO = useMemo(() => endDate.toISOString(), [endDate]);
+  const range = useMemo(() => toPeriodRange(startDate, endDate), [startDate, endDate]);
+  const startISO = range.startISO;
+  const endISO = range.endExclusiveISO;
   const nowISO = useMemo(() => new Date().toISOString(), []);
 
   const { data, isLoading, error } = useQuery({
@@ -104,15 +106,8 @@ export function FinancialDashboardReport({ establishmentId, startDate, endDate }
 
       try {
         const sales = await runFinancialStep<SaleRow[]>("Buscando vendas realizadas", issues, async () => {
-          const { data: rows, error: salesError } = await supabase
-            .from("sales")
-            .select("id, amount, gross_amount, net_amount, paid_now, credit_used, client_id, sale_date")
-            .eq("establishment_id", establishmentId)
-            .gte("sale_date", startISO)
-            .lte("sale_date", endISO)
-            .is("deleted_at", null);
-          if (salesError) throw salesError;
-          return rows ?? [];
+          const rows = await fetchRealizedSales(establishmentId, range);
+          return rows as unknown as SaleRow[];
         }, []);
 
         const cashEntries = await runFinancialStep<CashFlowRow[]>("Buscando fluxo de caixa do período", issues, async () => {
@@ -122,7 +117,7 @@ export function FinancialDashboardReport({ establishmentId, startDate, endDate }
             .eq("establishment_id", establishmentId)
             .is("deleted_at", null)
             .gte("entry_date", startISO)
-            .lte("entry_date", endISO);
+            .lt("entry_date", endISO);
           if (cashError) throw cashError;
           return rows ?? [];
         }, []);
@@ -176,7 +171,10 @@ export function FinancialDashboardReport({ establishmentId, startDate, endDate }
           return rows ?? [];
         }, []);
 
-        const realizedRevenue = sales.reduce((total, sale) => total + asNumber(sale.paid_now ?? sale.net_amount ?? sale.amount), 0);
+        // Regra oficial: faturamento realizado = valor das vendas finalizadas.
+        const realizedRevenue = sumRealizedRevenue(sales);
+        const cashReceived = sumCashReceived(sales);
+        const creditUsed = sumCreditUsed(sales);
         const grossRevenue = sales.reduce((total, sale) => total + asNumber(sale.gross_amount ?? sale.amount), 0);
         const discounts = Math.max(0, grossRevenue - realizedRevenue);
         const realizedExpense = cashEntries
@@ -200,8 +198,8 @@ export function FinancialDashboardReport({ establishmentId, startDate, endDate }
         const forecastTotal = forecastRevenue + futureIncome;
         const realizedProfit = realizedRevenue - realizedExpense;
         const estimatedProfit = realizedRevenue + forecastTotal - realizedExpense - futureExpense;
-        const ticketAverage = sales.length ? realizedRevenue / sales.length : 0;
-        const uniqueClients = new Set(sales.map((sale) => sale.client_id).filter(Boolean)).size;
+        const ticketAverage = averageTicket(sales);
+        const uniqueClients = countUniqueClients(sales);
 
         const clientNames = new Map(clients.map((client) => [client.id, client.name ?? "—"]));
         const serviceNames = new Map(services.map((service) => [service.id, service.name ?? "—"]));
@@ -218,6 +216,8 @@ export function FinancialDashboardReport({ establishmentId, startDate, endDate }
 
         const payload = {
           realizedRevenue,
+          cashReceived,
+          creditUsed,
           grossRevenue,
           discounts,
           realizedExpense,
@@ -261,6 +261,8 @@ export function FinancialDashboardReport({ establishmentId, startDate, endDate }
 
   const dashboard = data ?? {
     realizedRevenue: 0,
+    cashReceived: 0,
+    creditUsed: 0,
     grossRevenue: 0,
     discounts: 0,
     realizedExpense: 0,
@@ -298,7 +300,7 @@ export function FinancialDashboardReport({ establishmentId, startDate, endDate }
       )}
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        <KpiCard label="Faturamento realizado" value={currencyBRL(dashboard.realizedRevenue)} icon={DollarSign} tone="positive" hint="Vendas recebidas/finalizadas" />
+        <KpiCard label="Faturamento realizado" value={currencyBRL(dashboard.realizedRevenue)} icon={DollarSign} tone="positive" hint={`${dashboard.salesCount} venda(s) finalizada(s)`} />
         <KpiCard label="Faturamento previsto" value={currencyBRL(dashboard.forecastTotal)} icon={CalendarClock} tone="accent" hint={`${dashboard.forecastCount} agendamento(s) futuro(s)`} />
         <KpiCard label="Total de despesas" value={currencyBRL(dashboard.realizedExpense + dashboard.futureExpense)} icon={ArrowDownCircle} tone="negative" hint="Pagas + previstas" />
         <KpiCard label="Lucro estimado" value={currencyBRL(dashboard.estimatedProfit)} icon={Scale} tone={dashboard.estimatedProfit >= 0 ? "positive" : "negative"} hint="Realizado + previsto - despesas" />
@@ -308,6 +310,7 @@ export function FinancialDashboardReport({ establishmentId, startDate, endDate }
         <KpiCard label="Lucro realizado" value={currencyBRL(dashboard.realizedProfit)} icon={ArrowUpCircle} tone={dashboard.realizedProfit >= 0 ? "positive" : "negative"} hint="Receita recebida - despesas pagas" />
         <KpiCard label="Ticket médio" value={currencyBRL(dashboard.ticketAverage)} icon={ShoppingCart} tone="accent" hint={`${dashboard.salesCount} venda(s)`} />
         <KpiCard label="Clientes atendidos" value={String(dashboard.uniqueClients)} icon={Users} tone="accent" hint="Clientes únicos no período" />
+        <KpiCard label="Recebido em caixa" value={currencyBRL(dashboard.cashReceived)} icon={ArrowUpCircle} tone="accent" hint={`${currencyBRL(dashboard.creditUsed)} pago com crédito`} />
         <KpiCard label="Descontos" value={currencyBRL(dashboard.discounts)} icon={ArrowDownCircle} hint="Bruto - líquido recebido" />
       </div>
 
