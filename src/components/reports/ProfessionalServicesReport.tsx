@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KpiCard, currencyBRL } from "./KpiCard";
 import { Users, Scissors, DollarSign } from "lucide-react";
+import { round2, toPeriodRange } from "@/lib/finance/revenue";
 
 interface Props {
   establishmentId: string;
@@ -14,8 +15,9 @@ interface Props {
 }
 
 export function ProfessionalServicesReport({ establishmentId, startDate, endDate }: Props) {
-  const startISO = useMemo(() => startDate.toISOString(), [startDate]);
-  const endISO = useMemo(() => endDate.toISOString(), [endDate]);
+  const range = useMemo(() => toPeriodRange(startDate, endDate), [startDate, endDate]);
+  const startISO = range.startISO;
+  const endISO = range.endExclusiveISO;
   const [filter, setFilter] = useState<string>("all");
 
   const { data, isLoading } = useQuery({
@@ -25,7 +27,7 @@ export function ProfessionalServicesReport({ establishmentId, startDate, endDate
         supabase.from("sales")
           .select("id, client_id, service_id, professional_id, amount, sale_date")
           .eq("establishment_id", establishmentId)
-          .gte("sale_date", startISO).lte("sale_date", endISO)
+          .gte("sale_date", startISO).lt("sale_date", endISO)
           .is("deleted_at", null)
           .order("sale_date", { ascending: false }),
         supabase.from("clients").select("id, name").eq("establishment_id", establishmentId),
@@ -53,6 +55,8 @@ export function ProfessionalServicesReport({ establishmentId, startDate, endDate
           service: services.get(s.service_id) ?? "—",
           client: clients.get(s.client_id) ?? "—",
           amount: Number(s.amount || 0),
+          // Valor rateado: evita multiplicar a venda pelo nº de profissionais.
+          shareAmount: round2(Number(s.amount || 0) / Math.max(proIds.length, 1)),
           proIds,
           proNames: proIds.map((id: string) => profs.get(id) ?? "—"),
         };
@@ -63,7 +67,7 @@ export function ProfessionalServicesReport({ establishmentId, startDate, endDate
         for (const pid of r.proIds) {
           const cur = totals.get(pid) ?? { name: profs.get(pid) ?? "—", qty: 0, total: 0 };
           cur.qty += 1;
-          cur.total += r.amount;
+          cur.total += r.shareAmount;
           totals.set(pid, cur);
         }
       }

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { previousPeriodRange, toPeriodRange } from "@/lib/finance/revenue";
 
 function currencyBRL(v: number) { return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
 
@@ -12,15 +13,10 @@ interface Goal { id: string; target_amount: number; current_amount: number }
 interface Service { id: string; name: string }
 
 export function FinanceMetrics({ establishmentId, startDate, endDate }: Props) {
-  const startISO = useMemo(() => new Date(startDate).toISOString(), [startDate]);
-  const endISO = useMemo(() => new Date(endDate).toISOString(), [endDate]);
-
-  const prevStart = useMemo(() => {
-    const ms = new Date(startDate).getTime();
-    const len = new Date(endDate).getTime() - ms;
-    return new Date(ms - len);
-  }, [startDate, endDate]);
-  const prevEnd = useMemo(() => new Date(startDate), [startDate]);
+  const range = useMemo(() => toPeriodRange(startDate, endDate), [startDate, endDate]);
+  const prevRange = useMemo(() => previousPeriodRange(range), [range]);
+  const startISO = range.startISO;
+  const endISO = range.endExclusiveISO;
 
   const isSameMonth = startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear();
 
@@ -31,12 +27,12 @@ export function FinanceMetrics({ establishmentId, startDate, endDate }: Props) {
         supabase
           .from("sales").select("id, client_id, service_id, amount, sale_date")
           .eq("establishment_id", establishmentId)
-          .gte("sale_date", startISO).lte("sale_date", endISO)
+          .gte("sale_date", startISO).lt("sale_date", endISO)
           .is("deleted_at", null),
         supabase
           .from("sales").select("amount")
           .eq("establishment_id", establishmentId)
-          .gte("sale_date", prevStart.toISOString()).lte("sale_date", prevEnd.toISOString())
+          .gte("sale_date", prevRange.startISO).lt("sale_date", prevRange.endExclusiveISO)
           .is("deleted_at", null),
         supabase.from("services").select("id, name").eq("establishment_id", establishmentId),
       ]);
