@@ -10,7 +10,8 @@
     "test:security": "node --test tests/security-hardening.test.mjs",
     "audit:asaas": "node scripts/audit-asaas-subscriptions.mjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:finance": "node --experimental-strip-types --test tests/finance-revenue.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

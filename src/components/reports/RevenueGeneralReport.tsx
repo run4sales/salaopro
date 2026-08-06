@@ -1,11 +1,19 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { KpiCard, currencyBRL } from "./KpiCard";
 import { DollarSign, Receipt, TrendingUp, ShoppingCart } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  averageTicket,
+  fetchRealizedSales,
+  sumCashReceived,
+  sumCreditUsed,
+  sumRealizedRevenue,
+  toPeriodRange,
+} from "@/lib/finance/revenue";
 
 interface Props {
   establishmentId: string;
@@ -14,29 +22,24 @@ interface Props {
 }
 
 export function RevenueGeneralReport({ establishmentId, startDate, endDate }: Props) {
-  const startISO = useMemo(() => startDate.toISOString(), [startDate]);
-  const endISO = useMemo(() => endDate.toISOString(), [endDate]);
+  const range = useMemo(() => toPeriodRange(startDate, endDate), [startDate, endDate]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["reports", "revenue-general", establishmentId, startISO, endISO],
+    queryKey: ["reports", "revenue-general", establishmentId, range.startISO, range.endExclusiveISO],
     queryFn: async () => {
-      const [salesRes, clientsRes, servicesRes, profsRes, salePros] = await Promise.all([
-        supabase.from("sales")
-          .select("id, client_id, service_id, professional_id, amount, sale_date, payment_method")
-          .eq("establishment_id", establishmentId)
-          .gte("sale_date", startISO).lte("sale_date", endISO)
-          .is("deleted_at", null)
-          .order("sale_date", { ascending: false }),
+      const sales = await fetchRealizedSales(establishmentId, range);
+      const [clientsRes, servicesRes, profsRes, salePros] = await Promise.all([
         supabase.from("clients").select("id, name").eq("establishment_id", establishmentId),
-        supabase.from("services").select("id, name").eq("establishment_id", establishmentId),
+        supabase.from("services").select("id, name, kind").eq("establishment_id", establishmentId),
         supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId),
         supabase.from("sale_professionals").select("sale_id, professional_id").eq("establishment_id", establishmentId),
       ]);
-      if (salesRes.error) throw salesRes.error;
-      const sales = salesRes.data ?? [];
       const clients = new Map((clientsRes.data ?? []).map((c: any) => [c.id, c.name]));
-      const services = new Map((servicesRes.data ?? []).map((s: any) => [s.id, s.name]));
+      const services = new Map((servicesRes.data ?? []).map((s: any) => [s.id, s]));
       const profs = new Map((profsRes.data ?? []).map((p: any) => [p.id, p.name]));
+
+      // Profissionais são agregados numa camada separada para nunca multiplicar
+      // o valor da venda (uma venda com 3 profissionais continua valendo 1x).
       const proBySale = new Map<string, string[]>();
       for (const sp of salePros.data ?? []) {
         const arr = proBySale.get((sp as any).sale_id) ?? [];
@@ -44,25 +47,31 @@ export function RevenueGeneralReport({ establishmentId, startDate, endDate }: Pr
         if (name) arr.push(name);
         proBySale.set((sp as any).sale_id, arr);
       }
-      const rows = sales.map((s: any) => {
-        const linkedPros = proBySale.get(s.id) ?? [];
+
+      const rows = sales.map((s) => {
+        const linked = proBySale.get(s.id) ?? [];
         const fallback = s.professional_id ? profs.get(s.professional_id) : null;
-        const proNames = linkedPros.length > 0 ? linkedPros : (fallback ? [fallback] : []);
+        const service = s.service_id ? services.get(s.service_id) : null;
         return {
           id: s.id,
           date: s.sale_date,
-          client: clients.get(s.client_id) ?? "—",
-          type: "Serviço" as const,
-          name: services.get(s.service_id) ?? "—",
-          professionals: proNames,
+          client: (s.client_id && clients.get(s.client_id)) || "—",
+          type: service?.kind === "product" ? "Produto" : "Serviço",
+          name: service?.name ?? "—",
+          professionals: linked.length > 0 ? linked : fallback ? [fallback] : [],
           payment: s.payment_method ?? "—",
           amount: Number(s.amount || 0),
         };
       });
-      const total = rows.reduce((a, r) => a + r.amount, 0);
-      const count = rows.length;
-      const ticket = count ? total / count : 0;
-      return { rows, total, count, ticket };
+
+      return {
+        rows,
+        total: sumRealizedRevenue(sales),
+        cashReceived: sumCashReceived(sales),
+        creditUsed: sumCreditUsed(sales),
+        count: sales.length,
+        ticket: averageTicket(sales),
+      };
     },
   });
 
@@ -73,8 +82,8 @@ export function RevenueGeneralReport({ establishmentId, startDate, endDate }: Pr
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard label="Faturamento" value={currencyBRL(data.total)} icon={DollarSign} tone="positive" />
-        <KpiCard label="Vendas" value={String(data.count)} icon={ShoppingCart} tone="accent" />
+        <KpiCard label="Faturamento realizado" value={currencyBRL(data.total)} icon={DollarSign} tone="positive" hint={`${data.count} venda(s) finalizada(s)`} />
+        <KpiCard label="Recebido em caixa" value={currencyBRL(data.cashReceived)} icon={ShoppingCart} tone="accent" hint={`${currencyBRL(data.creditUsed)} pago com crédito`} />
         <KpiCard label="Ticket médio" value={currencyBRL(data.ticket)} icon={TrendingUp} tone="accent" />
         <KpiCard label="Período" value={`${format(startDate, "dd/MM")} – ${format(endDate, "dd/MM")}`} icon={Receipt} />
       </div>
@@ -98,7 +107,7 @@ export function RevenueGeneralReport({ establishmentId, startDate, endDate }: Pr
             </TableHeader>
             <TableBody>
               {data.rows.map((r) => {
-                const d = new Date(r.date);
+                const d = new Date(r.date as string);
                 return (
                   <TableRow key={r.id}>
                     <TableCell>{format(d, "dd/MM/yyyy")}</TableCell>
