@@ -1,37 +1,14 @@
 import { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { KpiCard, currencyBRL } from "./KpiCard";
 import { Download, Percent, Users, Wallet } from "lucide-react";
-import { format } from "date-fns";
-
-
-type SaleRow = {
-  id: string;
-  service_id: string | null;
-  amount: number | null;
-  sale_date: string | null;
-  client_id: string | null;
-  appointment_id: string | null;
-  payment_method: string | null;
-  notes: string | null;
-};
-
-type SaleProfessionalRow = {
-  sale_id: string;
-  professional_id: string;
-  role: string | null;
-  commission_percentage: number | null;
-  commission_amount: number | null;
-};
-
-type LookupRow = { id: string; name: string | null };
-type AppointmentRow = { id: string; client_id: string | null; status: string | null; notes: string | null };
+import { fetchCommissionReport, sumCommissionBase, sumCommissions, toPeriodRange } from "@/lib/finance/revenue";
 
 interface Props {
   establishmentId: string;
@@ -39,112 +16,62 @@ interface Props {
   endDate: Date;
 }
 
+const roleLabel: Record<string, string> = {
+  solo: "Sozinho",
+  with_assistants: "Com auxiliares",
+  as_assistant: "Auxiliar",
+};
+
 export function CommissionsReport({ establishmentId, startDate, endDate }: Props) {
-  const startISO = useMemo(() => startDate.toISOString(), [startDate]);
-  const endISO = useMemo(() => endDate.toISOString(), [endDate]);
+  const range = useMemo(() => toPeriodRange(startDate, endDate), [startDate, endDate]);
   const [proFilter, setProFilter] = useState<string>("all");
   const [serviceFilter, setServiceFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["reports", "commissions", establishmentId, startISO, endISO],
-    queryFn: async () => {
-      const salesRes = await supabase.from("sales")
-        .select("id, service_id, amount, sale_date, client_id, appointment_id, payment_method, notes")
-        .eq("establishment_id", establishmentId)
-        .gte("sale_date", startISO).lte("sale_date", endISO)
-        .is("deleted_at", null);
-      if (salesRes.error) throw salesRes.error;
-      const sales = (salesRes.data ?? []) as SaleRow[];
-      const saleIds = sales.map((sale) => sale.id);
-
-      const appointmentIds = sales.map((sale) => sale.appointment_id).filter((id): id is string => Boolean(id));
-      const clientIds = Array.from(new Set(sales.map((sale) => sale.client_id).filter((id): id is string => Boolean(id))));
-
-      const [spRes, profsRes, servicesRes, clientsRes, appointmentsRes] = await Promise.all([
-        saleIds.length
-          ? supabase.from("sale_professionals")
-              .select("sale_id, professional_id, role, commission_percentage, commission_amount")
-              .in("sale_id", saleIds)
-          : Promise.resolve({ data: [], error: null }),
-        supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId),
-        supabase.from("services").select("id, name").eq("establishment_id", establishmentId),
-        clientIds.length
-          ? supabase.from("clients").select("id, name").in("id", clientIds)
-          : Promise.resolve({ data: [], error: null }),
-        appointmentIds.length
-          ? supabase.from("appointments").select("id, client_id, status, notes").in("id", appointmentIds)
-          : Promise.resolve({ data: [], error: null }),
-      ]);
-
-      const profs = new Map(((profsRes.data ?? []) as LookupRow[]).map((professional) => [professional.id, professional.name ?? "—"]));
-      const services = new Map(((servicesRes.data ?? []) as LookupRow[]).map((service) => [service.id, service.name ?? "—"]));
-      const saleMap = new Map(sales.map((sale) => [sale.id, sale]));
-      const clients = new Map(((clientsRes.data ?? []) as LookupRow[]).map((client) => [client.id, client.name ?? "Cliente não informado"]));
-      const appointments = new Map(((appointmentsRes.data ?? []) as AppointmentRow[]).map((appointment) => [appointment.id, appointment]));
-
-      const rows = ((spRes.data ?? []) as SaleProfessionalRow[]).map((sp) => {
-        const s = saleMap.get(sp.sale_id);
-        const appointment = s?.appointment_id ? appointments.get(s.appointment_id) : null;
-        const clientId = s?.client_id ?? appointment?.client_id;
-        const status = appointment?.status ?? "Pendente";
-        return {
-          id: `${sp.sale_id}-${sp.professional_id}-${sp.role}`,
-          date: s?.sale_date ?? null,
-          professionalId: sp.professional_id,
-          professional: profs.get(sp.professional_id) ?? "—",
-          client: clientId ? (clients.get(clientId) ?? "Cliente não informado") : "Cliente não informado",
-          serviceId: s?.service_id ?? "",
-          service: services.get(s?.service_id) ?? "—",
-          amount: Number(s?.amount || 0),
-          role: sp.role ?? "—",
-          percent: Number(sp.commission_percentage || 0),
-          commission: Number(sp.commission_amount || 0),
-          status,
-          paymentMethod: s?.payment_method ?? "—",
-          notes: s?.notes ?? appointment?.notes ?? "—",
-        };
-      });
-
-      const totals = new Map<string, { name: string; total: number; count: number }>();
-      for (const r of rows) {
-        const cur = totals.get(r.professionalId) ?? { name: r.professional, total: 0, count: 0 };
-        cur.total += r.commission;
-        cur.count += 1;
-        totals.set(r.professionalId, cur);
-      }
-      const totalsArr = Array.from(totals.entries()).map(([id, v]) => ({ id, ...v })).sort((a, b) => b.total - a.total);
-
-      return { rows, totals: totalsArr, profs: Array.from(profs.entries()).map(([id, name]) => ({ id, name })), services: Array.from(services.entries()).map(([id, name]) => ({ id, name })) };
-    },
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["reports", "commissions", establishmentId, range.startISO, range.endExclusiveISO],
+    queryFn: () => fetchCommissionReport(establishmentId, range),
   });
 
-  if (isLoading || !data) return <div className="text-sm text-muted-foreground py-8 text-center">Carregando…</div>;
+  if (isLoading) return <div className="text-sm text-muted-foreground py-8 text-center">Carregando…</div>;
+  if (error) return <div className="text-sm text-destructive">Erro ao carregar comissões.</div>;
+  if (!data) return null;
 
-  const filtered = data.rows.filter((r) => (proFilter === "all" || r.professionalId === proFilter)
-    && (serviceFilter === "all" || r.serviceId === serviceFilter)
-    && (statusFilter === "all" || r.status === statusFilter));
-  const totalCommission = filtered.reduce((a, r) => a + r.commission, 0);
-  const totalBase = filtered.reduce((a, r) => a + r.amount, 0);
+  const filtered = data.rows.filter((r) =>
+    (proFilter === "all" || r.professionalId === proFilter) &&
+    (serviceFilter === "all" || r.serviceId === serviceFilter) &&
+    (statusFilter === "all" || r.paymentStatus === statusFilter));
+
+  const totalCommission = sumCommissions(filtered);
+  const totalBase = sumCommissionBase(filtered);
   const avgRate = totalBase ? (totalCommission / totalBase) * 100 : 0;
 
-  const roleLabel: Record<string, string> = {
-    solo: "Sozinho",
-    with_assistants: "Com auxiliares",
-    as_assistant: "Auxiliar",
-  };
-
+  const totalsMap = new Map<string, { name: string; total: number; count: number; base: number }>();
+  for (const row of filtered) {
+    const current = totalsMap.get(row.professionalId) ?? { name: row.professional, total: 0, count: 0, base: 0 };
+    current.total += row.commission;
+    current.base += row.baseAmount;
+    current.count += 1;
+    totalsMap.set(row.professionalId, current);
+  }
+  const totals = Array.from(totalsMap.entries())
+    .map(([id, value]) => ({ id, ...value }))
+    .sort((a, b) => b.total - a.total);
 
   const exportRows = filtered.map((r) => ({
-    Profissional: r.professional,
+    Data: r.date ? format(new Date(r.date), "dd/MM/yyyy") : "—",
     Cliente: r.client,
-    Serviço: r.service,
-    "Data do atendimento ou venda": r.date ? format(new Date(r.date), "dd/MM/yyyy") : "—",
-    "Valor do serviço/venda": r.amount,
-    "Regra de comissão aplicada": roleLabel[r.role] ?? r.role,
+    Tipo: r.kind,
+    "Serviço/Produto": r.service,
+    Profissional: r.professional,
+    "Valor da venda": r.saleAmount,
+    "Profissionais na venda": r.participants,
+    "Base do profissional": r.baseAmount,
+    "Regra de comissão": roleLabel[r.role] ?? r.role,
     "Percentual de comissão": `${r.percent.toFixed(1)}%`,
     "Valor da comissão": r.commission,
-    Status: r.status,
+    "Status da venda": r.saleStatus,
+    "Status do pagamento": r.paymentStatus,
     "Forma de pagamento": r.paymentMethod,
     Observações: r.notes,
   }));
@@ -174,11 +101,14 @@ export function CommissionsReport({ establishmentId, startDate, endDate }: Props
     XLSX.writeFile(workbook, `relatorio-comissoes-${format(startDate, "yyyy-MM-dd")}-${format(endDate, "yyyy-MM-dd")}.xlsx`);
   };
 
+  const paymentStatuses = Array.from(new Set(data.rows.map((r) => r.paymentStatus)));
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <KpiCard label="Total de comissões" value={currencyBRL(totalCommission)} icon={Wallet} tone="positive" />
-        <KpiCard label="Profissionais com comissão" value={String(data.totals.length)} icon={Users} tone="accent" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard label="Comissão realizada" value={currencyBRL(totalCommission)} icon={Wallet} tone="positive" hint="Vendas finalizadas do período" />
+        <KpiCard label="Base comissionável" value={currencyBRL(totalBase)} icon={Wallet} hint="Valor rateado entre profissionais" />
+        <KpiCard label="Profissionais com comissão" value={String(totals.length)} icon={Users} tone="accent" />
         <KpiCard label="Taxa média" value={`${avgRate.toFixed(1)}%`} icon={Percent} />
       </div>
 
@@ -189,16 +119,18 @@ export function CommissionsReport({ establishmentId, startDate, endDate }: Props
             <TableRow>
               <TableHead>Profissional</TableHead>
               <TableHead className="text-right">Lançamentos</TableHead>
+              <TableHead className="text-right">Base</TableHead>
               <TableHead className="text-right">A receber</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.totals.length === 0 ? (
-              <TableRow><TableCell colSpan={3} className="text-center text-sm text-muted-foreground py-6">Sem comissões.</TableCell></TableRow>
-            ) : data.totals.map((t) => (
+            {totals.length === 0 ? (
+              <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-6">Sem comissões.</TableCell></TableRow>
+            ) : totals.map((t) => (
               <TableRow key={t.id}>
                 <TableCell className="font-medium">{t.name}</TableCell>
                 <TableCell className="text-right">{t.count}</TableCell>
+                <TableCell className="text-right">{currencyBRL(t.base)}</TableCell>
                 <TableCell className="text-right font-semibold text-emerald-600 dark:text-emerald-400">{currencyBRL(t.total)}</TableCell>
               </TableRow>
             ))}
@@ -213,69 +145,73 @@ export function CommissionsReport({ establishmentId, startDate, endDate }: Props
             <SelectTrigger className="h-8 w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os profissionais</SelectItem>
-              {data.profs.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              {data.professionals.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={serviceFilter} onValueChange={setServiceFilter}>
-            <SelectTrigger className="h-8 w-44"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os serviços</SelectItem>
-              {data.services.map((service) => <SelectItem key={service.id} value={service.id}>{service.name}</SelectItem>)}
+              {data.services.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 w-44"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os status</SelectItem>
-              {Array.from(new Set(data.rows.map((r) => r.status))).map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+              <SelectItem value="all">Todos os pagamentos</SelectItem>
+              {paymentStatuses.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button size="sm" variant="outline" onClick={exportCsv} disabled={filtered.length === 0}>
-            <Download className="mr-2 h-4 w-4" /> CSV
-          </Button>
-          <Button size="sm" variant="outline" onClick={exportXlsx} disabled={filtered.length === 0}>
-            <Download className="mr-2 h-4 w-4" /> XLSX
-          </Button>
+          <Button variant="outline" size="sm" className="h-8 gap-2" onClick={exportCsv}><Download className="h-3.5 w-3.5" /> CSV</Button>
+          <Button variant="outline" size="sm" className="h-8 gap-2" onClick={exportXlsx}><Download className="h-3.5 w-3.5" /> XLSX</Button>
         </div>
       </div>
 
       <div className="rounded-md border bg-card overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Data</TableHead>
-              <TableHead>Profissional</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Serviço</TableHead>
-              <TableHead>Papel</TableHead>
-              <TableHead className="text-right">Valor base</TableHead>
-              <TableHead className="text-right">%</TableHead>
-              <TableHead className="text-right">Comissão</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Pagamento</TableHead>
-              <TableHead>Observações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={11} className="text-center text-sm text-muted-foreground py-6">Sem lançamentos.</TableCell></TableRow>
-            ) : filtered.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>{r.date ? format(new Date(r.date), "dd/MM/yyyy") : "—"}</TableCell>
-                <TableCell className="font-medium">{r.professional}</TableCell>
-                <TableCell>{r.client}</TableCell>
-                <TableCell>{r.service}</TableCell>
-                <TableCell><Badge variant="outline">{roleLabel[r.role] ?? r.role}</Badge></TableCell>
-                <TableCell className="text-right">{currencyBRL(r.amount)}</TableCell>
-                <TableCell className="text-right">{r.percent.toFixed(1)}%</TableCell>
-                <TableCell className="text-right font-semibold text-emerald-600 dark:text-emerald-400">{currencyBRL(r.commission)}</TableCell>
-                <TableCell><Badge variant="secondary">{r.status}</Badge></TableCell>
-                <TableCell>{r.paymentMethod}</TableCell>
-                <TableCell className="max-w-56 truncate" title={r.notes}>{r.notes}</TableCell>
+        {filtered.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">Nenhuma comissão no período.</div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Serviço/Produto</TableHead>
+                <TableHead>Profissional</TableHead>
+                <TableHead className="text-right">Valor da venda</TableHead>
+                <TableHead className="text-right">Base</TableHead>
+                <TableHead className="text-right">%</TableHead>
+                <TableHead className="text-right">Comissão</TableHead>
+                <TableHead>Pagamento</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell>{r.date ? format(new Date(r.date), "dd/MM/yyyy") : "—"}</TableCell>
+                  <TableCell className="font-medium">{r.client}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">{r.kind}</Badge>
+                      <span>{r.service}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {r.professional}
+                    {r.participants > 1 && (
+                      <span className="ml-2 text-xs text-muted-foreground">({r.participants} profissionais)</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">{currencyBRL(r.saleAmount)}</TableCell>
+                  <TableCell className="text-right">{currencyBRL(r.baseAmount)}</TableCell>
+                  <TableCell className="text-right">{r.percent.toFixed(1)}%</TableCell>
+                  <TableCell className="text-right font-semibold">{currencyBRL(r.commission)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{r.paymentStatus} · {r.paymentMethod}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
     </div>
   );
