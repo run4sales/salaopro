@@ -132,7 +132,8 @@ export default function Expenses() {
       toast.success(editing ? "Despesa atualizada." : form.recurring ? "Conta recorrente mensal criada." : "Conta a pagar criada."); setEditing(null); setForm(initialForm()); invalidate();
     } catch (error: any) { toast.error(error.message); } finally { setBusy(false); }
   };
-  const openEdit = (expense: Expense) => { setEditing(expense); setForm({ description: expense.description, amount: String(expense.amount), category: expense.category || "Outros", supplier: expense.supplier || "", cost_center: expense.cost_center || "Administrativo", notes: expense.notes || "", due_date: expense.due_date, competence_date: expense.competence_date || expense.due_date, installments: String(expense.installment_count || 1), recurring: false }); };
+  // Editing always targets a single occurrence: recurring plans are never rewritten from here.
+  const openEdit = (expense: Expense) => { setEditing(expense); setForm({ description: expense.description, amount: String(expense.amount), category: expense.category || "Outros", supplier: expense.supplier || "", cost_center: expense.cost_center || "Administrativo", notes: expense.notes || "", due_date: expense.due_date, competence_date: expense.competence_date || expense.due_date, installments: String(expense.installment_count || 1), occurrences: "12", recurring: false }); };
   const friendlyPaymentError = (error: any) => {
     const raw = String(error?.message ?? "");
     if (/já está paga/i.test(raw)) return "Esta conta já foi paga.";
