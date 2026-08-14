@@ -31,8 +31,8 @@ interface Expense {
   cost_center: string | null; notes: string | null; due_date: string; competence_date: string | null; expense_date: string;
   status: string; installment_number: number | null; installment_count: number | null; recurring_plan_id: string | null;
 }
-interface FormState { description: string; amount: string; category: string; supplier: string; cost_center: string; notes: string; due_date: string; competence_date: string; installments: string; recurring: boolean }
-const initialForm = (): FormState => ({ description: "", amount: "", category: "Outros", supplier: "", cost_center: "Administrativo", notes: "", due_date: format(new Date(), "yyyy-MM-dd"), competence_date: format(new Date(), "yyyy-MM-dd"), installments: "1", recurring: false });
+interface FormState { description: string; amount: string; category: string; supplier: string; cost_center: string; notes: string; due_date: string; competence_date: string; installments: string; occurrences: string; recurring: boolean }
+const initialForm = (): FormState => ({ description: "", amount: "", category: "Outros", supplier: "", cost_center: "Administrativo", notes: "", due_date: format(new Date(), "yyyy-MM-dd"), competence_date: format(new Date(), "yyyy-MM-dd"), installments: "1", occurrences: "12", recurring: false });
 
 // Kept at module scope: defining this component inside Expenses remounted every input on each render and caused focus loss.
 function FormField({ label, field, type = "text", form, onChange }: { label: string; field: Exclude<keyof FormState, "recurring">; type?: string; form: FormState; onChange: (field: Exclude<keyof FormState, "recurring">, value: string) => void }) {
