@@ -57,7 +57,13 @@ export default function Expenses() {
   const [paying, setPaying] = useState<Expense | null>(null);
   const [busy, setBusy] = useState(false);
   const [payment, setPayment] = useState({ date: format(new Date(), "yyyy-MM-dd"), amount: "", method: "pix", account: "Caixa principal", interest: "0", fine: "0", discount: "0", notes: "" });
-  const [filters, setFilters] = useState({ q: "", status: "all", category: "all", supplier: "", from: "", to: "", min: "", max: "" });
+  const [filters, setFilters] = useState({ q: "", status: "all", category: "all", supplier: "", from: format(startOfMonth(new Date()), "yyyy-MM-dd"), to: format(endOfMonth(new Date()), "yyyy-MM-dd"), min: "", max: "" });
+  const shiftMonth = (delta: number) => setFilters((current) => {
+    const base = addMonths(new Date(`${current.from || format(new Date(), "yyyy-MM-dd")}T12:00:00`), delta);
+    return { ...current, from: format(startOfMonth(base), "yyyy-MM-dd"), to: format(endOfMonth(base), "yyyy-MM-dd") };
+  });
+  const periodLabel = filters.from ? format(new Date(`${filters.from}T12:00:00`), "MMMM 'de' yyyy", { locale: ptBR }) : "Todos os períodos";
+
 
   useEffect(() => { document.title = "Contas a Pagar | Beauty Core"; }, []);
   const { data: expenses = [], isLoading, error: listError } = useQuery<Expense[]>({
