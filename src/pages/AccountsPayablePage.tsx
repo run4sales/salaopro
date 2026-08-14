@@ -116,10 +116,12 @@ export default function Expenses() {
         ? await (supabase as any).rpc("update_payable", { p_id: editing.id, p_changes: data })
         : form.recurring
           ? await (supabase as any).rpc("create_financial_recurrence", {
+              // Each occurrence is generated from the informed due date (never from today's date).
               p_tenant_id: profile.id, p_tipo: "payable", p_frequency: "monthly",
-              p_start_date: form.due_date, p_end_date: null, p_max_occurrences: null,
-              p_template: { description: form.description, amount: Number(form.amount), category: form.category, supplier: form.supplier || null, cost_center: form.cost_center || null, notes: form.notes || null },
-              p_generate_until: format(addYears(new Date(`${form.due_date}T12:00:00`), 1), "yyyy-MM-dd"),
+              p_start_date: form.due_date, p_end_date: null,
+              p_max_occurrences: Math.max(1, Number(form.occurrences) || 12),
+              p_template: { description: form.description, amount: Number(form.amount), category: form.category, supplier: form.supplier || null, cost_center: form.cost_center || null, notes: form.notes || null, competence_date: form.competence_date || form.due_date },
+              p_generate_until: null,
             })
           : await (supabase as any).rpc("create_payables", { p_establishment: profile.id, p_data: data, p_installments: Number(form.installments) });
       if (result.error && isMissingPayablesSchema(result.error)) {
