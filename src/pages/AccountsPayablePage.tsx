@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { addYears, format, isSameMonth } from "date-fns";
+import { addMonths, addYears, endOfMonth, format, isSameMonth, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AlertTriangle, CalendarClock, CheckCircle2, Pencil, Plus, Search, Trash2, WalletCards } from "lucide-react";
 import { toast } from "sonner";
