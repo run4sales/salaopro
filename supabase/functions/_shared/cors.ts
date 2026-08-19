@@ -1,6 +1,16 @@
 const ALLOWED_METHODS = 'POST, OPTIONS';
 const ALLOWED_HEADERS = 'authorization, x-client-info, apikey, content-type';
 
+// Origens sempre confiáveis: preview/publicação Lovable e desenvolvimento local.
+const DEFAULT_ORIGIN_PATTERNS: RegExp[] = [
+  /^https:\/\/([a-z0-9-]+\.)*lovable\.app$/i,
+  /^https:\/\/([a-z0-9-]+\.)*lovable\.dev$/i,
+  /^https:\/\/([a-z0-9-]+\.)*lovableproject\.com$/i,
+  /^https:\/\/([a-z0-9-]+\.)*sandbox\.lovable\.dev$/i,
+  /^http:\/\/localhost(:\d+)?$/i,
+  /^http:\/\/127\.0\.0\.1(:\d+)?$/i,
+];
+
 function configuredOrigins() {
   return new Set(
     (Deno.env.get('ALLOWED_ORIGINS') ?? '')
@@ -8,6 +18,11 @@ function configuredOrigins() {
       .map((origin) => origin.trim())
       .filter(Boolean),
   );
+}
+
+function isAllowedOrigin(origin: string) {
+  if (configuredOrigins().has(origin)) return true;
+  return DEFAULT_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
 }
 
 export function corsHeaders(req: Request) {
@@ -18,11 +33,11 @@ export function corsHeaders(req: Request) {
     'Vary': 'Origin',
   };
 
-  if (origin && configuredOrigins().has(origin)) headers['Access-Control-Allow-Origin'] = origin;
+  if (origin && isAllowedOrigin(origin)) headers['Access-Control-Allow-Origin'] = origin;
   return headers;
 }
 
 export function isAllowedBrowserOrigin(req: Request) {
   const origin = req.headers.get('Origin');
-  return !origin || configuredOrigins().has(origin);
+  return !origin || isAllowedOrigin(origin);
 }
