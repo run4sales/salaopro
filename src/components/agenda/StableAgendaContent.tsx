@@ -198,9 +198,78 @@ export default function StableAgendaContent() {
   }, [isEmployee, professionals, selectedProfessionalId]);
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["agenda", establishmentId, range.start.toISOString(), range.end.toISOString(), effectiveProfessionalId],
-    enabled: !!establishmentId && (!isEmployee || !!professionalId),
+    queryKey: ["agenda", establishmentId, range.start.toISOString(), range.end.toISOString(), effectiveProfessionalId, isEmployee],
+    enabled: isEmployee ? !!professionalId : !!establishmentId,
     queryFn: async () => {
+      // Funcionários usam a RPC segura (SECURITY DEFINER), que já aplica o isolamento
+      // por loja e por profissional, inclusive agendamentos com múltiplos profissionais.
+      if (isEmployee) {
+        const { data: employeeAgenda, error: employeeAgendaError } = await (supabase as any).rpc(
+          "get_my_employee_agenda",
+          { _start: range.start.toISOString(), _end: range.end.toISOString() }
+        );
+        if (employeeAgendaError) throw employeeAgendaError;
+
+        const rows: any[] = (employeeAgenda?.appointments ?? []) as any[];
+        const appts = rows.filter(isVisibleAppointment);
+        const serviceMap = new Map<string, any>();
+        const clientMap = new Map<string, string>();
+        const profMap = new Map<string, string>();
+
+        appts.forEach((appointment) => {
+          if (appointment.service_id) {
+            serviceMap.set(appointment.service_id, {
+              id: appointment.service_id,
+              name: appointment.service_name ?? "Serviço",
+              duration_minutes: appointment.duration_minutes ?? 30,
+              price: appointment.service_amount ?? 0,
+            });
+          }
+          if (appointment.client_id) clientMap.set(appointment.client_id, appointment.client_name ?? "Cliente");
+          if (appointment.professional_id) {
+            profMap.set(appointment.professional_id, appointment.professional_name ?? "Profissional");
+          }
+        });
+
+        const employeeProfessionalId = employeeAgenda?.professional_id ?? professionalId;
+        if (employeeProfessionalId) {
+          profMap.set(employeeProfessionalId, employeeAgenda?.professional_name ?? "Profissional");
+        }
+
+        const employeeProfessionals: Professional[] = employeeProfessionalId
+          ? [{ id: employeeProfessionalId, name: employeeAgenda?.professional_name ?? "Profissional" }]
+          : [];
+
+        const employeeEstablishmentId = employeeAgenda?.establishment_id ?? establishmentId;
+        let blocks: AppointmentBlock[] = [];
+        if (employeeEstablishmentId && employeeProfessionalId) {
+          const blocksRes = await (supabase as any)
+            .from("appointment_blocks")
+            .select("id, professional_id, start_time, end_time, reason")
+            .eq("establishment_id", employeeEstablishmentId)
+            .eq("professional_id", employeeProfessionalId)
+            .lt("start_time", range.end.toISOString())
+            .gt("end_time", range.start.toISOString())
+            .order("start_time");
+          if (blocksRes.error) {
+            console.warn("Agenda do funcionário carregada sem bloqueios:", blocksRes.error);
+          } else {
+            blocks = (blocksRes.data ?? []) as AppointmentBlock[];
+          }
+        }
+
+        return {
+          appts,
+          blocks,
+          serviceMap,
+          profMap,
+          clientMap,
+          services: [...serviceMap.values()],
+          professionals: employeeProfessionals,
+        };
+      }
+
+
       const appointmentRangeQuery = (fields: string) => supabase
         .from("appointments")
         .select(fields)
