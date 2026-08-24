@@ -36,11 +36,26 @@ var list_appointments_default = defineTool({
     const now = /* @__PURE__ */ new Date();
     const start = start_date ?? new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     const end = end_date ?? new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
-    const { data, error } = await supabaseForUser(ctx).from("appointments").select("id, start_time, end_time, status, notes, client_id, professional_id, service_id").gte("start_time", start).lt("start_time", end).order("start_time", { ascending: true }).limit(limit ?? 100);
+    const { data, error } = await supabaseForUser(ctx).from("appointments").select("id, appointment_date, duration_minutes, status, notes, client_id, professional_id, service_id").gte("appointment_date", start).lt("appointment_date", end).order("appointment_date", { ascending: true }).limit(limit ?? 100);
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    const appointments = (data ?? []).map((row) => {
+      const startTime = row.appointment_date;
+      const duration = Number(row.duration_minutes ?? 30);
+      const endTime = new Date(new Date(startTime).getTime() + duration * 6e4).toISOString();
+      return {
+        id: row.id,
+        start_time: startTime,
+        end_time: endTime,
+        status: row.status,
+        notes: row.notes,
+        client_id: row.client_id,
+        professional_id: row.professional_id,
+        service_id: row.service_id
+      };
+    });
     return {
-      content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
-      structuredContent: { appointments: data ?? [] }
+      content: [{ type: "text", text: JSON.stringify(appointments, null, 2) }],
+      structuredContent: { appointments }
     };
   }
 });
