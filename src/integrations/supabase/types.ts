@@ -1195,6 +1195,7 @@ export type Database = {
           card_machine_id: string | null
           client_id: string
           created_at: string
+          created_by_user_id: string | null
           credit_used: number
           deleted_at: string | null
           deleted_by: string | null
@@ -1220,6 +1221,7 @@ export type Database = {
           card_machine_id?: string | null
           client_id: string
           created_at?: string
+          created_by_user_id?: string | null
           credit_used?: number
           deleted_at?: string | null
           deleted_by?: string | null
@@ -1245,6 +1247,7 @@ export type Database = {
           card_machine_id?: string | null
           client_id?: string
           created_at?: string
+          created_by_user_id?: string | null
           credit_used?: number
           deleted_at?: string | null
           deleted_by?: string | null
@@ -1679,6 +1682,7 @@ export type Database = {
           card_machine_id: string | null
           client_id: string
           created_at: string
+          created_by_user_id: string | null
           credit_used: number
           deleted_at: string | null
           deleted_by: string | null
