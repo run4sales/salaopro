@@ -1,0 +1,1 @@
+ALTER TABLE public.establishment_users ADD COLUMN IF NOT EXISTS email text;
