@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { extractEdgeFunctionError } from "@/lib/edgeFunctionError";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -65,7 +66,8 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
       qc.invalidateQueries({ queryKey: ["professionals-manage"] });
       onOpenChange(false);
     } catch (e: any) {
-      toast({ title: "Erro", description: e?.message ?? "Erro ao atualizar", variant: "destructive" });
+      const msg = await extractEdgeFunctionError(e);
+      toast({ title: "Erro ao atualizar usuário", description: msg, variant: "destructive" });
     } finally {
       setSaving(false);
     }

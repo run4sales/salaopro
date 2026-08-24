@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { extractEdgeFunctionError } from "@/lib/edgeFunctionError";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -150,7 +151,7 @@ export default function Users() {
       setSelectedServices([]);
       qc.invalidateQueries({ queryKey: ["establishment-users"] });
     } catch (e: any) {
-      const msg = e?.message ?? "";
+      const msg = await extractEdgeFunctionError(e);
       if (/Limite de .* usu/i.test(msg)) {
         toast({
           title: "Limite de usuários atingido",
@@ -158,7 +159,7 @@ export default function Users() {
           variant: "destructive",
         });
       } else {
-        toast({ title: "Erro", description: msg, variant: "destructive" });
+        toast({ title: "Erro ao cadastrar funcionário", description: msg, variant: "destructive" });
       }
 
     } finally {

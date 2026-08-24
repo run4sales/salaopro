@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
+  asNumber,
   buildCommissionEntries,
+  round2,
   type CommissionEntry,
   type PeriodRange,
   type SaleLike,
@@ -138,4 +140,49 @@ export async function fetchCommissionReport(
     services: Array.from(services.entries()).map(([id, value]) => ({ id, name: value.name })),
     sales,
   };
+}
+
+export type FinanceExpense = {
+  id: string;
+  description: string | null;
+  amount: number | null;
+  category: string | null;
+  expense_date: string | null;
+  due_date: string | null;
+  status: string | null;
+  notes: string | null;
+};
+
+function toLocalYmd(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Fonte única das despesas do período.
+ * Filtros oficiais: tenant + `deleted_at IS NULL` + DATA DE VENCIMENTO
+ * (`due_date`, a data financeira do lançamento) dentro do período — nunca a
+ * data de criação. Isso mantém despesas recorrentes no mês correto.
+ */
+export async function fetchPeriodExpenses(
+  establishmentId: string,
+  start: Date,
+  end: Date,
+): Promise<FinanceExpense[]> {
+  const { data, error } = await supabase
+    .from("expenses")
+    .select("id, description, amount, category, expense_date, due_date, status, notes")
+    .eq("establishment_id", establishmentId)
+    .is("deleted_at", null)
+    .gte("due_date", toLocalYmd(start))
+    .lte("due_date", toLocalYmd(end))
+    .order("due_date", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as FinanceExpense[];
+}
+
+export function sumExpenses(expenses: FinanceExpense[]): number {
+  return round2(expenses.reduce((total, expense) => total + asNumber(expense.amount), 0));
 }

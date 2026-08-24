@@ -62,8 +62,10 @@ const Dashboard = () => {
           .lte('appointment_date', endOfDay.toISOString())
           .order('appointment_date', { ascending: true }),
         supabase.from('sales').select('amount').eq('establishment_id', profile!.id)
+          .is('deleted_at', null)
           .gte('sale_date', startOfDay.toISOString()).lte('sale_date', endOfDay.toISOString()),
         supabase.from('sales').select('amount').eq('establishment_id', profile!.id)
+          .is('deleted_at', null)
           .gte('sale_date', firstDayOfMonth.toISOString()).lte('sale_date', endOfDay.toISOString()),
         supabase.from('clients').select('id, name, last_service_date').eq('establishment_id', profile!.id),
         supabase.from('services').select('id, name, price, duration_minutes').eq('establishment_id', profile!.id),

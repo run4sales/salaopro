@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { KpiCard, currencyBRL } from "./KpiCard";
-import { averageTicket, countUniqueClients, fetchRealizedSales, sumCashReceived, sumCreditUsed, sumRealizedRevenue, toPeriodRange } from "@/lib/finance/revenue";
+import { averageTicket, CONFIRMED_CASH_STATUSES, countUniqueClients, fetchRealizedSales, sumCashReceived, sumCreditUsed, sumRealizedRevenue, toPeriodRange } from "@/lib/finance/revenue";
 
 type SupabaseError = { message?: string; code?: string; details?: string; hint?: string };
 type QueryIssue = { step: string; message: string; code?: string; details?: string; hint?: string };
@@ -50,7 +50,6 @@ interface Props {
 }
 
 const LOG_PREFIX = "[Dashboard Financeiro]";
-const CONFIRMED_CASH_STATUSES = new Set(["confirmed", "paid", "received", "completed", "concluded", "done", "pago", "recebido", "confirmado", "concluido", "concluído"]);
 const FUTURE_APPOINTMENT_STATUSES = new Set(["scheduled", "confirmed", "open", "pending", "agendado", "confirmado", "aberto", "pendente"]);
 const CANCELED_STATUSES = new Set(["canceled", "cancelled", "cancelado", "cancelada"]);
 
