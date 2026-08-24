@@ -1,11 +1,19 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { KpiCard, currencyBRL } from "./KpiCard";
 import { TrendingDown, TrendingUp, Scale } from "lucide-react";
 import { format } from "date-fns";
+import {
+  asNumber,
+  fetchPeriodExpenses,
+  fetchRealizedSales,
+  round2,
+  sumExpenses,
+  sumRealizedRevenue,
+  toPeriodRange,
+} from "@/lib/finance/revenue";
 
 interface Props {
   establishmentId: string;
@@ -13,42 +21,60 @@ interface Props {
   endDate: Date;
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  paid: "Pago",
+  pending: "Pendente",
+  overdue: "Vencido",
+  due_today: "Vence hoje",
+  cancelled: "Cancelado",
+};
+
+function statusLabel(status: string | null): string {
+  const key = String(status ?? "pending").trim().toLowerCase();
+  return STATUS_LABELS[key] ?? "Pendente";
+}
+
+function statusVariant(status: string | null): "default" | "secondary" | "destructive" | "outline" {
+  const key = String(status ?? "pending").trim().toLowerCase();
+  if (key === "paid") return "default";
+  if (key === "overdue") return "destructive";
+  if (key === "due_today") return "secondary";
+  return "outline";
+}
+
+/** due_date é `date` (yyyy-mm-dd): interpretar como dia local, sem timezone. */
+function formatDueDate(dueDate: string | null, fallback: string | null): string {
+  const raw = dueDate ?? fallback;
+  if (!raw) return "—";
+  const day = raw.slice(0, 10);
+  return format(new Date(`${day}T00:00:00`), "dd/MM/yyyy");
+}
+
 export function ExpensesReport({ establishmentId, startDate, endDate }: Props) {
-  const startISO = useMemo(() => startDate.toISOString(), [startDate]);
-  const endISO = useMemo(() => endDate.toISOString(), [endDate]);
+  const range = useMemo(() => toPeriodRange(startDate, endDate), [startDate, endDate]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["reports", "expenses", establishmentId, startISO, endISO],
+    queryKey: ["reports", "expenses", establishmentId, range.startISO, range.endExclusiveISO],
     queryFn: async () => {
-      const [expRes, salesRes] = await Promise.all([
-        supabase.from("expenses")
-          .select("id, description, amount, category, expense_date, notes")
-          .eq("establishment_id", establishmentId)
-          .gte("expense_date", startISO).lte("expense_date", endISO)
-          .order("expense_date", { ascending: false }),
-        supabase.from("sales")
-          .select("amount")
-          .eq("establishment_id", establishmentId)
-          .gte("sale_date", startISO).lte("sale_date", endISO)
-          .is("deleted_at", null),
+      // Mesma fonte de verdade dos demais relatórios:
+      // - Despesas: por data de vencimento, excluindo apagadas (soft delete).
+      // - Faturamento: mesmas vendas do Faturamento Geral / Dashboard Financeiro.
+      const [expenses, sales] = await Promise.all([
+        fetchPeriodExpenses(establishmentId, startDate, endDate),
+        fetchRealizedSales(establishmentId, range),
       ]);
-      if (expRes.error) throw expRes.error;
-      const expenses = (expRes.data ?? []).map((e: any) => ({
-        ...e,
-        amount: Number(e.amount || 0),
-        payment: (e.notes && /pix|dinheiro|cart[ãa]o|d[eé]bito|cr[eé]dito|boleto|transfer/i.test(e.notes))
-          ? e.notes
-          : "—",
-      }));
-      const totalExp = expenses.reduce((a: number, e: any) => a + e.amount, 0);
-      const totalRev = (salesRes.data ?? []).reduce((a: number, s: any) => a + Number(s.amount || 0), 0);
+
+      const totalExp = sumExpenses(expenses);
+      const totalRev = sumRealizedRevenue(sales);
+
       const byCategory = new Map<string, number>();
-      for (const e of expenses) {
-        const k = e.category ?? "Outros";
-        byCategory.set(k, (byCategory.get(k) ?? 0) + e.amount);
+      for (const expense of expenses) {
+        const key = expense.category ?? "Outros";
+        byCategory.set(key, round2((byCategory.get(key) ?? 0) + asNumber(expense.amount)));
       }
       const categories = Array.from(byCategory.entries()).sort((a, b) => b[1] - a[1]);
-      return { expenses, totalExp, totalRev, profit: totalRev - totalExp, categories };
+
+      return { expenses, totalExp, totalRev, profit: round2(totalRev - totalExp), categories };
     },
   });
 
@@ -59,7 +85,7 @@ export function ExpensesReport({ establishmentId, startDate, endDate }: Props) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <KpiCard label="Total de despesas" value={currencyBRL(data.totalExp)} icon={TrendingDown} tone="negative" />
+        <KpiCard label="Total de despesas" value={currencyBRL(data.totalExp)} icon={TrendingDown} tone="negative" hint="Por data de vencimento" />
         <KpiCard label="Faturamento no período" value={currencyBRL(data.totalRev)} icon={TrendingUp} tone="positive" />
         <KpiCard
           label={positive ? "Lucro" : "Prejuízo"}
@@ -95,23 +121,23 @@ export function ExpensesReport({ establishmentId, startDate, endDate }: Props) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Data</TableHead>
+              <TableHead>Vencimento</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead>Descrição</TableHead>
-              <TableHead>Forma de pagamento</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="text-right">Valor</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.expenses.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">Nenhuma despesa no período.</TableCell></TableRow>
-            ) : data.expenses.map((e: any) => (
-              <TableRow key={e.id}>
-                <TableCell>{format(new Date(e.expense_date), "dd/MM/yyyy")}</TableCell>
-                <TableCell><Badge variant="secondary">{e.category ?? "Outros"}</Badge></TableCell>
-                <TableCell className="font-medium">{e.description}</TableCell>
-                <TableCell className="capitalize">{e.payment}</TableCell>
-                <TableCell className="text-right font-semibold text-destructive">{currencyBRL(e.amount)}</TableCell>
+              <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">Nenhuma despesa com vencimento no período.</TableCell></TableRow>
+            ) : data.expenses.map((expense) => (
+              <TableRow key={expense.id}>
+                <TableCell className="whitespace-nowrap">{formatDueDate(expense.due_date, expense.expense_date)}</TableCell>
+                <TableCell><Badge variant="secondary">{expense.category ?? "Outros"}</Badge></TableCell>
+                <TableCell className="font-medium">{expense.description}</TableCell>
+                <TableCell><Badge variant={statusVariant(expense.status)}>{statusLabel(expense.status)}</Badge></TableCell>
+                <TableCell className="text-right font-semibold text-destructive">{currencyBRL(asNumber(expense.amount))}</TableCell>
               </TableRow>
             ))}
           </TableBody>

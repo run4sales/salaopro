@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KpiCard, currencyBRL } from "./KpiCard";
+import { CONFIRMED_CASH_STATUSES } from "@/lib/finance/revenue";
 import { ArrowDownCircle, ArrowUpCircle, Scale, TrendingUp, Plus, Repeat } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
@@ -66,13 +67,17 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
         .order("entry_date", { ascending: false });
       if (error) throw error;
       const list = rows ?? [];
-      const income = list.filter((r: any) => r.entry_type === "income").reduce((a, r: any) => a + Number(r.amount), 0);
-      const expense = list.filter((r: any) => r.entry_type === "expense").reduce((a, r: any) => a + Number(r.amount), 0);
+      // KPIs e gráficos consideram apenas lançamentos CONFIRMADOS — mesma regra
+      // do Dashboard Financeiro (pendente é previsão, não é caixa).
+      const isConfirmed = (r: any) => CONFIRMED_CASH_STATUSES.has(String(r.status ?? "").trim().toLowerCase());
+      const confirmedList = list.filter(isConfirmed);
+      const income = confirmedList.filter((r: any) => r.entry_type === "income").reduce((a, r: any) => a + Number(r.amount), 0);
+      const expense = confirmedList.filter((r: any) => r.entry_type === "expense").reduce((a, r: any) => a + Number(r.amount), 0);
       const balance = income - expense;
 
-      // Daily series
+      // Daily series (somente confirmados)
       const byDay = new Map<string, { in: number; out: number }>();
-      for (const r of list) {
+      for (const r of confirmedList) {
         const k = format(new Date(r.entry_date), "yyyy-MM-dd");
         const cur = byDay.get(k) ?? { in: 0, out: 0 };
         if (r.entry_type === "income") cur.in += Number(r.amount);
@@ -86,9 +91,9 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
         return { day: format(new Date(day), "dd/MM"), entradas: v.in, saidas: v.out, saldo: running };
       });
 
-      // Payment method breakdown (income only)
+      // Payment method breakdown (income only, confirmados)
       const byMethod = new Map<string, number>();
-      for (const r of list) {
+      for (const r of confirmedList) {
         if (r.entry_type !== "income") continue;
         const k = (r.payment_method || "outro").toString().toLowerCase();
         byMethod.set(k, (byMethod.get(k) ?? 0) + Number(r.amount));
@@ -302,13 +307,14 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
               <TableHead>Descrição</TableHead>
               <TableHead>Pagamento</TableHead>
               <TableHead>Origem</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.rows.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">Nenhuma movimentação no período.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">Nenhuma movimentação no período.</TableCell></TableRow>
             ) : data.rows.map((r: any) => {
               const isIn = r.entry_type === "income";
               return (
@@ -324,8 +330,13 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
                   <TableCell className="capitalize">{r.payment_method ?? "—"}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="capitalize">{r.source === "sale" ? "Venda" : r.source === "expense" ? "Despesa" : r.source === "recurrence" ? "Recorrência" : "Manual"}</Badge>
-                  </TableCell>
-                  <TableCell className={"text-right font-semibold " + (isIn ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+                   </TableCell>
+                   <TableCell>
+                     {CONFIRMED_CASH_STATUSES.has(String(r.status ?? "").trim().toLowerCase())
+                       ? <Badge variant="secondary">Confirmado</Badge>
+                       : <Badge variant="outline">Pendente</Badge>}
+                   </TableCell>
+                   <TableCell className={"text-right font-semibold " + (isIn ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
                     {isIn ? "+ " : "- "}{currencyBRL(Number(r.amount))}
                   </TableCell>
                   <TableCell className="text-right">

@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   averageTicket,
   buildCommissionEntries,
+  isConfirmedCashStatus,
   previousPeriodRange,
   saleCashReceived,
   sumCommissionBase,

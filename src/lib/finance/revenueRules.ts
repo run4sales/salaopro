@@ -181,3 +181,32 @@ export function sumCommissions(entries: CommissionEntry[]): number {
 export function sumCommissionBase(entries: CommissionEntry[]): number {
   return round2(entries.reduce((total, entry) => total + entry.baseAmount, 0));
 }
+
+/**
+ * Regra 6 — fluxo de caixa: somente lançamentos CONFIRMADOS representam
+ * dinheiro movimentado. Lançamentos pendentes são previsão, nunca caixa.
+ * Status ausente (vazio) é tratado como confirmado por compatibilidade com
+ * registros históricos anteriores à coluna `status`.
+ */
+export const CONFIRMED_CASH_STATUSES = new Set([
+  "confirmed",
+  "paid",
+  "received",
+  "completed",
+  "concluded",
+  "done",
+  "pago",
+  "recebido",
+  "confirmado",
+  "concluido",
+  "concluído",
+]);
+
+export function normalizeCashStatus(status: string | null | undefined): string {
+  return String(status ?? "").trim().toLowerCase();
+}
+
+export function isConfirmedCashStatus(status: string | null | undefined): boolean {
+  const normalized = normalizeCashStatus(status);
+  return normalized === "" || CONFIRMED_CASH_STATUSES.has(normalized);
+}
