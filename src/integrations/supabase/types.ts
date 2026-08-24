@@ -633,6 +633,7 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          email: string | null
           establishment_id: string
           id: string
           professional_id: string | null
@@ -643,6 +644,7 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          email?: string | null
           establishment_id: string
           id?: string
           professional_id?: string | null
@@ -653,6 +655,7 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          email?: string | null
           establishment_id?: string
           id?: string
           professional_id?: string | null
