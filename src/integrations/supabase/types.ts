@@ -210,6 +210,75 @@ export type Database = {
           },
         ]
       }
+      asaas_sync_logs: {
+        Row: {
+          asaas_customer_id: string | null
+          asaas_payment_id: string | null
+          asaas_subscription_id: string | null
+          changed: boolean
+          created_at: string
+          details: Json
+          duration_ms: number
+          error: string | null
+          establishment_id: string | null
+          id: string
+          new_status: string | null
+          payment_status: string | null
+          plan_id: string | null
+          previous_status: string | null
+          source: string
+        }
+        Insert: {
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          changed?: boolean
+          created_at?: string
+          details?: Json
+          duration_ms?: number
+          error?: string | null
+          establishment_id?: string | null
+          id?: string
+          new_status?: string | null
+          payment_status?: string | null
+          plan_id?: string | null
+          previous_status?: string | null
+          source: string
+        }
+        Update: {
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          changed?: boolean
+          created_at?: string
+          details?: Json
+          duration_ms?: number
+          error?: string | null
+          establishment_id?: string | null
+          id?: string
+          new_status?: string | null
+          payment_status?: string | null
+          plan_id?: string | null
+          previous_status?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asaas_sync_logs_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asaas_sync_logs_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       asaas_webhook_logs: {
         Row: {
           asaas_payment_id: string | null
