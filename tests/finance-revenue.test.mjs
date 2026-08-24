@@ -95,3 +95,12 @@ test("cenário 7 — dashboard e faturamento geral usam a mesma função", () =>
   assert.equal(dashboard, revenueGeneral);
   assert.equal(dashboard, 150);
 });
+
+test("cenário 8 — fluxo de caixa só considera lançamentos confirmados", () => {
+  assert.equal(isConfirmedCashStatus("confirmed"), true);
+  assert.equal(isConfirmedCashStatus(" Confirmed "), true);
+  assert.equal(isConfirmedCashStatus("pago"), true);
+  assert.equal(isConfirmedCashStatus(null), true); // registros históricos sem status
+  assert.equal(isConfirmedCashStatus("pending"), false);
+  assert.equal(isConfirmedCashStatus("pendente"), false);
+});

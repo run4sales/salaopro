@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
+  asNumber,
   buildCommissionEntries,
+  round2,
   type CommissionEntry,
   type PeriodRange,
   type SaleLike,
