@@ -15,7 +15,21 @@ const CLIENTS_PAGE_SIZE = 1000;
 const INITIAL_VISIBLE_CLIENTS = 50;
 const VISIBLE_CLIENTS_INCREMENT = 50;
 
+function isRecoverableClientsFilterError(error: any) {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  const message = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
+
+  return (
+    ["42703", "PGRST200", "PGRST204", "PGRST205"].includes(code) ||
+    message.includes("schema cache") ||
+    message.includes("does not exist") ||
+    message.includes("could not find")
+  );
+}
+
 async function fetchAllClients(establishmentId: string) {
+
   const allClients: ClientLite[] = [];
   let from = 0;
 
