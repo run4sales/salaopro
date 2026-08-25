@@ -22,7 +22,6 @@ function isRecoverableClientsFilterError(error: any) {
 
   return (
     ["42703", "PGRST200", "PGRST204", "PGRST205"].includes(code) ||
-    message.includes("deleted_at") ||
     message.includes("schema cache") ||
     message.includes("does not exist") ||
     message.includes("could not find")
@@ -30,27 +29,19 @@ function isRecoverableClientsFilterError(error: any) {
 }
 
 async function fetchAllClients(establishmentId: string) {
+
   const allClients: ClientLite[] = [];
   let from = 0;
 
   while (true) {
     const to = from + CLIENTS_PAGE_SIZE - 1;
-    const filteredRes = await supabase
+    const { data, error } = await supabase
       .from("clients")
       .select("id, name, phone")
       .eq("establishment_id", establishmentId)
-      .is("deleted_at", null)
       .order("name")
       .range(from, to);
 
-    const { data, error } = filteredRes.error && isRecoverableClientsFilterError(filteredRes.error)
-      ? await supabase
-          .from("clients")
-          .select("id, name, phone")
-          .eq("establishment_id", establishmentId)
-          .order("name")
-          .range(from, to)
-      : filteredRes;
 
     if (error) {
       throw error;
