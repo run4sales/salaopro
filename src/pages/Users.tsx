@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
+import { DEFAULT_SUPABASE_PUBLISHABLE_KEY, DEFAULT_SUPABASE_URL } from "@/integrations/supabase/public-config";
 import { extractEdgeFunctionError } from "@/lib/edgeFunctionError";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -111,10 +113,10 @@ export default function Users() {
       });
       return;
     }
-    if (password.trim().length < 12) {
+    if (password.trim().length < 6) {
       toast({
         title: "Senha inválida",
-        description: "A senha deve ter pelo menos 12 caracteres.",
+        description: "A senha deve ter pelo menos 6 caracteres.",
         variant: "destructive",
       });
       return;
@@ -123,24 +125,57 @@ export default function Users() {
 
     setSaving(true);
     try {
-      const { data: created, error } = await supabase.functions.invoke("create-staff-user", {
+      const { error } = await supabase.functions.invoke("create-staff-user", {
         body: {
           establishment_id: establishmentId,
           email: email.trim().toLowerCase(),
           password: password.trim(),
           name: name.trim(),
           role,
+          service_ids: selectedServices,
         },
       });
-      if (error) throw error;
+      if (error) {
+        const unavailable = error.name === "FunctionsFetchError" || /failed to send a request/i.test(error.message ?? "");
+        if (!unavailable) throw error;
 
-      if (created?.professional_id && selectedServices.length) {
-        const rows = selectedServices.map((service_id) => ({
-          establishment_id: establishmentId,
-          service_id,
-          professional_id: created.professional_id,
-        }));
-        await supabase.from("service_professionals").insert(rows as any);
+        // Safe availability fallback for installations where the Edge Function
+        // has not been deployed yet. A separate, non-persistent Auth client is
+        // essential: creating the employee must never replace the admin session.
+        const authClient = createClient(
+          import.meta.env.VITE_SUPABASE_URL ?? DEFAULT_SUPABASE_URL,
+          import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? DEFAULT_SUPABASE_PUBLISHABLE_KEY,
+          { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
+        );
+        const { data: signup, error: signupError } = await authClient.auth.signUp({
+          email: email.trim().toLowerCase(), password: password.trim(),
+          options: { data: { full_name: name.trim(), is_staff: true, establishment_id: establishmentId, staff_role: role } },
+        });
+        if (signupError) throw signupError;
+        if (!signup.user?.id || signup.user.identities?.length === 0) throw new Error("Este e-mail já está cadastrado.");
+
+        const { error: linkError } = await (supabase as any).rpc("link_new_staff_user", {
+          p_establishment_id: establishmentId, p_user_id: signup.user.id,
+          p_email: email.trim().toLowerCase(), p_name: name.trim(), p_role: role,
+          p_service_ids: selectedServices,
+        });
+        if (linkError?.code === "PGRST202") {
+          // Compatibility while the new migration rolls out: this RPC already
+          // exists in older databases. It is used only after signUp returned a
+          // brand-new identity, never for an arbitrary existing email.
+          const { data: legacyLinked, error: legacyError } = await (supabase as any).rpc("create_establishment_user", {
+            p_establishment_id: establishmentId, p_email: email.trim().toLowerCase(),
+            p_name: name.trim(), p_password: password.trim(), p_role: role,
+          });
+          if (legacyError) throw legacyError;
+          const professionalId = legacyLinked?.professional_id;
+          if (professionalId && selectedServices.length) {
+            const { error: assignmentsError } = await supabase.from("service_professionals").insert(
+              selectedServices.map(service_id => ({ establishment_id: establishmentId, service_id, professional_id: professionalId })) as any,
+            );
+            if (assignmentsError) throw assignmentsError;
+          }
+        } else if (linkError) throw linkError;
       }
 
       toast({ title: "Usuário vinculado" });
@@ -350,7 +385,8 @@ export default function Users() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 12 caracteres"
+              placeholder="Mínimo 6 caracteres"
+              minLength={6}
             />
           </div>
 

@@ -23,17 +23,17 @@ export async function ensureComandaForAppointment(opts: {
     .maybeSingle();
   if (existing?.id) return existing.id;
 
-  // Fetch service info
-  const { data: svc } = await supabase
-    .from("services")
-    .select("name, price, commission_solo")
-    .eq("id", service_id)
-    .maybeSingle();
-
-  const unit_price = Number(svc?.price ?? 0);
-  const name = svc?.name ?? "Serviço";
-  const total = unit_price;
-  const commission_pct = Number(svc?.commission_solo ?? 0);
+  const [{ data: appointment }, { data: snapshots }] = await Promise.all([
+    supabase.from("appointments").select("service_amount").eq("id", appointment_id).maybeSingle(),
+    supabase.from("appointment_services").select("service_id, unit_price, services(name, commission_solo)").eq("appointment_id", appointment_id),
+  ]);
+  let pricedServices = (snapshots ?? []) as any[];
+  // Compatibility for appointments created before the snapshot migration.
+  if (!pricedServices.length) {
+    const { data: svc } = await supabase.from("services").select("id, name, price, commission_solo").eq("id", service_id).maybeSingle();
+    pricedServices = [{ service_id, unit_price: appointment?.service_amount ?? svc?.price ?? 0, services: svc }];
+  }
+  const total = pricedServices.reduce((sum, item) => sum + Number(item.unit_price ?? 0), 0);
 
   const { data: comanda, error } = await supabase
     .from("comandas")
@@ -49,19 +49,18 @@ export async function ensureComandaForAppointment(opts: {
     .single();
   if (error) throw error;
 
-  await supabase.from("comanda_items").insert({
-    establishment_id,
-    comanda_id: comanda.id,
-    kind: "service",
-    service_id,
-    name,
-    qty: 1,
-    unit_price,
-    total,
-    professional_id: professional_id ?? null,
-    commission_percentage: commission_pct,
-    commission_amount: total * (commission_pct / 100),
-  });
+  const { error: itemError } = await supabase.from("comanda_items").insert(pricedServices.map(item => {
+    const unitPrice = Number(item.unit_price ?? 0);
+    const commissionPct = Number(item.services?.commission_solo ?? 0);
+    return { establishment_id, comanda_id: comanda.id, kind: "service", service_id: item.service_id,
+      name: item.services?.name ?? "Serviço", qty: 1, unit_price: unitPrice, total: unitPrice,
+      professional_id: professional_id ?? null, commission_percentage: commissionPct,
+      commission_amount: unitPrice * (commissionPct / 100) };
+  }) as any);
+  if (itemError) {
+    await supabase.from("comandas").delete().eq("id", comanda.id);
+    throw itemError;
+  }
 
   return comanda.id;
 }
