@@ -90,6 +90,7 @@ Deno.serve(async (req) => {
     let establishmentId: string | null = null;
     let localSubId: string | null = null;
     let localSub: { id: string; establishment_id: string; pending_plan_id: string | null } | null = null;
+    let customerServiceSub: { id: string; establishment_id: string } | null = null;
     if (subscriptionId) {
       const { data: sub, error } = await admin.from('subscriptions')
         .select('id, establishment_id, pending_plan_id')
@@ -109,7 +110,35 @@ Deno.serve(async (req) => {
       localSubId = localSub.id;
     }
 
-    if (paymentId && !localSub) {
+    // Customer service plans share the established Asaas webhook and secrets;
+    // they intentionally do not create a second billing integration.
+    if (!localSub && subscriptionId) {
+      const { data, error } = await admin.from('customer_service_subscriptions')
+        .select('id, establishment_id').eq('asaas_subscription_id', subscriptionId).maybeSingle();
+      if (error) throw error;
+      customerServiceSub = data;
+    }
+
+    if (customerServiceSub) {
+      if (event === 'PAYMENT_CONFIRMED' || event === 'PAYMENT_RECEIVED') {
+        const startsAt = payment.dueDate ? new Date(`${payment.dueDate}T00:00:00.000Z`) : new Date();
+        const endsAt = new Date(startsAt);
+        endsAt.setUTCMonth(endsAt.getUTCMonth() + 1);
+        const { error } = await admin.rpc('open_customer_subscription_cycle', {
+          p_subscription_id: customerServiceSub.id, p_starts_at: startsAt.toISOString(),
+          p_ends_at: endsAt.toISOString(), p_asaas_payment_id: paymentId,
+        });
+        if (error) throw error;
+      } else if (event === 'PAYMENT_OVERDUE') {
+        const { error } = await admin.from('customer_service_subscriptions').update({ status: 'past_due', updated_at: new Date().toISOString() }).eq('id', customerServiceSub.id);
+        if (error) throw error;
+      } else if (event === 'PAYMENT_REFUNDED' || event === 'PAYMENT_DELETED') {
+        const { error } = await admin.from('customer_service_subscriptions').update({ status: 'cancelled', cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', customerServiceSub.id);
+        if (error) throw error;
+      }
+    }
+
+    if (paymentId && !localSub && !customerServiceSub) {
       throw new Error(
         `Local subscription not found (Asaas subscription: ${subscriptionId ?? 'missing'}, customer: ${customerId ?? 'missing'})`,
       );

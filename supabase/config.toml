@@ -6,3 +6,12 @@ verify_jwt = false
 verify_jwt = false
 [functions.agendor-create-signup-lead]
 verify_jwt = true
+
+# These functions validate the bearer token with Auth inside the handler. Keeping
+# gateway verification enabled causes valid sessions signed with asymmetric/new
+# signing keys to be rejected before the function can return its CORS/error body.
+[functions.create-staff-user]
+verify_jwt = false
+
+[functions.update-staff-user]
+verify_jwt = false
