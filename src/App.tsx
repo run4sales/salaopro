@@ -23,7 +23,7 @@ import PublicBooking from "./pages/PublicBooking";
 import AppLayout from "./components/AppLayout";
 import SuperAdmin from "./pages/SuperAdmin";
 import Attendances from "./pages/Attendances";
-import Users from "./pages/Users";
+import StaffUsers from "./pages/StaffUsers";
 import SelectPlan from "./pages/SelectPlan";
 import Checkout from "./pages/Checkout";
 import Plans from "./pages/Plans";
@@ -77,7 +77,7 @@ const App = () => (
                 <Route path="/reports" element={<RoleProtectedRoute><Reports /></RoleProtectedRoute>} />
                 <Route path="/metrics" element={<RoleProtectedRoute><Metrics /></RoleProtectedRoute>} />
                 <Route path="/settings" element={<RoleProtectedRoute><Settings /></RoleProtectedRoute>} />
-                <Route path="/users" element={<RoleProtectedRoute><Users /></RoleProtectedRoute>} />
+                <Route path="/users" element={<RoleProtectedRoute><StaffUsers /></RoleProtectedRoute>} />
                 <Route path="/escolher-plano" element={<RoleProtectedRoute><SelectPlan /></RoleProtectedRoute>} />
                 <Route path="/checkout" element={<RoleProtectedRoute><Checkout /></RoleProtectedRoute>} />
                 <Route path="/planos" element={<RoleProtectedRoute><Plans /></RoleProtectedRoute>} />
