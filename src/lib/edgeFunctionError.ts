@@ -25,7 +25,7 @@ export async function extractEdgeFunctionError(error: unknown): Promise<string> 
   }
 
   if (err?.name === "FunctionsFetchError" || /failed to send a request/i.test(err?.message ?? "")) {
-    return "Falha de comunicação com o servidor. Verifique sua conexão com a internet e tente novamente.";
+    return "O serviço de usuários não respondeu. Atualize a página e tente novamente; se persistir, contate o suporte.";
   }
 
   return err?.message ?? "Erro inesperado";

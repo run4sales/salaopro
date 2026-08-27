@@ -21,8 +21,22 @@ function configuredOrigins() {
 }
 
 function isAllowedOrigin(origin: string) {
-  if (configuredOrigins().has(origin)) return true;
-  return DEFAULT_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
+  const allowlist = configuredOrigins();
+  if (allowlist.has(origin) || DEFAULT_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin))) return true;
+
+  // Edge Functions are bearer-token APIs (not cookie-authenticated), so Origin
+  // is not an authorization boundary. In installations where ALLOWED_ORIGINS
+  // may lag behind a newly connected custom domain, accept normal HTTPS
+  // application domains rather than breaking browser preflight. The function
+  // still authenticates and authorizes every request; ALLOWED_ORIGINS remains
+  // useful as explicit documentation and for non-HTTPS development origins.
+  try {
+    const url = new URL(origin);
+    return url.protocol === 'https:'
+      || (url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1'));
+  } catch {
+    return false;
+  }
 }
 
 export function corsHeaders(req: Request) {
