@@ -111,10 +111,10 @@ export default function Users() {
       });
       return;
     }
-    if (password.trim().length < 12) {
+    if (password.trim().length < 6) {
       toast({
         title: "Senha inválida",
-        description: "A senha deve ter pelo menos 12 caracteres.",
+        description: "A senha deve ter pelo menos 6 caracteres.",
         variant: "destructive",
       });
       return;
@@ -123,25 +123,17 @@ export default function Users() {
 
     setSaving(true);
     try {
-      const { data: created, error } = await supabase.functions.invoke("create-staff-user", {
+      const { error } = await supabase.functions.invoke("create-staff-user", {
         body: {
           establishment_id: establishmentId,
           email: email.trim().toLowerCase(),
           password: password.trim(),
           name: name.trim(),
           role,
+          service_ids: selectedServices,
         },
       });
       if (error) throw error;
-
-      if (created?.professional_id && selectedServices.length) {
-        const rows = selectedServices.map((service_id) => ({
-          establishment_id: establishmentId,
-          service_id,
-          professional_id: created.professional_id,
-        }));
-        await supabase.from("service_professionals").insert(rows as any);
-      }
 
       toast({ title: "Usuário vinculado" });
       setEmail("");
@@ -350,7 +342,8 @@ export default function Users() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 12 caracteres"
+              placeholder="Mínimo 6 caracteres"
+              minLength={6}
             />
           </div>
 

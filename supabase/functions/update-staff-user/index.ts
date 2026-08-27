@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     const normalizedEmail = email && String(email).trim() ? String(email).trim().toLowerCase() : undefined;
     if (normalizedEmail) authUpdates.email = normalizedEmail;
     if (password && String(password).length > 0) {
-      if (String(password).length < 12) throw new Error("Senha deve ter pelo menos 12 caracteres");
+      if (String(password).length < 6) throw new Error("Senha deve ter pelo menos 6 caracteres");
       authUpdates.password = String(password);
     }
     if (Object.keys(authUpdates).length > 0) {

@@ -314,13 +314,25 @@ export function AppointmentFormDialog({
       appointmentId = data.id;
     }
 
-    // Replace join rows
+    // Replace join rows with immutable per-service price snapshots. When a custom
+    // total was negotiated, distribute it proportionally (the final item absorbs
+    // rounding), preserving the exact appointment total.
     await supabase.from("appointment_services").delete().eq("appointment_id", appointmentId);
     await supabase.from("appointment_professionals").delete().eq("appointment_id", appointmentId);
     if (form.service_ids.length) {
-      await supabase.from("appointment_services").insert(
-        form.service_ids.map(sid => ({ appointment_id: appointmentId!, service_id: sid, establishment_id: establishmentId }))
-      );
+      const selected = form.service_ids.map(sid => services.find(service => service.id === sid));
+      const catalogTotal = selected.reduce((sum, service) => sum + Number(service?.price ?? 0), 0);
+      const negotiatedTotal = Math.max(0, Number(form.service_amount) || 0);
+      let allocated = 0;
+      await supabase.from("appointment_services").insert(form.service_ids.map((sid, index) => {
+        const catalogPrice = Number(selected[index]?.price ?? 0);
+        const unitPrice = index === form.service_ids.length - 1
+          ? Number((negotiatedTotal - allocated).toFixed(2))
+          : Number((catalogTotal > 0 ? negotiatedTotal * catalogPrice / catalogTotal : negotiatedTotal / form.service_ids.length).toFixed(2));
+        allocated += unitPrice;
+        return { appointment_id: appointmentId!, service_id: sid, establishment_id: establishmentId,
+          unit_price: unitPrice, price_source: Math.abs(negotiatedTotal - catalogTotal) > 0.005 ? "negotiated" : "service" };
+      }) as any);
     }
     if (form.professional_ids.length) {
       await supabase.from("appointment_professionals").insert(
