@@ -135,48 +135,8 @@ export default function Users() {
           service_ids: selectedServices,
         },
       });
-      if (error) {
-        const unavailable = error.name === "FunctionsFetchError" || /failed to send a request/i.test(error.message ?? "");
-        if (!unavailable) throw error;
+      if (error) throw error;
 
-        // Safe availability fallback for installations where the Edge Function
-        // has not been deployed yet. A separate, non-persistent Auth client is
-        // essential: creating the employee must never replace the admin session.
-        const authClient = createClient(
-          import.meta.env.VITE_SUPABASE_URL ?? DEFAULT_SUPABASE_URL,
-          import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? DEFAULT_SUPABASE_PUBLISHABLE_KEY,
-          { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
-        );
-        const { data: signup, error: signupError } = await authClient.auth.signUp({
-          email: email.trim().toLowerCase(), password: password.trim(),
-          options: { data: { full_name: name.trim(), is_staff: true, establishment_id: establishmentId, staff_role: role } },
-        });
-        if (signupError) throw signupError;
-        if (!signup.user?.id || signup.user.identities?.length === 0) throw new Error("Este e-mail já está cadastrado.");
-
-        const { error: linkError } = await (supabase as any).rpc("link_new_staff_user", {
-          p_establishment_id: establishmentId, p_user_id: signup.user.id,
-          p_email: email.trim().toLowerCase(), p_name: name.trim(), p_role: role,
-          p_service_ids: selectedServices,
-        });
-        if (linkError?.code === "PGRST202") {
-          // Compatibility while the new migration rolls out: this RPC already
-          // exists in older databases. It is used only after signUp returned a
-          // brand-new identity, never for an arbitrary existing email.
-          const { data: legacyLinked, error: legacyError } = await (supabase as any).rpc("create_establishment_user", {
-            p_establishment_id: establishmentId, p_email: email.trim().toLowerCase(),
-            p_name: name.trim(), p_password: password.trim(), p_role: role,
-          });
-          if (legacyError) throw legacyError;
-          const professionalId = legacyLinked?.professional_id;
-          if (professionalId && selectedServices.length) {
-            const { error: assignmentsError } = await supabase.from("service_professionals").insert(
-              selectedServices.map(service_id => ({ establishment_id: establishmentId, service_id, professional_id: professionalId })) as any,
-            );
-            if (assignmentsError) throw assignmentsError;
-          }
-        } else if (linkError) throw linkError;
-      }
 
       toast({ title: "Usuário vinculado" });
       setEmail("");
