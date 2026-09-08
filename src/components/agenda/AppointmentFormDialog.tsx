@@ -317,28 +317,69 @@ export function AppointmentFormDialog({
     // Replace join rows with immutable per-service price snapshots. When a custom
     // total was negotiated, distribute it proportionally (the final item absorbs
     // rounding), preserving the exact appointment total.
-    await supabase.from("appointment_services").delete().eq("appointment_id", appointmentId);
-    await supabase.from("appointment_professionals").delete().eq("appointment_id", appointmentId);
+    const desiredServices: { service_id: string; unit_price: number; price_source: string }[] = [];
     if (form.service_ids.length) {
       const selected = form.service_ids.map(sid => services.find(service => service.id === sid));
       const catalogTotal = selected.reduce((sum, service) => sum + Number(service?.price ?? 0), 0);
       const negotiatedTotal = Math.max(0, Number(form.service_amount) || 0);
       let allocated = 0;
-      await supabase.from("appointment_services").insert(form.service_ids.map((sid, index) => {
+      form.service_ids.forEach((sid, index) => {
         const catalogPrice = Number(selected[index]?.price ?? 0);
         const unitPrice = index === form.service_ids.length - 1
           ? Number((negotiatedTotal - allocated).toFixed(2))
           : Number((catalogTotal > 0 ? negotiatedTotal * catalogPrice / catalogTotal : negotiatedTotal / form.service_ids.length).toFixed(2));
         allocated += unitPrice;
-        return { appointment_id: appointmentId!, service_id: sid, establishment_id: establishmentId,
-          unit_price: unitPrice, price_source: Math.abs(negotiatedTotal - catalogTotal) > 0.005 ? "negotiated" : "service" };
-      }) as any);
+        desiredServices.push({ service_id: sid, unit_price: unitPrice,
+          price_source: Math.abs(negotiatedTotal - catalogTotal) > 0.005 ? "negotiated" : "service" });
+      });
+    }
+
+    // Snapshots are immutable once a comanda exists, so only touch the rows when
+    // they actually change — and surface any rejection instead of failing silently.
+    const { data: currentServices } = await supabase
+      .from("appointment_services")
+      .select("service_id, unit_price")
+      .eq("appointment_id", appointmentId!);
+    const key = (rows: { service_id: string; unit_price: number | string }[]) =>
+      rows.map(r => `${r.service_id}:${Number(r.unit_price ?? 0).toFixed(2)}`).sort().join("|");
+    const servicesChanged = key((currentServices ?? []) as any) !== key(desiredServices);
+
+    if (servicesChanged) {
+      const { error: delErr } = await supabase.from("appointment_services").delete().eq("appointment_id", appointmentId!);
+      if (delErr) {
+        setSaving(false);
+        toast({ title: "Não foi possível alterar os serviços", description: "Este agendamento já possui uma comanda aberta. Edite os itens diretamente na comanda.", variant: "destructive" });
+        return;
+      }
+      if (desiredServices.length) {
+        const { error: insErr } = await supabase.from("appointment_services").insert(
+          desiredServices.map(row => ({ ...row, appointment_id: appointmentId!, establishment_id: establishmentId })) as any
+        );
+        if (insErr) {
+          setSaving(false);
+          toast({ title: "Erro ao salvar serviços", description: insErr.message, variant: "destructive" });
+          return;
+        }
+      }
+    }
+
+    const { error: delProfErr } = await supabase.from("appointment_professionals").delete().eq("appointment_id", appointmentId!);
+    if (delProfErr) {
+      setSaving(false);
+      toast({ title: "Erro ao salvar profissionais", description: delProfErr.message, variant: "destructive" });
+      return;
     }
     if (form.professional_ids.length) {
-      await supabase.from("appointment_professionals").insert(
+      const { error: insProfErr } = await supabase.from("appointment_professionals").insert(
         form.professional_ids.map(pid => ({ appointment_id: appointmentId!, professional_id: pid, establishment_id: establishmentId }))
       );
+      if (insProfErr) {
+        setSaving(false);
+        toast({ title: "Erro ao salvar profissionais", description: insProfErr.message, variant: "destructive" });
+        return;
+      }
     }
+
 
     // Registra sinal (deposit) se informado
     const depositValue = Number(form.new_deposit_amount);
