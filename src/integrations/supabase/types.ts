@@ -119,21 +119,27 @@ export type Database = {
           created_at: string
           establishment_id: string
           id: string
+          price_source: string
           service_id: string
+          unit_price: number
         }
         Insert: {
           appointment_id: string
           created_at?: string
           establishment_id: string
           id?: string
+          price_source?: string
           service_id: string
+          unit_price?: number
         }
         Update: {
           appointment_id?: string
           created_at?: string
           establishment_id?: string
           id?: string
+          price_source?: string
           service_id?: string
+          unit_price?: number
         }
         Relationships: []
       }
