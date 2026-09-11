@@ -1,75 +1,21 @@
-# Implementação: Novos Planos + Gestão de Assinatura
+# Diagnóstico da indisponibilidade do banco
 
-## 1. Banco de dados (migration)
+## Situação confirmada
 
-**Atualizar `subscription_plans`** — recriar/atualizar os 3 planos oficiais:
-- Individual — R$ 29,90 — `max_users=1`, `max_clients=300`
-- Profissional — R$ 69,90 — `max_users=4`, `max_clients=null` (ilimitado), feature `recommended`
-- Empresa — R$ 109,90 — `max_users=20`, `max_clients=null`
+O Lovable Cloud está respondendo normalmente neste momento: banco e autenticação acessíveis, 17% do disco usado, 52% de memória e 13 de 60 conexões. Portanto, não há sinal atual de falta de espaço ou saturação, e um reinício imediato não é indicado.
 
-Desativar (active=false) planos antigos que não se encaixam, para não quebrar assinaturas existentes.
+## Plano
 
-**Novas funções/triggers:**
-- `enforce_plan_user_limit()` → trigger BEFORE INSERT em `establishment_users` que valida `count(active) < plan.max_users`. Erro claro: "Limite de usuários do plano atingido".
-- Atualizar `enforce_plan_client_limit()` já existente (mantém — apenas garantir que respeita `max_clients=null=ilimitado`, já faz).
-- View/RPC `get_subscription_overview()` retornando: plano atual, valor, usuários usados/limite, clientes usados/limite, status, próxima cobrança, últimas faturas.
+1. Reproduzir a falha no aplicativo nos fluxos principais: login, carregamento inicial, agenda e salvamento de dados.
+2. Registrar quais solicitações falham, seus códigos de resposta e as mensagens exibidas, distinguindo falha temporária, sessão expirada, permissão ou consulta.
+3. Conferir os registros do Lovable Cloud no mesmo período para localizar lentidão, interrupções ou erros recorrentes.
+4. Corrigir somente a causa confirmada:
+   - sessão/autenticação: ajustar renovação e tratamento da sessão;
+   - consultas/permissões: corrigir a consulta ou regra de acesso afetada;
+   - instabilidade do serviço: reiniciar o Lovable Cloud apenas se ele ficar realmente sem resposta;
+   - erro de aplicação: corrigir o fluxo específico sem alterar o isolamento entre salões.
+5. Validar novamente login, agenda, leitura e gravação de dados, incluindo uma checagem em celular.
 
-## 2. Frontend — Nova página `/planos`
+## Resultado esperado
 
-Novo item no `AppSidebar` ("Planos", ícone `CreditCard`, grupo Configuração, visível só para owner/admin).
-
-**`src/pages/Plans.tsx`** com 3 seções:
-
-1. **Resumo do plano atual** — card com nome, preço/mês, usuários (x/y), clientes (x/y ou ilimitado), badge de status, próxima cobrança.
-2. **Faturas** — tabela lendo `subscription_payments`: vencimento, status (Pago/Pendente/Vencido), valor, forma de pagamento, botão "Pagar" (abre `invoice_url`/`bank_slip_url`).
-3. **Upgrade/Downgrade** — 3 cards de plano lado a lado, destaque no Profissional ("Mais popular"), botão "Plano atual" (disabled) ou "Migrar para este plano".
-
-**Lógica de migração:**
-- Upgrade (preço maior) → chama edge function `asaas-change-plan` que cancela assinatura atual no Asaas e cria nova imediatamente, atualiza `subscriptions.plan_id` + `monthly_amount`.
-- Downgrade (preço menor) → marca `pending_plan_id` para aplicar no próximo ciclo (campo novo na tabela `subscriptions`) e mantém plano atual ativo.
-
-## 3. Limites no app
-
-- **Users.tsx** — antes de criar usuário, comparar count vs `plan.max_users`. Se atingiu: toast bloqueando + CTA "Fazer upgrade" → `/planos`.
-- **Clients.tsx / ImportClientsDialog** — já existe trigger DB; capturar erro e mostrar mensagem amigável com CTA upgrade.
-
-## 4. Landing page
-
-Atualizar seção de planos em `src/components/LandingPage.tsx`:
-- 3 cards: Individual R$29,90, Profissional R$69,90 (destacado, badge "Mais popular"), Empresa R$109,90.
-- Listar benefícios por plano.
-- CTA "Começar teste grátis" passando `signup_plan_slug` no localStorage (já suportado por `SelectPlan.tsx`).
-
-## 5. Cadastro / Onboarding
-
-`SelectPlan.tsx` já existe e seleciona o plano após signup — apenas garantir que mostra os 3 novos planos corretamente (já lê do DB).
-
-## 6. Edge function nova
-
-**`asaas-change-plan`** — autenticada, recebe `{ new_plan_id }`:
-- Busca plan atual e novo.
-- Se upgrade: cancela `asaas_subscription_id` atual, cria nova subscription no Asaas com `monthly_price` novo, atualiza DB.
-- Se downgrade: grava `pending_plan_id` + `pending_plan_effective_at = next_billing_at` no DB. Webhook do próximo `PAYMENT_CONFIRMED` aplica a troca (atualizar `asaas-webhook`).
-
-## 7. Detalhes técnicos
-
-- Cores via tokens (`bg-primary`, `text-success`, `border-warning`...).
-- Badges shadcn já presentes.
-- Query keys: `["plans-catalog"]`, `["subscription-overview"]`, `["subscription-invoices"]` com refetch após mutação.
-- Tudo PT-BR.
-
-## Arquivos a criar/editar
-
-**Migração:** atualizar `subscription_plans` + trigger user limit + colunas `pending_plan_id`, `pending_plan_effective_at` em `subscriptions`.
-
-**Criar:**
-- `src/pages/Plans.tsx`
-- `supabase/functions/asaas-change-plan/index.ts`
-
-**Editar:**
-- `src/App.tsx` (rota `/planos`)
-- `src/components/AppSidebar.tsx` (item menu)
-- `src/components/LandingPage.tsx` (seção planos)
-- `src/pages/Users.tsx` (bloqueio de limite)
-- `src/pages/Clients.tsx` (mensagem amigável)
-- `supabase/functions/asaas-webhook/index.ts` (aplicar pending_plan no PAYMENT_CONFIRMED)
+O aplicativo volta a carregar e salvar informações de forma estável, com a causa registrada e sem mudanças desnecessárias no banco.
