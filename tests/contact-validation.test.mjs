@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateEmail, validatePhone } from "../src/lib/contactValidation.ts";
+import { readFileSync } from "node:fs";
 
 test("rejects malformed or clearly artificial emails", () => {
   for (const email of [
@@ -25,4 +26,21 @@ test("rejects malformed or artificial Brazilian phones", () => {
 test("accepts valid Brazilian landlines and mobile phones", () => {
   for (const phone of ["(11) 98765-4321", "11987654321", "+55 (21) 99876-5432", "1132345678", "55 31 3987-6543"])
     assert.equal(validatePhone(phone, { required: true }).valid, true, phone);
+});
+
+test("all contact write screens use the centralized validators", () => {
+  const paths = [
+    "src/pages/Auth.tsx", "src/pages/Clients.tsx", "src/pages/PublicBooking.tsx",
+    "src/pages/Checkout.tsx", "src/pages/Users.tsx", "src/pages/StaffUsers.tsx",
+    "src/components/settings/ProfileForm.tsx", "src/components/users/EditUserDialog.tsx",
+    "src/components/ClientCombobox.tsx", "src/lib/clientImportExport.ts",
+  ];
+  for (const path of paths) {
+    const source = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+    assert.match(source, /contactValidation/, path);
+  }
+  for (const path of ["create-staff-user", "update-staff-user", "asaas-create-subscription"]) {
+    const source = readFileSync(new URL(`../supabase/functions/${path}/index.ts`, import.meta.url), "utf8");
+    assert.match(source, /contact-validation/, path);
+  }
 });

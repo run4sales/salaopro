@@ -23,7 +23,7 @@ import { exportClientsToXlsx, exportClientsToCsv } from '@/lib/clientImportExpor
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ClientWalletDialog } from '@/components/clients/ClientWalletDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { normalizeEmail, normalizePhone, validateEmail, validatePhone } from '@/lib/contactValidation';
+import { checkEmailDomain, normalizeEmail, normalizePhone, validateEmail, validatePhone } from '@/lib/contactValidation';
 
 const Clients = () => {
   const { user, profile } = useAuth();
@@ -354,13 +354,17 @@ const Clients = () => {
     },
   });
 
-  const handleAddClient = (e: React.FormEvent) => {
+  const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newClient.name || !newClient.phone) return;
     const phoneValidation = validatePhone(newClient.phone, { required: true });
     const emailValidation = validateEmail(newClient.email, { required: false });
     setContactErrors({ phone: phoneValidation.message ?? '', email: emailValidation.message ?? '' });
     if (!phoneValidation.valid || !emailValidation.valid) return;
+    if (newClient.email) {
+      const domainValidation = await checkEmailDomain(newClient.email);
+      if (!domainValidation.valid) { setContactErrors((current) => ({ ...current, email: domainValidation.message ?? 'E-mail inválido.' })); return; }
+    }
     addClientMutation.mutate(newClient);
   };
 
@@ -374,13 +378,17 @@ const Clients = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdateClient = (e: React.FormEvent) => {
+  const handleUpdateClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingClient?.name || !editingClient?.phone) return;
     const phoneValidation = validatePhone(editingClient.phone, { required: true });
     const emailValidation = validateEmail(editingClient.email, { required: false });
     setContactErrors({ phone: phoneValidation.message ?? '', email: emailValidation.message ?? '' });
     if (!phoneValidation.valid || !emailValidation.valid) return;
+    if (editingClient.email) {
+      const domainValidation = await checkEmailDomain(editingClient.email);
+      if (!domainValidation.valid) { setContactErrors((current) => ({ ...current, email: domainValidation.message ?? 'E-mail inválido.' })); return; }
+    }
     updateClientMutation.mutate(editingClient);
   };
 
