@@ -1,3 +1,5 @@
+import { DEFAULT_SUPABASE_PUBLISHABLE_KEY, DEFAULT_SUPABASE_URL } from "@/integrations/supabase/public-config";
+
 export type ContactValidationCode =
   | "required"
   | "invalid_format"
@@ -126,11 +128,13 @@ export async function checkEmailDomain(email: string): Promise<ContactValidation
   const local = validateEmail(email, { required: true });
   if (!local.valid) return local;
   try {
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validate-email-domain`, {
+    const cloudUrl = import.meta.env.VITE_SUPABASE_URL ?? DEFAULT_SUPABASE_URL;
+    const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? DEFAULT_SUPABASE_PUBLISHABLE_KEY;
+    const response = await fetch(`${cloudUrl}/functions/v1/validate-email-domain`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        apikey: publishableKey,
       },
       body: JSON.stringify({ email: local.normalized }),
     });
