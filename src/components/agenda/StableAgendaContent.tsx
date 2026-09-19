@@ -23,7 +23,7 @@ import { STATUS_LABELS, STATUS_VARIANTS, STATUS_OPTIONS, normalizeStatus } from 
 import { BUSINESS_HOURS_SELECT, DEFAULT_CLOSING_TIME, DEFAULT_OPENING_TIME, DEFAULT_WORKING_DAYS, buildDefaultWeeklyHours, getWeeklyBounds, normalizeTimeValue, normalizeWeeklyHours, normalizeWorkingDays, type WeeklyHours } from "@/lib/businessHours";
 
 type PeriodMode = "day" | "week" | "month" | "custom";
-type Professional = { id: string; name: string };
+type Professional = { id: string; name: string; calendar_color?: string | null; active?: boolean };
 type AppointmentBlock = { id: string; professional_id: string; start_time: string; end_time: string; reason?: string | null };
 
 const ALL_PROFESSIONALS = "all";
@@ -48,8 +48,7 @@ function isRecoverableAgendaResourceError(error: any, resourceName: string) {
 }
 
 function isVisibleAppointment(appointment: any) {
-  const status = String(appointment?.status ?? "").toLowerCase();
-  return status !== "canceled" && status !== "cancelled";
+  return Boolean(appointment);
 }
 
 const getWeekOptions = () => ({ locale: ptBR, weekStartsOn: 0 as const });
@@ -148,7 +147,7 @@ export default function StableAgendaContent() {
     queryFn: async () => {
       let query = supabase
         .from("professionals")
-        .select("id, name")
+        .select("id, name, calendar_color")
         .eq("establishment_id", establishmentId)
         .eq("active", true)
         .order("name");
@@ -215,6 +214,7 @@ export default function StableAgendaContent() {
         const serviceMap = new Map<string, any>();
         const clientMap = new Map<string, string>();
         const profMap = new Map<string, string>();
+        const profColorMap = new Map<string, string>();
 
         appts.forEach((appointment) => {
           if (appointment.service_id) {
@@ -228,16 +228,18 @@ export default function StableAgendaContent() {
           if (appointment.client_id) clientMap.set(appointment.client_id, appointment.client_name ?? "Cliente");
           if (appointment.professional_id) {
             profMap.set(appointment.professional_id, appointment.professional_name ?? "Profissional");
+            profColorMap.set(appointment.professional_id, appointment.professional_color ?? employeeAgenda?.professional_color ?? "#2563EB");
           }
         });
 
         const employeeProfessionalId = employeeAgenda?.professional_id ?? professionalId;
         if (employeeProfessionalId) {
           profMap.set(employeeProfessionalId, employeeAgenda?.professional_name ?? "Profissional");
+          profColorMap.set(employeeProfessionalId, employeeAgenda?.professional_color ?? "#2563EB");
         }
 
         const employeeProfessionals: Professional[] = employeeProfessionalId
-          ? [{ id: employeeProfessionalId, name: employeeAgenda?.professional_name ?? "Profissional" }]
+          ? [{ id: employeeProfessionalId, name: employeeAgenda?.professional_name ?? "Profissional", calendar_color: employeeAgenda?.professional_color ?? "#2563EB" }]
           : [];
 
         const employeeEstablishmentId = employeeAgenda?.establishment_id ?? establishmentId;
@@ -263,6 +265,7 @@ export default function StableAgendaContent() {
           blocks,
           serviceMap,
           profMap,
+          profColorMap,
           clientMap,
           services: [...serviceMap.values()],
           professionals: employeeProfessionals,
@@ -344,9 +347,8 @@ export default function StableAgendaContent() {
 
       let professionalsQuery = supabase
         .from("professionals")
-        .select("id, name")
+        .select("id, name, active, calendar_color")
         .eq("establishment_id", establishmentId)
-        .eq("active", true)
         .order("name");
 
       const blocksQuery = effectiveProfessionalId
@@ -388,7 +390,8 @@ export default function StableAgendaContent() {
 
       const appts = (apptRes.error ? [] : apptRes.data ?? []).filter(isVisibleAppointment);
       const services = servicesRes.error ? [] : servicesRes.data ?? [];
-      const activeProfessionals = (profRes.error ? professionals : profRes.data ?? []) as Professional[];
+      const allProfessionals = (profRes.error ? professionals : profRes.data ?? []) as Professional[];
+      const activeProfessionals = allProfessionals.filter((professional) => professional.active !== false);
       const clientIds = [...new Set(appts.map((appt: any) => appt.client_id).filter(Boolean))] as string[];
       const clientsRes = clientIds.length
         ? await supabase.from("clients").select("id, name").in("id", clientIds)
@@ -399,9 +402,10 @@ export default function StableAgendaContent() {
       }
 
       const serviceMap = new Map(services.map((s: any) => [s.id, s]));
-      const profMap = new Map(activeProfessionals.map((p: any) => [p.id, p.name]));
+      const profMap = new Map(allProfessionals.map((p: any) => [p.id, p.name]));
+      const profColorMap = new Map(allProfessionals.map((p: any) => [p.id, p.calendar_color]));
       const clientMap = new Map((clientsRes.error ? [] : ((clientsRes.data ?? []) as any[])).map((c: any) => [c.id, c.name]));
-      return { appts, blocks: (blocksRes.error ? [] : blocksRes.data ?? []) as AppointmentBlock[], serviceMap, profMap, clientMap, services, professionals: activeProfessionals };
+      return { appts, blocks: (blocksRes.error ? [] : blocksRes.data ?? []) as AppointmentBlock[], serviceMap, profMap, profColorMap, clientMap, services, professionals: activeProfessionals };
     },
   });
 
@@ -410,6 +414,7 @@ export default function StableAgendaContent() {
     blocks: [] as AppointmentBlock[],
     serviceMap: new Map(),
     profMap: new Map(),
+    profColorMap: new Map(),
     clientMap: new Map(),
     services: [],
     professionals,
@@ -429,7 +434,7 @@ export default function StableAgendaContent() {
       const end = new Date(start.getTime() + dur * 60_000);
       const client = agendaData.clientMap.get(a.client_id) ?? "Cliente";
       const sname = svc?.name ?? "Serviço";
-      return { id: a.id, title: `${client} · ${sname}`, start, end, status: a.status, type: "appointment" as const, raw: a };
+      return { id: a.id, title: `${client} · ${sname}`, start, end, status: a.status, type: "appointment" as const, professionalColor: agendaData.profColorMap.get(a.professional_id), raw: a };
     });
 
     const blockEvents = (agendaData.blocks ?? []).map((block: AppointmentBlock) => {
@@ -655,13 +660,18 @@ export default function StableAgendaContent() {
               {agendaData.appts.length ? agendaData.appts.map((a: any) => {
                 const key = normalizeStatus(a.status);
                 return (
-                  <TableRow key={a.id} className="cursor-pointer" onClick={() => { setSelectedAppt(a); setDetailsOpen(true); }}>
+                  <TableRow key={a.id} className={`cursor-pointer ${key === "canceled" || key === "cancelled" ? "opacity-60 [&_td]:line-through" : ""}`} onClick={() => { setSelectedAppt(a); setDetailsOpen(true); }}>
                     <TableCell>{new Date(a.appointment_date).toLocaleString("pt-BR")}</TableCell>
                     <TableCell>{agendaData.clientMap.get(a.client_id) ?? "-"}</TableCell>
                     <TableCell>{(agendaData.serviceMap.get(a.service_id) as any)?.name ?? "-"}</TableCell>
-                    <TableCell>{agendaData.profMap.get(a.professional_id) ?? "-"}</TableCell>
-                    <TableCell><Badge variant={STATUS_VARIANTS[key] ?? "secondary"}>{STATUS_LABELS[key] ?? "Agendado"}</Badge></TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: agendaData.profColorMap.get(a.professional_id) ?? "#2563EB" }} />
+                        {agendaData.profMap.get(a.professional_id) ?? "-"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="no-underline"><Badge variant={STATUS_VARIANTS[key] ?? "secondary"}>{STATUS_LABELS[key] ?? "Agendado"}</Badge></TableCell>
+                    <TableCell className="no-underline" onClick={(e) => e.stopPropagation()}>
                       <Select value={key} onValueChange={(v) => updateStatus(a.id, v)}>
                         <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                         <SelectContent>{STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>

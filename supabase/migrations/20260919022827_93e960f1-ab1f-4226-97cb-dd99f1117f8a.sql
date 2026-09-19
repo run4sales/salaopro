@@ -1,0 +1,1 @@
+ALTER TABLE public.professionals ALTER COLUMN calendar_color DROP DEFAULT;
