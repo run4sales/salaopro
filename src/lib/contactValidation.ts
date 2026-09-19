@@ -1,4 +1,4 @@
-import { DEFAULT_SUPABASE_PUBLISHABLE_KEY, DEFAULT_SUPABASE_URL } from "@/integrations/supabase/public-config";
+import { DEFAULT_SUPABASE_PUBLISHABLE_KEY, DEFAULT_SUPABASE_URL } from "../integrations/supabase/public-config.ts";
 
 export type ContactValidationCode =
   | "required"
