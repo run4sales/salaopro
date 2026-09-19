@@ -4,6 +4,7 @@ import { validateEmail } from "../_shared/contact-validation.ts";
 
 const MAX_BODY_BYTES = 16 * 1024;
 const ALLOWED_ROLES = new Set(["admin", "employee"]);
+const HEX_COLOR = /^#[0-9A-F]{6}$/;
 
 Deno.serve(async (req) => {
   const cors = corsHeaders(req);
@@ -36,13 +37,15 @@ Deno.serve(async (req) => {
     const rawBody = await req.text();
     if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) throw new Error("Payload muito grande");
     const body = JSON.parse(rawBody);
-    const { establishment_id, membership_id, email, password, name, role } = body ?? {};
+    const { establishment_id, membership_id, email, password, name, role, calendar_color } = body ?? {};
 
     if (!establishment_id || !membership_id) throw new Error("Dados obrigatórios ausentes");
     if (role !== undefined && !ALLOWED_ROLES.has(String(role))) throw new Error("Perfil inválido");
     if (name !== undefined && String(name).trim().length > 120) throw new Error("Dados inválidos");
     const emailValidation = email === undefined ? null : validateEmail(email, true);
     if (emailValidation && !emailValidation.valid) throw new Error(emailValidation.message);
+    const normalizedColor = calendar_color ? String(calendar_color).trim().toUpperCase() : undefined;
+    if (normalizedColor && !HEX_COLOR.test(normalizedColor)) throw new Error("Cor da agenda inválida");
 
     const { data: ownerProfile } = await adminClient
       .from("profiles")
@@ -96,11 +99,15 @@ Deno.serve(async (req) => {
       if (rErr) throw rErr;
     }
 
-    if (name && String(name).trim() && membership.professional_id) {
+    if ((name || normalizedColor) && membership.professional_id) {
+      const professionalUpdates: Record<string, unknown> = {};
+      if (name && String(name).trim()) professionalUpdates.name = String(name).trim();
+      if (normalizedColor) professionalUpdates.calendar_color = normalizedColor;
       const { error: pErr } = await adminClient
         .from("professionals")
-        .update({ name: String(name).trim() })
-        .eq("id", membership.professional_id);
+        .update(professionalUpdates)
+        .eq("id", membership.professional_id)
+        .eq("establishment_id", establishment_id);
       if (pErr) throw pErr;
     }
 

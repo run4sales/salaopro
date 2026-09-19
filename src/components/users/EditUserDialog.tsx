@@ -9,13 +9,15 @@ import { extractEdgeFunctionError } from "@/lib/edgeFunctionError";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { checkEmailDomain, validateEmail } from "@/lib/contactValidation";
+import { ProfessionalColorPicker } from "@/components/users/ProfessionalColorPicker";
+import { DEFAULT_PROFESSIONAL_CALENDAR_COLOR } from "@/lib/professionalCalendarColors";
 
 interface UserRow {
   id: string;
   user_id: string;
   role: "admin" | "employee" | string;
   professional_id?: string | null;
-  professional?: { name?: string } | null;
+  professional?: { name?: string; calendar_color?: string | null } | null;
   email?: string | null;
 }
 
@@ -35,6 +37,7 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
   const [role, setRole] = useState<"admin" | "employee">("employee");
   const [saving, setSaving] = useState(false);
   const [emailError, setEmailError] = useState("");
+  const [calendarColor, setCalendarColor] = useState(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
 
   useEffect(() => {
     if (!user) return;
@@ -43,6 +46,7 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
     setEmail(user.email ?? "");
     setEmailError("");
     setPassword("");
+    setCalendarColor(user.professional?.calendar_color ?? DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
   }, [user]);
 
   const onSave = async () => {
@@ -65,6 +69,7 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
           email: email.trim() || undefined,
           password: password || undefined,
           role,
+          calendar_color: calendarColor,
         },
       });
       if (error) throw error;
@@ -92,6 +97,8 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
             <Label>Nome do profissional</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
+
+          <ProfessionalColorPicker value={calendarColor} onChange={setCalendarColor} />
 
           <div>
             <Label>E-mail</Label>

@@ -8,6 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { ProfessionalColorPicker } from "@/components/users/ProfessionalColorPicker";
+import { DEFAULT_PROFESSIONAL_CALENDAR_COLOR } from "@/lib/professionalCalendarColors";
 
 interface Professional {
   id: string;
@@ -17,6 +19,7 @@ interface Professional {
   commission_type?: string | null;
   custom_percentage?: number | null;
   daily_amount?: number | null;
+  calendar_color?: string | null;
 }
 
 interface Props {
@@ -34,6 +37,7 @@ export function EditProfessionalDialog({ open, onOpenChange, professional }: Pro
   const [commissionPercentage, setCommissionPercentage] = useState("0");
   const [customPercentage, setCustomPercentage] = useState("0");
   const [dailyAmount, setDailyAmount] = useState("0");
+  const [calendarColor, setCalendarColor] = useState(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -44,6 +48,7 @@ export function EditProfessionalDialog({ open, onOpenChange, professional }: Pro
     setCommissionPercentage(String(professional.commission_percentage ?? 0));
     setCustomPercentage(String(professional.custom_percentage ?? 0));
     setDailyAmount(String(professional.daily_amount ?? 0));
+    setCalendarColor(professional.calendar_color ?? DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
   }, [professional]);
 
   const onSave = async () => {
@@ -62,6 +67,7 @@ export function EditProfessionalDialog({ open, onOpenChange, professional }: Pro
         commission_percentage: Number(commissionPercentage) || 0,
         custom_percentage: Number(customPercentage) || 0,
         daily_amount: Number(dailyAmount) || 0,
+        calendar_color: calendarColor,
       } as any)
       .eq("id", professional.id);
     setSaving(false);
@@ -93,6 +99,8 @@ export function EditProfessionalDialog({ open, onOpenChange, professional }: Pro
             </div>
             <Switch checked={active} onCheckedChange={setActive} />
           </div>
+
+          <ProfessionalColorPicker value={calendarColor} onChange={setCalendarColor} />
 
           <div>
             <Label>Tipo de comissão</Label>

@@ -5,6 +5,7 @@ import { ptBR } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { STATUS_COLORS, STATUS_LABELS, normalizeStatus } from "@/lib/appointmentStatus";
 import { buildBusinessTimeBoundary, DEFAULT_CLOSING_TIME, DEFAULT_OPENING_TIME } from "@/lib/businessHours";
+import { getProfessionalCalendarStyle } from "@/lib/professionalCalendarColors";
 
 const locales = { "pt-BR": ptBR };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek: (d: Date) => startOfWeek(d, { locale: ptBR }), getDay, locales });
@@ -34,6 +35,7 @@ export interface AgendaEvent {
   end: Date;
   status: string;
   type?: "appointment" | "block";
+  professionalColor?: string | null;
   raw: any;
 }
 
@@ -83,17 +85,22 @@ export function AgendaCalendar({
           },
         };
       }
-      const c = STATUS_COLORS[normalizeStatus(event.status)] ?? STATUS_COLORS.scheduled;
+      const status = normalizeStatus(event.status);
+      const c = STATUS_COLORS[status] ?? STATUS_COLORS.scheduled;
+      const professionalStyle = getProfessionalCalendarStyle(event.professionalColor);
+      const isCancelled = status === "canceled" || status === "cancelled";
       return {
         style: {
-          backgroundColor: c.bg,
-          color: c.fg,
-          border: `1px solid ${c.border}`,
-          borderLeft: `4px solid ${c.border}`,
+          backgroundColor: professionalStyle.backgroundColor,
+          color: professionalStyle.color,
+          border: `1px solid ${professionalStyle.borderColor}`,
+          borderLeft: `4px solid ${professionalStyle.borderColor}`,
           borderRadius: 6,
           padding: "2px 6px",
           fontSize: 12,
           fontWeight: 500,
+          textDecoration: isCancelled ? "line-through" : undefined,
+          opacity: isCancelled ? 0.65 : 1,
         },
       };
     },

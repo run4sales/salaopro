@@ -4,6 +4,7 @@ import { validateEmail } from "../_shared/contact-validation.ts";
 
 const MAX_BODY_BYTES = 16 * 1024;
 const ALLOWED_ROLES = new Set(["admin", "employee"]);
+const HEX_COLOR = /^#[0-9A-F]{6}$/;
 
 class RequestError extends Error {
   constructor(public code: string, message: string, public status = 400) { super(message); }
@@ -38,7 +39,7 @@ Deno.serve(async (req) => {
     const rawBody = await req.text();
     if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) throw new Error("Payload muito grande");
     const body = JSON.parse(rawBody);
-    const { establishment_id, email, password, name, role, service_ids = [] } = body ?? {};
+    const { establishment_id, email, password, name, role, service_ids = [], calendar_color } = body ?? {};
 
     if (!establishment_id || !email || !password || !name || !role) throw new RequestError("INVALID_INPUT", "Preencha todos os campos obrigatórios.");
     if (!ALLOWED_ROLES.has(String(role))) throw new RequestError("INVALID_ROLE", "Perfil inválido.");
@@ -47,6 +48,8 @@ Deno.serve(async (req) => {
     const emailValidation = validateEmail(email, true);
     if (!emailValidation.valid) throw new RequestError("INVALID_EMAIL", emailValidation.message ?? "E-mail inválido.");
     if (!Array.isArray(service_ids) || service_ids.length > 200 || service_ids.some((id) => typeof id !== "string")) throw new RequestError("INVALID_INPUT", "Serviços inválidos.");
+    const normalizedColor = calendar_color ? String(calendar_color).trim().toUpperCase() : undefined;
+    if (normalizedColor && !HEX_COLOR.test(normalizedColor)) throw new RequestError("INVALID_COLOR", "Cor da agenda inválida.");
 
     const { data: ownerProfile } = await adminClient.from("profiles").select("id").eq("id", establishment_id).eq("user_id", callerId).maybeSingle();
     let canManage = !!ownerProfile;
@@ -86,7 +89,7 @@ Deno.serve(async (req) => {
 
     const { data: professional, error: profErr } = await adminClient
       .from("professionals")
-      .insert({ establishment_id, name: String(name).trim(), active: true })
+      .insert({ establishment_id, name: String(name).trim(), active: true, ...(normalizedColor ? { calendar_color: normalizedColor } : {}) })
       .select("id")
       .single();
     if (profErr) {
