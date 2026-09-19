@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { extractEdgeFunctionError } from "@/lib/edgeFunctionError";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { checkEmailDomain, validateEmail } from "@/lib/contactValidation";
 
 interface UserRow {
   id: string;
@@ -33,23 +34,29 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "employee">("employee");
   const [saving, setSaving] = useState(false);
+  const [emailError, setEmailError] = useState("");
 
   useEffect(() => {
     if (!user) return;
     setName(user.professional?.name ?? "");
     setRole((user.role as any) === "admin" ? "admin" : "employee");
     setEmail(user.email ?? "");
+    setEmailError("");
     setPassword("");
   }, [user]);
 
   const onSave = async () => {
     if (!user) return;
+    const emailValidation = validateEmail(email, { required: true });
+    if (!emailValidation.valid) { setEmailError(emailValidation.message ?? "E-mail inválido."); return; }
     if (password && password.length < 6) {
       toast({ title: "Senha inválida", description: "Mínimo 6 caracteres.", variant: "destructive" });
       return;
     }
     setSaving(true);
     try {
+      const domainValidation = await checkEmailDomain(email);
+      if (!domainValidation.valid) { setEmailError(domainValidation.message ?? "E-mail inválido."); return; }
       const { error } = await supabase.functions.invoke("update-staff-user", {
         body: {
           establishment_id: establishmentId,
@@ -91,9 +98,11 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
             <Input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
               placeholder="usuario@exemplo.com"
+              aria-invalid={!!emailError}
             />
+            {emailError && <p className="mt-1 text-sm text-destructive">{emailError}</p>}
           </div>
 
           <div>

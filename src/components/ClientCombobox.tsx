@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Search, UserPlus, UserCircle2, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { normalizePhone, validatePhone } from "@/lib/contactValidation";
 
 interface ClientLite { id: string; name: string; phone?: string | null }
 
@@ -75,6 +76,7 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
   const [openCreate, setOpenCreate] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", acquisition_source: "" });
   const [saving, setSaving] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_CLIENTS);
 
   const { data: clients, isLoading, isError } = useQuery<ClientLite[]>({
@@ -114,11 +116,13 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
       toast.error("Informe nome e telefone");
       return;
     }
+    const phoneValidation = validatePhone(form.phone, { required: true });
+    if (!phoneValidation.valid) { setPhoneError(phoneValidation.message ?? "Telefone inválido"); return; }
     setSaving(true);
     const payload = {
       establishment_id: establishmentId,
       name: form.name.trim(),
-      phone: form.phone.trim(),
+      phone: normalizePhone(form.phone),
       acquisition_source: form.acquisition_source || null,
     };
     const firstRes = await supabase.from("clients").insert(payload).select("id, name, phone").single();
@@ -137,6 +141,7 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
     onChange(data!.id, data as ClientLite);
     setOpenCreate(false);
     setForm({ name: "", phone: "", acquisition_source: "" });
+    setPhoneError("");
     setSearch("");
   };
 
@@ -228,7 +233,8 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
             </div>
             <div>
               <Label>Telefone *</Label>
-              <Input value={form.phone} onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="(11) 99999-9999" />
+              <Input value={form.phone} aria-invalid={!!phoneError} onChange={(e) => { setForm(f => ({ ...f, phone: e.target.value })); setPhoneError(""); }} placeholder="(11) 99999-9999" inputMode="tel" />
+              {phoneError && <p className="mt-1 text-sm text-destructive">{phoneError}</p>}
             </div>
             <div>
               <Label>Como chegou (opcional)</Label>

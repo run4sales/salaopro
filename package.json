@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:finance": "node --experimental-strip-types --test tests/finance-revenue.test.mjs"
+    ,"test:contacts": "node --experimental-strip-types --test tests/contact-validation.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

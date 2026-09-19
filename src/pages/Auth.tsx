@@ -7,12 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { checkEmailDomain, normalizePhone, validateEmail, validatePhone } from '@/lib/contactValidation';
 
 const Auth = () => {
   const { user, signIn, signUp, resetPassword, updatePassword } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
+  const [signupErrors, setSignupErrors] = useState({ email: '', phone: '' });
 
   const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'login';
   const initialMode = searchParams.get('mode') === 'reset-password' ? 'reset-password' : 'auth';
@@ -73,14 +75,24 @@ const Auth = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailValidation = validateEmail(signupData.email, { required: true });
+    const phoneValidation = validatePhone(signupData.phone, { required: true });
+    setSignupErrors({ email: emailValidation.message ?? '', phone: phoneValidation.message ?? '' });
+    if (!emailValidation.valid || !phoneValidation.valid) return;
     setIsLoading(true);
+    const domainValidation = await checkEmailDomain(signupData.email);
+    if (!domainValidation.valid) {
+      setSignupErrors((current) => ({ ...current, email: domainValidation.message ?? 'E-mail inválido.' }));
+      setIsLoading(false);
+      return;
+    }
     try { localStorage.setItem('signup_plan_slug', selectedPlan); } catch {}
 
     const signupMetadata = {
       business_name: signupData.businessName,
       document: signupData.document,
       owner_name: signupData.ownerName,
-      phone: signupData.phone,
+      phone: normalizePhone(signupData.phone),
       cep: signupData.cep,
       street: signupData.street,
       neighborhood: signupData.neighborhood,
@@ -89,7 +101,7 @@ const Auth = () => {
       selected_plan: selectedPlan,
     };
 
-    const { error } = await signUp(signupData.email, signupData.password, signupMetadata);
+    const { error } = await signUp(emailValidation.normalized, signupData.password, signupMetadata);
 
     setIsLoading(false);
   };
@@ -333,9 +345,12 @@ const Auth = () => {
                     <Input
                       id="phone"
                       value={signupData.phone}
-                      onChange={(e) => setSignupData({ ...signupData, phone: e.target.value })}
+                      onChange={(e) => { setSignupData({ ...signupData, phone: e.target.value }); setSignupErrors((current) => ({ ...current, phone: '' })); }}
+                      inputMode="tel"
+                      aria-invalid={!!signupErrors.phone}
                       required
                     />
+                    {signupErrors.phone && <p className="text-sm text-destructive">{signupErrors.phone}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cep">CEP</Label>
@@ -396,9 +411,11 @@ const Auth = () => {
                       id="signup-email"
                       type="email"
                       value={signupData.email}
-                      onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
+                      onChange={(e) => { setSignupData({ ...signupData, email: e.target.value }); setSignupErrors((current) => ({ ...current, email: '' })); }}
+                      aria-invalid={!!signupErrors.email}
                       required
                     />
+                    {signupErrors.email && <p className="text-sm text-destructive">{signupErrors.email}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Senha</Label>

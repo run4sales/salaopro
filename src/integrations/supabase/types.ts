@@ -1719,6 +1719,14 @@ export type Database = {
         Args: { p_establishment: string }
         Returns: undefined
       }
+      contact_email_error: {
+        Args: { p_email: string; p_required?: boolean }
+        Returns: string
+      }
+      contact_phone_error: {
+        Args: { p_phone: string; p_required?: boolean }
+        Returns: string
+      }
       create_financial_recurrence: {
         Args: {
           p_end_date?: string
@@ -1831,6 +1839,7 @@ export type Database = {
         Args: { _establishment_id: string; _user_id: string }
         Returns: boolean
       }
+      normalize_br_phone: { Args: { p_phone: string }; Returns: string }
       pay_expense: {
         Args: {
           p_account: string

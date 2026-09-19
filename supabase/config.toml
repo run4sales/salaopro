@@ -15,3 +15,6 @@ verify_jwt = false
 
 [functions.update-staff-user]
 verify_jwt = false
+
+[functions.validate-email-domain]
+verify_jwt = false

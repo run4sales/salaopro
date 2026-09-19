@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, isAllowedBrowserOrigin } from "../_shared/cors.ts";
+import { validateEmail } from "../_shared/contact-validation.ts";
 
 const MAX_BODY_BYTES = 16 * 1024;
 const ALLOWED_ROLES = new Set(["admin", "employee"]);
@@ -40,7 +41,8 @@ Deno.serve(async (req) => {
     if (!establishment_id || !membership_id) throw new Error("Dados obrigatórios ausentes");
     if (role !== undefined && !ALLOWED_ROLES.has(String(role))) throw new Error("Perfil inválido");
     if (name !== undefined && String(name).trim().length > 120) throw new Error("Dados inválidos");
-    if (email !== undefined && String(email).length > 254) throw new Error("Dados inválidos");
+    const emailValidation = email === undefined ? null : validateEmail(email, true);
+    if (emailValidation && !emailValidation.valid) throw new Error(emailValidation.message);
 
     const { data: ownerProfile } = await adminClient
       .from("profiles")
@@ -71,7 +73,7 @@ Deno.serve(async (req) => {
     if (mErr || !membership) throw new Error("Usuário não encontrado");
 
     const authUpdates: Record<string, unknown> = {};
-    const normalizedEmail = email && String(email).trim() ? String(email).trim().toLowerCase() : undefined;
+    const normalizedEmail = emailValidation?.normalized || undefined;
     if (normalizedEmail) authUpdates.email = normalizedEmail;
     if (password && String(password).length > 0) {
       if (String(password).length < 6) throw new Error("Senha deve ter pelo menos 6 caracteres");
