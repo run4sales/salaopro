@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { normalizePhone as normalizeBrazilianPhone, validateEmail, validatePhone } from "@/lib/contactValidation";
 
 export type FieldKey =
   | "name"
@@ -45,14 +46,7 @@ export function autoMapHeader(header: string): FieldKey {
 }
 
 export function normalizePhone(raw: unknown): string {
-  if (raw === null || raw === undefined) return "";
-  let digits = String(raw).replace(/\D/g, "");
-  if (!digits) return "";
-  // strip leading zeros
-  digits = digits.replace(/^0+/, "");
-  // add country code if missing and length matches BR mobile/local
-  if (digits.length === 10 || digits.length === 11) digits = "55" + digits;
-  return digits;
+  return normalizeBrazilianPhone(raw);
 }
 
 export function parseBirthDate(
@@ -196,7 +190,10 @@ export function parseRows(
     if (!phone && !email && !(name && birth_iso)) {
       errors.push("Sem identificação (telefone, email ou nome+nascimento)");
     }
-    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) errors.push("Email inválido");
+    const emailValidation = validateEmail(email, { required: false });
+    const phoneValidation = validatePhone(get("phone"), { required: false });
+    if (!emailValidation.valid) errors.push(emailValidation.message ?? "Email inválido");
+    if (get("phone") && !phoneValidation.valid) errors.push(phoneValidation.message ?? "Telefone inválido");
 
     return {
       rowIndex: i + 2,

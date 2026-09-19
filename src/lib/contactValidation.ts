@@ -121,3 +121,23 @@ export function validatePhone(value: unknown, options: { required?: boolean } = 
 export function contactErrorProps(message?: string) {
   return message ? { "aria-invalid": true as const, "aria-describedby": undefined } : {};
 }
+
+export async function checkEmailDomain(email: string): Promise<ContactValidationResult> {
+  const local = validateEmail(email, { required: true });
+  if (!local.valid) return local;
+  try {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validate-email-domain`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify({ email: local.normalized }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (response.ok || result.status === "inconclusive") return local;
+    return { valid: false, code: "invalid_format", message: result.error ?? EMAIL_INVALID_MESSAGE, normalized: local.normalized };
+  } catch {
+    return local;
+  }
+}

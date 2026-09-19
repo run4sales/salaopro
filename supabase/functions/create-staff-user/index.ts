@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, isAllowedBrowserOrigin } from "../_shared/cors.ts";
+import { validateEmail } from "../_shared/contact-validation.ts";
 
 const MAX_BODY_BYTES = 16 * 1024;
 const ALLOWED_ROLES = new Set(["admin", "employee"]);
@@ -42,7 +43,9 @@ Deno.serve(async (req) => {
     if (!establishment_id || !email || !password || !name || !role) throw new RequestError("INVALID_INPUT", "Preencha todos os campos obrigatórios.");
     if (!ALLOWED_ROLES.has(String(role))) throw new RequestError("INVALID_ROLE", "Perfil inválido.");
     if (String(password).length < 6) throw new RequestError("WEAK_PASSWORD", "A senha deve ter pelo menos 6 caracteres.");
-    if (String(name).trim().length > 120 || String(email).length > 254) throw new RequestError("INVALID_INPUT", "Dados inválidos.");
+    if (String(name).trim().length > 120) throw new RequestError("INVALID_INPUT", "Dados inválidos.");
+    const emailValidation = validateEmail(email, true);
+    if (!emailValidation.valid) throw new RequestError("INVALID_EMAIL", emailValidation.message ?? "E-mail inválido.");
     if (!Array.isArray(service_ids) || service_ids.length > 200 || service_ids.some((id) => typeof id !== "string")) throw new RequestError("INVALID_INPUT", "Serviços inválidos.");
 
     const { data: ownerProfile } = await adminClient.from("profiles").select("id").eq("id", establishment_id).eq("user_id", callerId).maybeSingle();
@@ -60,7 +63,7 @@ Deno.serve(async (req) => {
     }
     if (!canManage) throw new RequestError("FORBIDDEN", "Você não tem permissão para gerenciar usuários desta loja.", 403);
 
-    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedEmail = emailValidation.normalized;
 
     const { data: createdUser, error: createErr } = await adminClient.auth.admin.createUser({
       email: normalizedEmail,

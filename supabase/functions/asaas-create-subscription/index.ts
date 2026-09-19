@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { normalizePhone, validateEmail, validatePhone } from '../_shared/contact-validation.ts';
 
 const ASAAS_BASE = 'https://api.asaas.com/v3';
 
@@ -49,6 +50,10 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    const emailValidation = validateEmail(body.email, true);
+    if (!emailValidation.valid) return new Response(JSON.stringify({ error: emailValidation.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const phoneValidation = validatePhone(body.phone, false);
+    if (!phoneValidation.valid) return new Response(JSON.stringify({ error: phoneValidation.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     // Admin client (bypass RLS for billing writes)
     const admin = createClient(
@@ -109,8 +114,8 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           name: body.name,
           cpfCnpj: onlyDigits(body.cpf_cnpj),
-          email: body.email,
-          mobilePhone: body.phone ? onlyDigits(body.phone) : undefined,
+          email: emailValidation.normalized,
+          mobilePhone: body.phone ? normalizePhone(body.phone) : undefined,
           postalCode: body.postal_code ? onlyDigits(body.postal_code) : undefined,
           addressNumber: body.address_number,
           externalReference: profile.id,
@@ -176,7 +181,7 @@ Deno.serve(async (req) => {
       payment_link: paymentLink,
       billing_cpf_cnpj: onlyDigits(body.cpf_cnpj),
       billing_name: body.name,
-      billing_email: body.email,
+      billing_email: emailValidation.normalized,
       next_billing_at: subJson.nextDueDate ? new Date(subJson.nextDueDate).toISOString() : null,
     }).eq('establishment_id', profile.id).select('id').single();
     if (updateError || !updated) throw updateError ?? new Error('Assinatura local não atualizada');
