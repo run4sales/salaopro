@@ -1052,7 +1052,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
-          calendar_color?: string
+          calendar_color: string
           commission_percentage?: number
           commission_type?: string
           created_at?: string
