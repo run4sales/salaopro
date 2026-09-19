@@ -233,7 +233,8 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
             </div>
             <div>
               <Label>Telefone *</Label>
-              <Input value={form.phone} onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="(11) 99999-9999" />
+              <Input value={form.phone} aria-invalid={!!phoneError} onChange={(e) => { setForm(f => ({ ...f, phone: e.target.value })); setPhoneError(""); }} placeholder="(11) 99999-9999" inputMode="tel" />
+              {phoneError && <p className="mt-1 text-sm text-destructive">{phoneError}</p>}
             </div>
             <div>
               <Label>Como chegou (opcional)</Label>

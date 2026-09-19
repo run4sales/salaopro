@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { checkEmailDomain, normalizePhone, validateEmail, validatePhone } from "@/lib/contactValidation";
 
 interface ProfileFormProps {
   profile: {
@@ -23,18 +24,25 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   const [email, setEmail] = useState(profile.email || "");
   const [city, setCity] = useState(profile.city || "");
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({ email: "", phone: "" });
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailValidation = validateEmail(email, { required: true });
+    const phoneValidation = validatePhone(phone, { required: true });
+    setErrors({ email: emailValidation.message ?? "", phone: phoneValidation.message ?? "" });
+    if (!emailValidation.valid || !phoneValidation.valid) return;
     setSaving(true);
     try {
+      const domainValidation = await checkEmailDomain(email);
+      if (!domainValidation.valid) { setErrors((current) => ({ ...current, email: domainValidation.message ?? "E-mail inválido." })); return; }
       const { error } = await supabase
         .from("profiles")
         .update({
           business_name: businessName,
           owner_name: ownerName,
-          phone,
-          email,
+          phone: normalizePhone(phone),
+          email: emailValidation.normalized,
           city: city || null,
         })
         .eq("id", profile.id);
@@ -62,12 +70,14 @@ export function ProfileForm({ profile }: ProfileFormProps) {
 
       <div className="space-y-2">
         <Label>Telefone</Label>
-        <Input value={phone} onChange={(e) => setPhone(e.target.value)} required />
+        <Input value={phone} inputMode="tel" aria-invalid={!!errors.phone} onChange={(e) => { setPhone(e.target.value); setErrors((current) => ({ ...current, phone: "" })); }} required />
+        {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
       </div>
 
       <div className="space-y-2">
         <Label>E-mail</Label>
-        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input type="email" value={email} aria-invalid={!!errors.email} onChange={(e) => { setEmail(e.target.value); setErrors((current) => ({ ...current, email: "" })); }} required />
+        {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
       </div>
 
       <div className="space-y-2">

@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, CreditCard, FileText, QrCode, ExternalLink, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { checkEmailDomain, normalizePhone, validateEmail, validatePhone } from "@/lib/contactValidation";
 
 type BillingType = "CREDIT_CARD" | "BOLETO" | "PIX";
 
@@ -36,6 +37,7 @@ export default function Checkout() {
   const [postalCode, setPostalCode] = useState(profile?.cep ?? "");
   const [addressNumber, setAddressNumber] = useState("");
   const [loading, setLoading] = useState(false);
+  const [contactErrors, setContactErrors] = useState({ email: "", phone: "" });
   const [paymentLink, setPaymentLink] = useState<string | null>(data?.payment_link ?? null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(data?.plan_id ?? null);
 
@@ -76,16 +78,22 @@ export default function Checkout() {
       toast.error("Informe um CPF ou CNPJ válido");
       return;
     }
+    const emailValidation = validateEmail(email, { required: true });
+    const phoneValidation = validatePhone(phone, { required: false });
+    setContactErrors({ email: emailValidation.message ?? "", phone: phoneValidation.message ?? "" });
+    if (!emailValidation.valid || !phoneValidation.valid) return;
     setLoading(true);
     try {
+      const domainValidation = await checkEmailDomain(email);
+      if (!domainValidation.valid) { setContactErrors((current) => ({ ...current, email: domainValidation.message ?? "E-mail inválido." })); return; }
       const { data: res, error } = await supabase.functions.invoke("asaas-create-subscription", {
         body: {
           plan_id: selectedPlanId,
           billing_type: billingType,
           cpf_cnpj: cpfCnpj,
           name,
-          email,
-          phone,
+          email: emailValidation.normalized,
+          phone: phone ? normalizePhone(phone) : undefined,
           postal_code: postalCode,
           address_number: addressNumber,
         },
@@ -217,11 +225,13 @@ export default function Checkout() {
                   </div>
                   <div>
                     <Label htmlFor="email">E-mail</Label>
-                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                    <Input id="email" type="email" value={email} aria-invalid={!!contactErrors.email} onChange={(e) => { setEmail(e.target.value); setContactErrors((current) => ({ ...current, email: "" })); }} required />
+                    {contactErrors.email && <p className="mt-1 text-sm text-destructive">{contactErrors.email}</p>}
                   </div>
                   <div>
                     <Label htmlFor="phone">Celular</Label>
-                    <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    <Input id="phone" inputMode="tel" value={phone} aria-invalid={!!contactErrors.phone} onChange={(e) => { setPhone(e.target.value); setContactErrors((current) => ({ ...current, phone: "" })); }} />
+                    {contactErrors.phone && <p className="mt-1 text-sm text-destructive">{contactErrors.phone}</p>}
                   </div>
                   <div>
                     <Label htmlFor="cep">CEP</Label>

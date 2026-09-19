@@ -11,6 +11,7 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isSameDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { normalizePhone, validatePhone } from "@/lib/contactValidation";
 import {
   DEFAULT_CLOSING_TIME,
   DEFAULT_OPENING_TIME,
@@ -47,6 +48,7 @@ export default function PublicBooking() {
   const [clientName, setClientName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -166,13 +168,15 @@ export default function PublicBooking() {
 
   const handleSubmit = async () => {
     if (!canSubmit || !date) return;
+    const phoneValidation = validatePhone(phone, { required: true });
+    if (!phoneValidation.valid) { setPhoneError(phoneValidation.message ?? "Telefone inválido."); return; }
     const [hh, mm] = slot.split(":").map(Number);
     const startTime = new Date(date);
     startTime.setHours(hh, mm, 0, 0);
     const { data, error } = await supabase.rpc("create_public_booking", {
       establishment: resolvedId!,
       client_name: clientName,
-      p_phone: phone,
+      p_phone: normalizePhone(phone),
       p_services: serviceIds,
       p_professionals: professionalIds,
       start_time: startTime.toISOString(),
@@ -312,7 +316,8 @@ export default function PublicBooking() {
             </div>
             <div>
               <label className="text-sm text-muted-foreground">Telefone (WhatsApp)</label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(00) 00000-0000" />
+              <Input value={phone} inputMode="tel" aria-invalid={!!phoneError} onChange={(e) => { setPhone(e.target.value); setPhoneError(""); }} placeholder="(11) 99999-9999" />
+              {phoneError && <p className="mt-1 text-sm text-destructive">{phoneError}</p>}
             </div>
             <div>
               <label className="text-sm text-muted-foreground">Observações</label>

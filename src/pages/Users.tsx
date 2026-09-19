@@ -15,6 +15,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { AlertCircle, ArrowUpRight, Pencil } from "lucide-react";
 import { EditProfessionalDialog } from "@/components/users/EditProfessionalDialog";
 import { EditUserDialog } from "@/components/users/EditUserDialog";
+import { checkEmailDomain, validateEmail } from "@/lib/contactValidation";
 
 export default function Users() {
   const { profile, establishmentRole } = useAuth();
@@ -31,6 +32,7 @@ export default function Users() {
   const [role, setRole] = useState<"admin" | "employee">("employee");
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [emailError, setEmailError] = useState("");
 
   // Profissional sem usuário do sistema
   const [profName, setProfName] = useState("");
@@ -103,6 +105,8 @@ export default function Users() {
 
   const onCreate = async () => {
     if (!establishmentId || !email.trim() || !name.trim()) return;
+    const emailValidation = validateEmail(email, { required: true });
+    if (!emailValidation.valid) { setEmailError(emailValidation.message ?? "E-mail inválido."); return; }
     if (reachedUserLimit) {
       toast({
         title: "Limite de usuários atingido",
@@ -123,6 +127,8 @@ export default function Users() {
 
     setSaving(true);
     try {
+      const domainValidation = await checkEmailDomain(email);
+      if (!domainValidation.valid) { setEmailError(domainValidation.message ?? "E-mail inválido."); return; }
       const { error } = await supabase.functions.invoke("create-staff-user", {
         body: {
           establishment_id: establishmentId,
@@ -137,6 +143,7 @@ export default function Users() {
 
       toast({ title: "Usuário vinculado" });
       setEmail("");
+      setEmailError("");
       setName("");
       setPassword("");
       setRole("employee");
@@ -326,9 +333,12 @@ export default function Users() {
             <Label>Email do usuário</Label>
             <Input
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
               placeholder="usuario@exemplo.com"
+              type="email"
+              aria-invalid={!!emailError}
             />
+            {emailError && <p className="mt-1 text-sm text-destructive">{emailError}</p>}
           </div>
 
           <div>
