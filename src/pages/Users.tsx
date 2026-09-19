@@ -17,7 +17,6 @@ import { EditProfessionalDialog } from "@/components/users/EditProfessionalDialo
 import { EditUserDialog } from "@/components/users/EditUserDialog";
 import { checkEmailDomain, validateEmail } from "@/lib/contactValidation";
 import { ProfessionalColorPicker } from "@/components/users/ProfessionalColorPicker";
-import { DEFAULT_PROFESSIONAL_CALENDAR_COLOR } from "@/lib/professionalCalendarColors";
 
 export default function Users() {
   const { profile, establishmentRole } = useAuth();
