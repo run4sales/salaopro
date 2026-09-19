@@ -1039,6 +1039,7 @@ export type Database = {
       professionals: {
         Row: {
           active: boolean
+          calendar_color: string
           commission_percentage: number
           commission_type: string
           created_at: string
@@ -1051,6 +1052,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          calendar_color?: string
           commission_percentage?: number
           commission_type?: string
           created_at?: string
@@ -1063,6 +1065,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          calendar_color?: string
           commission_percentage?: number
           commission_type?: string
           created_at?: string
