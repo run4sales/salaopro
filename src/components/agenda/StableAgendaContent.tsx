@@ -48,8 +48,7 @@ function isRecoverableAgendaResourceError(error: any, resourceName: string) {
 }
 
 function isVisibleAppointment(appointment: any) {
-  const status = String(appointment?.status ?? "").toLowerCase();
-  return status !== "canceled" && status !== "cancelled";
+  return Boolean(appointment);
 }
 
 const getWeekOptions = () => ({ locale: ptBR, weekStartsOn: 0 as const });
@@ -661,7 +660,7 @@ export default function StableAgendaContent() {
               {agendaData.appts.length ? agendaData.appts.map((a: any) => {
                 const key = normalizeStatus(a.status);
                 return (
-                  <TableRow key={a.id} className="cursor-pointer" onClick={() => { setSelectedAppt(a); setDetailsOpen(true); }}>
+                  <TableRow key={a.id} className={`cursor-pointer ${key === "canceled" || key === "cancelled" ? "opacity-60 [&_td]:line-through" : ""}`} onClick={() => { setSelectedAppt(a); setDetailsOpen(true); }}>
                     <TableCell>{new Date(a.appointment_date).toLocaleString("pt-BR")}</TableCell>
                     <TableCell>{agendaData.clientMap.get(a.client_id) ?? "-"}</TableCell>
                     <TableCell>{(agendaData.serviceMap.get(a.service_id) as any)?.name ?? "-"}</TableCell>
@@ -671,8 +670,8 @@ export default function StableAgendaContent() {
                         {agendaData.profMap.get(a.professional_id) ?? "-"}
                       </span>
                     </TableCell>
-                    <TableCell><Badge variant={STATUS_VARIANTS[key] ?? "secondary"}>{STATUS_LABELS[key] ?? "Agendado"}</Badge></TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell className="no-underline"><Badge variant={STATUS_VARIANTS[key] ?? "secondary"}>{STATUS_LABELS[key] ?? "Agendado"}</Badge></TableCell>
+                    <TableCell className="no-underline" onClick={(e) => e.stopPropagation()}>
                       <Select value={key} onValueChange={(v) => updateStatus(a.id, v)}>
                         <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                         <SelectContent>{STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>

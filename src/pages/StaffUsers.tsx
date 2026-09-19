@@ -32,7 +32,7 @@ export default function Users() {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "employee">("employee");
-  const [userCalendarColor, setUserCalendarColor] = useState<string>(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
+  const [userCalendarColor, setUserCalendarColor] = useState<string>("");
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [emailError, setEmailError] = useState("");
@@ -40,7 +40,7 @@ export default function Users() {
   // Profissional sem usuário do sistema
   const [profName, setProfName] = useState("");
   const [profCommission, setProfCommission] = useState("40");
-  const [profCalendarColor, setProfCalendarColor] = useState<string>(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
+  const [profCalendarColor, setProfCalendarColor] = useState<string>("");
   const [savingProf, setSavingProf] = useState(false);
 
   const [editProf, setEditProf] = useState<any | null>(null);
@@ -141,7 +141,7 @@ export default function Users() {
           name: name.trim(),
           role,
           service_ids: selectedServices,
-          calendar_color: userCalendarColor,
+          calendar_color: userCalendarColor || undefined,
         },
       });
       if (error) throw error;
@@ -154,7 +154,7 @@ export default function Users() {
       setPassword("");
       setRole("employee");
       setSelectedServices([]);
-      setUserCalendarColor(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
+      setUserCalendarColor("");
       qc.invalidateQueries({ queryKey: ["establishment-users"] });
     } catch (e: any) {
       const msg = await extractEdgeFunctionError(e);
@@ -196,13 +196,13 @@ export default function Users() {
       name: profName.trim(),
       active: true,
       commission_percentage: Number(profCommission) || 0,
-      calendar_color: profCalendarColor,
+      ...(profCalendarColor ? { calendar_color: profCalendarColor } : {}),
     } as any);
     setSavingProf(false);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     setProfName("");
     setProfCommission("40");
-    setProfCalendarColor(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
+    setProfCalendarColor("");
     toast({ title: "Profissional cadastrado" });
     qc.invalidateQueries({ queryKey: ["professionals-manage"] });
     qc.invalidateQueries({ queryKey: ["professionals"] });

@@ -3,7 +3,7 @@ import { Calendar, dateFnsLocalizer, View, SlotInfo } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { STATUS_COLORS, STATUS_LABELS, normalizeStatus } from "@/lib/appointmentStatus";
+import { STATUS_LABELS, normalizeStatus } from "@/lib/appointmentStatus";
 import { buildBusinessTimeBoundary, DEFAULT_CLOSING_TIME, DEFAULT_OPENING_TIME } from "@/lib/businessHours";
 import { getProfessionalCalendarStyle } from "@/lib/professionalCalendarColors";
 
@@ -86,7 +86,6 @@ export function AgendaCalendar({
         };
       }
       const status = normalizeStatus(event.status);
-      const c = STATUS_COLORS[status] ?? STATUS_COLORS.scheduled;
       const professionalStyle = getProfessionalCalendarStyle(event.professionalColor);
       const isCancelled = status === "canceled" || status === "cancelled";
       return {
