@@ -38,16 +38,17 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
 
   useEffect(() => {
     if (!user) return;
-    const emailValidation = validateEmail(email, { required: true });
-    if (!emailValidation.valid) { setEmailError(emailValidation.message ?? "E-mail inválido."); return; }
     setName(user.professional?.name ?? "");
     setRole((user.role as any) === "admin" ? "admin" : "employee");
     setEmail(user.email ?? "");
+    setEmailError("");
     setPassword("");
   }, [user]);
 
   const onSave = async () => {
     if (!user) return;
+    const emailValidation = validateEmail(email, { required: true });
+    if (!emailValidation.valid) { setEmailError(emailValidation.message ?? "E-mail inválido."); return; }
     if (password && password.length < 6) {
       toast({ title: "Senha inválida", description: "Mínimo 6 caracteres.", variant: "destructive" });
       return;
