@@ -16,6 +16,8 @@ import { AlertCircle, ArrowUpRight, Pencil } from "lucide-react";
 import { EditProfessionalDialog } from "@/components/users/EditProfessionalDialog";
 import { EditUserDialog } from "@/components/users/EditUserDialog";
 import { checkEmailDomain, validateEmail } from "@/lib/contactValidation";
+import { ProfessionalColorPicker } from "@/components/users/ProfessionalColorPicker";
+import { DEFAULT_PROFESSIONAL_CALENDAR_COLOR } from "@/lib/professionalCalendarColors";
 
 export default function Users() {
   const { profile, establishmentRole } = useAuth();
@@ -30,6 +32,7 @@ export default function Users() {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "employee">("employee");
+  const [userCalendarColor, setUserCalendarColor] = useState<string>(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [emailError, setEmailError] = useState("");
@@ -37,6 +40,7 @@ export default function Users() {
   // Profissional sem usuário do sistema
   const [profName, setProfName] = useState("");
   const [profCommission, setProfCommission] = useState("40");
+  const [profCalendarColor, setProfCalendarColor] = useState<string>(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
   const [savingProf, setSavingProf] = useState(false);
 
   const [editProf, setEditProf] = useState<any | null>(null);
@@ -59,7 +63,7 @@ export default function Users() {
       const profIds = (data ?? []).map((u: any) => u.professional_id).filter(Boolean);
       const { data: profs } = await supabase
         .from("professionals")
-        .select("id, name, active")
+        .select("id, name, active, calendar_color")
         .in("id", profIds.length ? profIds : ["00000000-0000-0000-0000-000000000000"]);
 
       const profMap = new Map((profs ?? []).map((p: any) => [p.id, p]));
@@ -91,7 +95,7 @@ export default function Users() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("professionals")
-        .select("id, name, active, commission_percentage")
+        .select("id, name, active, commission_percentage, commission_type, custom_percentage, daily_amount, calendar_color")
         .eq("establishment_id", establishmentId)
         .order("name");
       if (error) throw error;
@@ -137,6 +141,7 @@ export default function Users() {
           name: name.trim(),
           role,
           service_ids: selectedServices,
+          calendar_color: userCalendarColor,
         },
       });
       if (error) throw error;
@@ -149,6 +154,7 @@ export default function Users() {
       setPassword("");
       setRole("employee");
       setSelectedServices([]);
+      setUserCalendarColor(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
       qc.invalidateQueries({ queryKey: ["establishment-users"] });
     } catch (e: any) {
       const msg = await extractEdgeFunctionError(e);
@@ -190,11 +196,13 @@ export default function Users() {
       name: profName.trim(),
       active: true,
       commission_percentage: Number(profCommission) || 0,
+      calendar_color: profCalendarColor,
     } as any);
     setSavingProf(false);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     setProfName("");
     setProfCommission("40");
+    setProfCalendarColor(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
     toast({ title: "Profissional cadastrado" });
     qc.invalidateQueries({ queryKey: ["professionals-manage"] });
     qc.invalidateQueries({ queryKey: ["professionals"] });
@@ -276,6 +284,7 @@ export default function Users() {
               {savingProf ? "Salvando..." : "Adicionar"}
             </Button>
           </div>
+          <ProfessionalColorPicker value={profCalendarColor} onChange={setProfCalendarColor} />
 
           <div className="space-y-2">
             {professionalsList.map((p: any) => {
@@ -283,7 +292,10 @@ export default function Users() {
               return (
                 <div key={p.id} className="border rounded p-3 flex items-center justify-between gap-3 flex-wrap">
                   <div>
-                    <div className="font-medium">{p.name}</div>
+                    <div className="flex items-center gap-2 font-medium">
+                      <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: p.calendar_color }} />
+                      {p.name}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       {p.active ? "Ativo" : "Inativo"} • Comissão {Number(p.commission_percentage ?? 0)}% •{" "}
                       {linkedUser ? "Com acesso ao sistema" : "Sem acesso ao sistema"}
@@ -372,6 +384,10 @@ export default function Users() {
           </div>
 
           <div className="md:col-span-2">
+            <ProfessionalColorPicker value={userCalendarColor} onChange={setUserCalendarColor} />
+          </div>
+
+          <div className="md:col-span-2">
             <Label>Serviços vinculados</Label>
             <div className="grid sm:grid-cols-2 gap-2 mt-2">
               {services.map((s: any) => (
@@ -406,7 +422,10 @@ export default function Users() {
           {users.map((u: any) => (
             <div key={u.id} className="border rounded p-3 flex items-center justify-between gap-3">
               <div>
-                <div className="font-medium">{u.professional?.name ?? "Sem profissional"}</div>
+                <div className="flex items-center gap-2 font-medium">
+                  {u.professional?.calendar_color && <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: u.professional.calendar_color }} />}
+                  {u.professional?.name ?? "Sem profissional"}
+                </div>
                 <div className="text-sm text-muted-foreground">
                   {u.email ? `Email: ${u.email} • ` : "Email não disponível • "}
                   Perfil: {u.role === "admin" ? "Administrador" : "Funcionário"} •{" "}

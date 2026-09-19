@@ -37,7 +37,7 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
   const [role, setRole] = useState<"admin" | "employee">("employee");
   const [saving, setSaving] = useState(false);
   const [emailError, setEmailError] = useState("");
-  const [calendarColor, setCalendarColor] = useState(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
+  const [calendarColor, setCalendarColor] = useState<string>(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
 
   useEffect(() => {
     if (!user) return;

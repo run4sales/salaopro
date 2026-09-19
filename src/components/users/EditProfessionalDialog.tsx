@@ -37,7 +37,7 @@ export function EditProfessionalDialog({ open, onOpenChange, professional }: Pro
   const [commissionPercentage, setCommissionPercentage] = useState("0");
   const [customPercentage, setCustomPercentage] = useState("0");
   const [dailyAmount, setDailyAmount] = useState("0");
-  const [calendarColor, setCalendarColor] = useState(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
+  const [calendarColor, setCalendarColor] = useState<string>(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
