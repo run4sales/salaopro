@@ -1,9 +1,11 @@
 import * as XLSX from "xlsx";
+import { normalizePhone, validatePhone } from "@/lib/contactValidation";
 
 export interface AppointmentRow {
   rowIndex: number;
   date: Date | null;
   clientName: string;
+  clientPhone: string;
   category: string;
   serviceName: string;
   professionalName: string;
@@ -22,6 +24,7 @@ const HEADER_ALIASES: Record<string, string[]> = {
   date: ["data da venda", "data", "data do agendamento", "dt", "dia"],
   time: ["horario inicio", "horário início", "horario", "horário", "hora", "hora inicio", "hora início"],
   client: ["cliente", "nome do cliente", "nome"],
+  phone: ["telefone", "celular", "whatsapp", "fone"],
   category: ["categoria", "tipo"],
   service: ["serviço e produto", "servico e produto", "serviço", "servico", "produto", "item"],
   professional: ["profissional", "responsavel", "responsável", "colaborador", "funcionario", "funcionário"],
@@ -131,6 +134,8 @@ export function parseRows(headers: string[], rows: any[][]): AppointmentRow[] {
       }
     }
     const clientName = cols.client !== undefined ? String(r[cols.client] ?? "").trim() : "";
+    const rawPhone = cols.phone !== undefined ? String(r[cols.phone] ?? "").trim() : "";
+    const clientPhone = normalizePhone(rawPhone);
     const category = cols.category !== undefined ? String(r[cols.category] ?? "").trim() : "";
     const serviceName = cols.service !== undefined ? String(r[cols.service] ?? "").trim() : "";
     const professionalName = cols.professional !== undefined ? String(r[cols.professional] ?? "").trim() : "";
@@ -139,16 +144,17 @@ export function parseRows(headers: string[], rows: any[][]): AppointmentRow[] {
     const errors: string[] = [];
     if (!date) errors.push("Data inválida");
     if (!clientName) errors.push("Cliente vazio");
+    if (rawPhone && !validatePhone(rawPhone, { required: false }).valid) errors.push("Telefone do cliente inválido");
     if (!serviceName) errors.push("Serviço vazio");
-    return { rowIndex: i + 2, date, clientName, category, serviceName, professionalName, statusLabel, price, errors };
+    return { rowIndex: i + 2, date, clientName, clientPhone, category, serviceName, professionalName, statusLabel, price, errors };
   });
 }
 
 export function buildTemplateBlob(): Blob {
   const data = [
-    ["Data", "Horário Início", "Cliente", "Serviço", "Profissional", "Situação", "Valor (R$)"],
-    ["15/06/2026", "09:00", "Maria Silva", "Corte feminino", "Carla de Cassia", "Marcado", "80,00"],
-    ["15/06/2026", "10:30", "Joana Souza", "Limpeza de pele", "Amanda Souza", "Confirmado", "220,00"],
+    ["Data", "Horário Início", "Cliente", "Telefone", "Serviço", "Profissional", "Situação", "Valor (R$)"],
+    ["15/06/2026", "09:00", "Maria Silva", "11987654321", "Corte feminino", "Carla de Cassia", "Marcado", "80,00"],
+    ["15/06/2026", "10:30", "Joana Souza", "21998765432", "Limpeza de pele", "Amanda Souza", "Confirmado", "220,00"],
   ];
   const ws = XLSX.utils.aoa_to_sheet(data);
   const wb = XLSX.utils.book_new();

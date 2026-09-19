@@ -114,12 +114,14 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
     setProgress(0);
     // Pré-carrega clientes, serviços e profissionais do estabelecimento
     const [clientsRes, servicesRes, profRes] = await Promise.all([
-      supabase.from("clients").select("id, name").eq("establishment_id", establishmentId),
+      supabase.from("clients").select("id, name, phone").eq("establishment_id", establishmentId),
       supabase.from("services").select("id, name, price").eq("establishment_id", establishmentId),
       supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId),
     ]);
     const clientByName = new Map<string, string>();
     (clientsRes.data ?? []).forEach((c: any) => clientByName.set(c.name.trim().toLowerCase(), c.id));
+    const clientByPhone = new Map<string, string>();
+    (clientsRes.data ?? []).forEach((c: any) => { if (c.phone) clientByPhone.set(String(c.phone).replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, ""), c.id); });
     const serviceByName = new Map<string, string>();
     (servicesRes.data ?? []).forEach((s: any) => serviceByName.set(s.name.trim().toLowerCase(), s.id));
     const profByName = new Map<string, string>();
@@ -133,16 +135,18 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
       try {
         // Resolve cliente
         const clientKey = row.clientName.toLowerCase();
-        let clientId = clientByName.get(clientKey);
+        let clientId = (row.clientPhone && clientByPhone.get(row.clientPhone)) || clientByName.get(clientKey);
         if (!clientId) {
+          if (!row.clientPhone) throw new Error("Cliente novo precisa de telefone válido com DDD");
           const { data, error } = await supabase
             .from("clients")
-            .insert({ establishment_id: establishmentId, name: row.clientName, phone: "" })
+            .insert({ establishment_id: establishmentId, name: row.clientName, phone: row.clientPhone })
             .select("id")
             .single();
           if (error) throw new Error("Cliente: " + error.message);
           clientId = data.id;
           clientByName.set(clientKey, clientId);
+          clientByPhone.set(row.clientPhone, clientId);
         }
 
         // Resolve serviço
@@ -245,7 +249,7 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
                 <div>
                   <div className="font-medium">Modelo da planilha</div>
                   <div className="text-xs text-muted-foreground">
-                    Colunas: Data, Horário Início, Cliente, Serviço, Profissional, Situação, Valor (R$)
+                    Colunas: Data, Horário Início, Cliente, Telefone, Serviço, Profissional, Situação, Valor (R$)
                   </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={downloadTemplate}>
@@ -275,6 +279,7 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
                       <TableHead className="w-12">#</TableHead>
                       <TableHead>Data</TableHead>
                       <TableHead>Cliente</TableHead>
+                      <TableHead>Telefone</TableHead>
                       <TableHead>Serviço</TableHead>
                       <TableHead>Profissional</TableHead>
                       <TableHead>Situação</TableHead>
@@ -290,6 +295,7 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
                           {r.date ? r.date.toLocaleString("pt-BR") : "—"}
                         </TableCell>
                         <TableCell className="text-xs">{r.clientName || "—"}</TableCell>
+                        <TableCell className="text-xs">{r.clientPhone || "—"}</TableCell>
                         <TableCell className="text-xs">
                           {r.serviceName || "—"}
                           {r.category && <span className="text-muted-foreground"> · {r.category}</span>}
