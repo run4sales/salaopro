@@ -23,6 +23,7 @@ import { exportClientsToXlsx, exportClientsToCsv } from '@/lib/clientImportExpor
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ClientWalletDialog } from '@/components/clients/ClientWalletDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { normalizeEmail, normalizePhone, validateEmail, validatePhone } from '@/lib/contactValidation';
 
 const Clients = () => {
   const { user, profile } = useAuth();
@@ -41,6 +42,7 @@ const Clients = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [walletClient, setWalletClient] = useState<any>(null);
   const [deletingClient, setDeletingClient] = useState<any>(null);
+  const [contactErrors, setContactErrors] = useState({ phone: '', email: '' });
 
   const [newClient, setNewClient] = useState({
     name: '',
@@ -197,8 +199,8 @@ const Clients = () => {
       
       const insertData = {
         name: clientData.name,
-        phone: clientData.phone,
-        email: clientData.email || null,
+        phone: normalizePhone(clientData.phone),
+        email: clientData.email ? normalizeEmail(clientData.email) : null,
         gender: clientData.gender || null,
         birth_date: clientData.birth_date?.toISOString().split('T')[0] || null,
         last_service_date: clientData.last_service_date?.toISOString() || null,
@@ -263,8 +265,8 @@ const Clients = () => {
         .from('clients')
         .update({
           name: clientData.name,
-          phone: clientData.phone,
-          email: clientData.email || null,
+          phone: normalizePhone(clientData.phone),
+          email: clientData.email ? normalizeEmail(clientData.email) : null,
           gender: clientData.gender || null,
           birth_date: clientData.birth_date?.toISOString?.()?.split('T')[0] || null,
           last_service_date: clientData.last_service_date?.toISOString?.() || null,
@@ -355,6 +357,10 @@ const Clients = () => {
   const handleAddClient = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newClient.name || !newClient.phone) return;
+    const phoneValidation = validatePhone(newClient.phone, { required: true });
+    const emailValidation = validateEmail(newClient.email, { required: false });
+    setContactErrors({ phone: phoneValidation.message ?? '', email: emailValidation.message ?? '' });
+    if (!phoneValidation.valid || !emailValidation.valid) return;
     addClientMutation.mutate(newClient);
   };
 
@@ -364,12 +370,17 @@ const Clients = () => {
       birth_date: client.birth_date ? new Date(client.birth_date) : null,
       last_service_date: client.last_service_date ? new Date(client.last_service_date) : null,
     });
+    setContactErrors({ phone: '', email: '' });
     setIsEditDialogOpen(true);
   };
 
   const handleUpdateClient = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingClient?.name || !editingClient?.phone) return;
+    const phoneValidation = validatePhone(editingClient.phone, { required: true });
+    const emailValidation = validateEmail(editingClient.email, { required: false });
+    setContactErrors({ phone: phoneValidation.message ?? '', email: emailValidation.message ?? '' });
+    if (!phoneValidation.valid || !emailValidation.valid) return;
     updateClientMutation.mutate(editingClient);
   };
 
@@ -725,10 +736,13 @@ const Clients = () => {
               <Input
                 id="phone"
                 value={newClient.phone}
-                onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                onChange={(e) => { setNewClient({ ...newClient, phone: e.target.value }); setContactErrors((current) => ({ ...current, phone: '' })); }}
                 placeholder="(11) 99999-9999"
+                inputMode="tel"
+                aria-invalid={!!contactErrors.phone}
                 required
               />
+              {contactErrors.phone && <p className="text-sm text-destructive">{contactErrors.phone}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -736,9 +750,11 @@ const Clients = () => {
                 id="email"
                 type="email"
                 value={newClient.email}
-                onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                onChange={(e) => { setNewClient({ ...newClient, email: e.target.value }); setContactErrors((current) => ({ ...current, email: '' })); }}
                 placeholder="cliente@email.com"
+                aria-invalid={!!contactErrors.email}
               />
+              {contactErrors.email && <p className="text-sm text-destructive">{contactErrors.email}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="gender">Sexo</Label>
@@ -838,10 +854,13 @@ const Clients = () => {
                 <Input
                   id="edit-phone"
                   value={editingClient.phone}
-                  onChange={(e) => setEditingClient({ ...editingClient, phone: e.target.value })}
+                  onChange={(e) => { setEditingClient({ ...editingClient, phone: e.target.value }); setContactErrors((current) => ({ ...current, phone: '' })); }}
                   placeholder="(11) 99999-9999"
+                  inputMode="tel"
+                  aria-invalid={!!contactErrors.phone}
                   required
                 />
+                {contactErrors.phone && <p className="text-sm text-destructive">{contactErrors.phone}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-email">Email</Label>
@@ -849,9 +868,11 @@ const Clients = () => {
                   id="edit-email"
                   type="email"
                   value={editingClient.email || ''}
-                  onChange={(e) => setEditingClient({ ...editingClient, email: e.target.value })}
+                  onChange={(e) => { setEditingClient({ ...editingClient, email: e.target.value }); setContactErrors((current) => ({ ...current, email: '' })); }}
                   placeholder="cliente@email.com"
+                  aria-invalid={!!contactErrors.email}
                 />
+                {contactErrors.email && <p className="text-sm text-destructive">{contactErrors.email}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-gender">Sexo</Label>
