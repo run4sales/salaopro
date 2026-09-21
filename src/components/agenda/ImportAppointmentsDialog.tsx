@@ -22,6 +22,7 @@ import {
   parseRows,
   readFile,
 } from "@/lib/appointmentImport";
+import { DEFAULT_PROFESSIONAL_CALENDAR_COLOR } from "@/lib/professionalCalendarColors";
 
 interface Props {
   open: boolean;
@@ -177,7 +178,12 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
           if (!professionalId) {
             const { data, error } = await supabase
               .from("professionals")
-              .insert({ establishment_id: establishmentId, name: row.professionalName, active: true })
+              .insert({
+                establishment_id: establishmentId,
+                name: row.professionalName,
+                active: true,
+                calendar_color: DEFAULT_PROFESSIONAL_CALENDAR_COLOR,
+              })
               .select("id")
               .single();
             if (error) throw new Error("Profissional: " + error.message);
