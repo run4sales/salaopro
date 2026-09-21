@@ -26,6 +26,7 @@ import {
   ParsedRow,
   autoMapHeader,
   exportErrorReport,
+  normalizePhone,
   parseRows,
   readSpreadsheet,
 } from "@/lib/clientImportExport";
@@ -117,8 +118,7 @@ export default function ImportClientsDialog({ open, onOpenChange, establishmentI
     const byEmail = new Map<string, any>();
     const byNameBirth = new Map<string, any>();
     (existingAll ?? []).forEach((c: any) => {
-      const p = (c.phone ?? "").replace(/\D/g, "").replace(/^0+/, "");
-      const pNorm = p.length === 10 || p.length === 11 ? "55" + p : p;
+      const pNorm = normalizePhone(c.phone);
       if (pNorm) byPhone.set(pNorm, c);
       if (c.email) byEmail.set(String(c.email).toLowerCase(), c);
       if (c.name && c.birth_date) byNameBirth.set(`${String(c.name).toLowerCase().trim()}|${c.birth_date}`, c);

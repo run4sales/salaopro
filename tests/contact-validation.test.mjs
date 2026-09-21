@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { normalizePhone as normalizeImportedClientPhone } from "../src/lib/clientImportExport.ts";
 import { validateEmail, validatePhone } from "../src/lib/contactValidation.ts";
 import { readFileSync } from "node:fs";
 
@@ -26,6 +27,11 @@ test("rejects malformed or artificial Brazilian phones", () => {
 test("accepts valid Brazilian landlines and mobile phones", () => {
   for (const phone of ["(11) 98765-4321", "11987654321", "+55 (21) 99876-5432", "1132345678", "55 31 3987-6543"])
     assert.equal(validatePhone(phone, { required: true }).valid, true, phone);
+});
+
+test("client import uses the same phone key with or without Brazil country code", () => {
+  assert.equal(normalizeImportedClientPhone("+55 (11) 98765-4321"), "11987654321");
+  assert.equal(normalizeImportedClientPhone("(11) 98765-4321"), "11987654321");
 });
 
 test("all contact write screens use the centralized validators", () => {
