@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Cake, MessageCircle, Plus, Search, Edit, CalendarIcon, Settings, Upload, Download, Wallet, Trash2 } from 'lucide-react';
+import { Cake, MessageCircle, Plus, Search, Edit, CalendarIcon, Settings, Upload, Download, Wallet, Trash2, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addDays, format, startOfWeek } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -24,6 +24,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ClientWalletDialog } from '@/components/clients/ClientWalletDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { checkEmailDomain, normalizeEmail, normalizePhone, validateEmail, validatePhone } from '@/lib/contactValidation';
+import { ClientProfileDialog } from '@/components/clients/ClientProfileDialog';
+import { Switch } from '@/components/ui/switch';
+
+const DEFAULT_CLIENT_FIELDS: Record<string, boolean> = { phone: true, whatsapp: false, email: true, cpf: false, birth_date: true, address: false, gender: true, acquisition_source: true, notes: true };
 
 const Clients = () => {
   const { user, profile } = useAuth();
@@ -43,11 +47,18 @@ const Clients = () => {
   const [walletClient, setWalletClient] = useState<any>(null);
   const [deletingClient, setDeletingClient] = useState<any>(null);
   const [contactErrors, setContactErrors] = useState({ phone: '', email: '' });
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [clientFields, setClientFields] = useState(DEFAULT_CLIENT_FIELDS);
 
   const [newClient, setNewClient] = useState({
     name: '',
     phone: '',
+    whatsapp: '',
     email: '',
+    cpf: '',
+    address: '',
+    nickname: '',
+    instagram: '',
     gender: '',
     birth_date: null as Date | null,
     last_service_date: null as Date | null,
@@ -94,6 +105,14 @@ const Clients = () => {
       setInactiveDaysConfig(settings.inactive_days_threshold);
     }
   }, [settings]);
+
+  useEffect(() => {
+    if (settings?.client_fields && typeof settings.client_fields === 'object') setClientFields({ ...DEFAULT_CLIENT_FIELDS, ...(settings.client_fields as Record<string, boolean>) });
+  }, [settings]);
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1') setIsAddDialogOpen(true);
+  }, [searchParams]);
 
   // Fetch clients
   const { data: allClients, isLoading } = useQuery({
@@ -174,7 +193,8 @@ const Clients = () => {
     // Search filter
     const matchesSearch = !searchTerm || 
       client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.phone.includes(searchTerm) ||
+      (client.phone && client.phone.includes(searchTerm)) ||
+      (client.whatsapp && client.whatsapp.includes(searchTerm)) ||
       (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase()));
     
     if (!matchesSearch) return false;
@@ -199,8 +219,13 @@ const Clients = () => {
       
       const insertData = {
         name: clientData.name,
-        phone: normalizePhone(clientData.phone),
+        phone: clientData.phone ? normalizePhone(clientData.phone) : null,
+        whatsapp: clientData.whatsapp ? normalizePhone(clientData.whatsapp) : null,
         email: clientData.email ? normalizeEmail(clientData.email) : null,
+        cpf: clientData.cpf || null,
+        address: clientData.address || null,
+        nickname: clientData.nickname || null,
+        instagram: clientData.instagram || null,
         gender: clientData.gender || null,
         birth_date: clientData.birth_date?.toISOString().split('T')[0] || null,
         last_service_date: clientData.last_service_date?.toISOString() || null,
@@ -222,12 +247,17 @@ const Clients = () => {
       }
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (createdClient) => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       setNewClient({ 
         name: '', 
         phone: '', 
+        whatsapp: '',
         email: '', 
+        cpf: '',
+        address: '',
+        nickname: '',
+        instagram: '',
         gender: '', 
         birth_date: null, 
         last_service_date: null, 
@@ -235,6 +265,7 @@ const Clients = () => {
         notes: '' 
       });
       setIsAddDialogOpen(false);
+      setSelectedClient(createdClient);
       toast({
         title: 'Cliente adicionado!',
         description: 'O cliente foi cadastrado com sucesso.',
@@ -265,8 +296,13 @@ const Clients = () => {
         .from('clients')
         .update({
           name: clientData.name,
-          phone: normalizePhone(clientData.phone),
+          phone: clientData.phone ? normalizePhone(clientData.phone) : null,
+          whatsapp: clientData.whatsapp ? normalizePhone(clientData.whatsapp) : null,
           email: clientData.email ? normalizeEmail(clientData.email) : null,
+          cpf: clientData.cpf || null,
+          address: clientData.address || null,
+          nickname: clientData.nickname || null,
+          instagram: clientData.instagram || null,
           gender: clientData.gender || null,
           birth_date: clientData.birth_date?.toISOString?.()?.split('T')[0] || null,
           last_service_date: clientData.last_service_date?.toISOString?.() || null,
@@ -331,12 +367,13 @@ const Clients = () => {
 
   // Update settings mutation
   const updateSettingsMutation = useMutation({
-    mutationFn: async (inactiveDays: number) => {
+    mutationFn: async ({ inactiveDays, fields }: { inactiveDays: number; fields: Record<string, boolean> }) => {
       const { data, error } = await supabase
         .from('settings')
         .upsert({
           establishment_id: profile?.id,
           inactive_days_threshold: inactiveDays,
+          client_fields: fields,
         })
         .select()
         .single();
@@ -356,8 +393,8 @@ const Clients = () => {
 
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newClient.name || !newClient.phone) return;
-    const phoneValidation = validatePhone(newClient.phone, { required: true });
+    if (!newClient.name.trim()) return;
+    const phoneValidation = validatePhone(newClient.phone, { required: false });
     const emailValidation = validateEmail(newClient.email, { required: false });
     setContactErrors({ phone: phoneValidation.message ?? '', email: emailValidation.message ?? '' });
     if (!phoneValidation.valid || !emailValidation.valid) return;
@@ -380,8 +417,8 @@ const Clients = () => {
 
   const handleUpdateClient = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingClient?.name || !editingClient?.phone) return;
-    const phoneValidation = validatePhone(editingClient.phone, { required: true });
+    if (!editingClient?.name?.trim()) return;
+    const phoneValidation = validatePhone(editingClient.phone, { required: false });
     const emailValidation = validateEmail(editingClient.email, { required: false });
     setContactErrors({ phone: phoneValidation.message ?? '', email: emailValidation.message ?? '' });
     if (!phoneValidation.valid || !emailValidation.valid) return;
@@ -393,7 +430,7 @@ const Clients = () => {
   };
 
   const handleSaveSettings = () => {
-    updateSettingsMutation.mutate(inactiveDaysConfig);
+    updateSettingsMutation.mutate({ inactiveDays: inactiveDaysConfig, fields: clientFields });
   };
 
   const handleDeleteClient = () => {
@@ -579,7 +616,7 @@ const Clients = () => {
                     <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                       <div className="min-w-0 space-y-0.5">
                         <h3 className="truncate font-semibold">{client.name}</h3>
-                        <p className="break-words text-sm text-muted-foreground">{client.phone}</p>
+                        <p className="break-words text-sm text-muted-foreground">{client.phone || client.whatsapp || 'Sem telefone'}</p>
                         <p className="truncate text-sm text-muted-foreground">{client.email || 'Sem email'}</p>
                       </div>
                       <div className="flex min-w-0">{getStatusBadge(client.last_service_date)}</div>
@@ -608,7 +645,8 @@ const Clients = () => {
                       </div>
                     </dl>
 
-                    <div className="mt-4 grid min-w-0 grid-cols-4 gap-2">
+                    <div className="mt-4 grid min-w-0 grid-cols-5 gap-2">
+                      <Button size="sm" variant="outline" className="min-w-0 px-2" onClick={() => setSelectedClient(client)} title="Abrir ficha"><Eye className="h-4 w-4" /></Button>
                       <Button
                         size="sm"
                         variant="outline"
@@ -627,7 +665,8 @@ const Clients = () => {
                       </Button>
                       <Button
                         size="sm"
-                        onClick={() => openWhatsApp(client.phone, client.name)}
+                        onClick={() => openWhatsApp(client.whatsapp || client.phone, client.name)}
+                        disabled={!client.whatsapp && !client.phone}
                         className="min-w-0 bg-success px-2 hover:bg-success/90"
                       >
                         <MessageCircle className="h-4 w-4" />
@@ -666,7 +705,7 @@ const Clients = () => {
                     {filteredClients.map((client) => (
                       <TableRow key={client.id}>
                         <TableCell className="font-medium">{client.name}</TableCell>
-                        <TableCell>{client.phone}</TableCell>
+                        <TableCell>{client.phone || client.whatsapp || '-'}</TableCell>
                         <TableCell>{client.email || '-'}</TableCell>
                         <TableCell>{getStatusBadge(client.last_service_date)}</TableCell>
                         <TableCell>{formatBirthday(client.birth_date)}</TableCell>
@@ -676,6 +715,7 @@ const Clients = () => {
                         <TableCell>{client.visit_count}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => setSelectedClient(client)} title="Abrir ficha"><Eye className="h-4 w-4" /></Button>
                             <Button
                               size="sm"
                               variant="outline"
@@ -693,8 +733,9 @@ const Clients = () => {
                             </Button>
                             <Button
                               size="sm"
-                              onClick={() => openWhatsApp(client.phone, client.name)}
-                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => openWhatsApp(client.whatsapp || client.phone, client.name)}
+                              disabled={!client.whatsapp && !client.phone}
+                              className="bg-success hover:bg-success/90"
                             >
                               <MessageCircle className="h-4 w-4 mr-1" />
                               WhatsApp
@@ -722,11 +763,11 @@ const Clients = () => {
 
       {/* Add Client Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Adicionar Novo Cliente</DialogTitle>
             <DialogDescription>
-              Cadastre um novo cliente para seu estabelecimento.
+              Preencha a ficha completa. Somente o nome é obrigatório.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddClient} className="space-y-4">
@@ -739,8 +780,8 @@ const Clients = () => {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">WhatsApp *</Label>
+             {clientFields.phone && <div className="space-y-2">
+               <Label htmlFor="phone">Telefone</Label>
               <Input
                 id="phone"
                 value={newClient.phone}
@@ -748,11 +789,12 @@ const Clients = () => {
                 placeholder="(11) 99999-9999"
                 inputMode="tel"
                 aria-invalid={!!contactErrors.phone}
-                required
               />
               {contactErrors.phone && <p className="text-sm text-destructive">{contactErrors.phone}</p>}
-            </div>
-            <div className="space-y-2">
+             </div>}
+             {clientFields.whatsapp && <div className="space-y-2"><Label htmlFor="whatsapp">WhatsApp</Label><Input id="whatsapp" value={newClient.whatsapp} onChange={(e) => setNewClient({ ...newClient, whatsapp: e.target.value })} placeholder="(11) 99999-9999" inputMode="tel" /></div>}
+             <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="nickname">Apelido</Label><Input id="nickname" value={newClient.nickname} onChange={(e) => setNewClient({ ...newClient, nickname: e.target.value })} /></div><div className="space-y-2"><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={newClient.instagram} onChange={(e) => setNewClient({ ...newClient, instagram: e.target.value })} placeholder="@cliente" /></div></div>
+             {clientFields.email && <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -763,8 +805,9 @@ const Clients = () => {
                 aria-invalid={!!contactErrors.email}
               />
               {contactErrors.email && <p className="text-sm text-destructive">{contactErrors.email}</p>}
-            </div>
-            <div className="space-y-2">
+             </div>}
+             {clientFields.cpf && <div className="space-y-2"><Label htmlFor="cpf">CPF</Label><Input id="cpf" value={newClient.cpf} onChange={(e) => setNewClient({ ...newClient, cpf: e.target.value })} inputMode="numeric" /></div>}
+             {clientFields.gender && <div className="space-y-2">
               <Label htmlFor="gender">Sexo</Label>
               <Select value={newClient.gender} onValueChange={(value) => setNewClient({ ...newClient, gender: value })}>
                 <SelectTrigger>
@@ -776,8 +819,8 @@ const Clients = () => {
                   <SelectItem value="outro">Outro</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
+             </div>}
+             {clientFields.birth_date && <div className="space-y-2">
               <Label>Data de Nascimento</Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -807,8 +850,9 @@ const Clients = () => {
                   />
                 </PopoverContent>
               </Popover>
-            </div>
-            <div className="space-y-2">
+             </div>}
+             {clientFields.address && <div className="space-y-2"><Label htmlFor="address">Endereço</Label><Input id="address" value={newClient.address} onChange={(e) => setNewClient({ ...newClient, address: e.target.value })} /></div>}
+             {clientFields.acquisition_source && <div className="space-y-2">
               <Label htmlFor="acquisition_source">Como chegou</Label>
               <Select value={newClient.acquisition_source} onValueChange={(value) => setNewClient({ ...newClient, acquisition_source: value })}>
                 <SelectTrigger>
@@ -820,8 +864,8 @@ const Clients = () => {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
+             </div>}
+             {clientFields.notes && <div className="space-y-2">
               <Label htmlFor="notes">Observações</Label>
               <Textarea
                 id="notes"
@@ -829,7 +873,7 @@ const Clients = () => {
                 onChange={(e) => setNewClient({ ...newClient, notes: e.target.value })}
                 placeholder="Informações adicionais sobre o cliente..."
               />
-            </div>
+             </div>}
             <Button type="submit" className="w-full" disabled={addClientMutation.isPending}>
               {addClientMutation.isPending ? 'Adicionando...' : 'Adicionar Cliente'}
             </Button>
@@ -839,7 +883,7 @@ const Clients = () => {
 
       {/* Edit Client Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Cliente</DialogTitle>
             <DialogDescription>
@@ -858,7 +902,7 @@ const Clients = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-phone">WhatsApp *</Label>
+                <Label htmlFor="edit-phone">Telefone</Label>
                 <Input
                   id="edit-phone"
                   value={editingClient.phone}
@@ -866,10 +910,12 @@ const Clients = () => {
                   placeholder="(11) 99999-9999"
                   inputMode="tel"
                   aria-invalid={!!contactErrors.phone}
-                  required
                 />
                 {contactErrors.phone && <p className="text-sm text-destructive">{contactErrors.phone}</p>}
               </div>
+              <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="edit-whatsapp">WhatsApp</Label><Input id="edit-whatsapp" value={editingClient.whatsapp || ''} onChange={(e) => setEditingClient({ ...editingClient, whatsapp: e.target.value })} /></div><div className="space-y-2"><Label htmlFor="edit-cpf">CPF</Label><Input id="edit-cpf" value={editingClient.cpf || ''} onChange={(e) => setEditingClient({ ...editingClient, cpf: e.target.value })} /></div></div>
+              <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="edit-nickname">Apelido</Label><Input id="edit-nickname" value={editingClient.nickname || ''} onChange={(e) => setEditingClient({ ...editingClient, nickname: e.target.value })} /></div><div className="space-y-2"><Label htmlFor="edit-instagram">Instagram</Label><Input id="edit-instagram" value={editingClient.instagram || ''} onChange={(e) => setEditingClient({ ...editingClient, instagram: e.target.value })} /></div></div>
+              <div className="space-y-2"><Label htmlFor="edit-address">Endereço</Label><Input id="edit-address" value={editingClient.address || ''} onChange={(e) => setEditingClient({ ...editingClient, address: e.target.value })} /></div>
               <div className="space-y-2">
                 <Label htmlFor="edit-email">Email</Label>
                 <Input
@@ -1007,6 +1053,7 @@ const Clients = () => {
                 Clientes que não fazem serviços há mais de {inactiveDaysConfig} dias serão considerados inativos.
               </p>
             </div>
+            <div className="border-t pt-4"><p className="mb-3 text-sm font-medium">Campos exibidos na ficha</p><div className="grid gap-3 sm:grid-cols-2">{Object.entries({ phone: 'Telefone', whatsapp: 'WhatsApp', email: 'E-mail', cpf: 'CPF', birth_date: 'Nascimento', address: 'Endereço', gender: 'Gênero', acquisition_source: 'Como chegou', notes: 'Observações' }).map(([key, label]) => <div key={key} className="flex items-center justify-between gap-3"><Label htmlFor={`field-${key}`}>{label}</Label><Switch id={`field-${key}`} checked={clientFields[key] !== false} onCheckedChange={(checked) => setClientFields((current) => ({ ...current, [key]: checked }))} /></div>)}</div></div>
             <Button onClick={handleSaveSettings} className="w-full" disabled={updateSettingsMutation.isPending}>
               {updateSettingsMutation.isPending ? 'Salvando...' : 'Salvar Configurações'}
             </Button>
@@ -1050,6 +1097,7 @@ const Clients = () => {
         onOpenChange={(v) => { if (!v) setWalletClient(null); }}
         client={walletClient}
       />
+      <ClientProfileDialog client={selectedClient} open={!!selectedClient} onOpenChange={(value) => { if (!value) setSelectedClient(null); }} onEdit={(client) => { setSelectedClient(null); handleEditClient(client); }} />
     </div>
   );
 };

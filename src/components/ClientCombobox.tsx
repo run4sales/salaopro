@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Search, UserPlus, UserCircle2, X } from "lucide-react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { normalizePhone, validatePhone } from "@/lib/contactValidation";
 
 interface ClientLite { id: string; name: string; phone?: string | null }
 
@@ -71,12 +68,7 @@ interface Props {
 }
 
 export function ClientCombobox({ establishmentId, value, onChange, compact = true, placeholder = "Buscar por nome ou telefone..." }: Props) {
-  const qc = useQueryClient();
   const [search, setSearch] = useState("");
-  const [openCreate, setOpenCreate] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", acquisition_source: "" });
-  const [saving, setSaving] = useState(false);
-  const [phoneError, setPhoneError] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_CLIENTS);
 
   const { data: clients, isLoading, isError } = useQuery<ClientLite[]>({
@@ -105,45 +97,6 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
   );
 
   const hasMoreClients = filtered.length > visibleClients.length;
-
-  const openWithSearch = () => {
-    setForm(f => ({ ...f, name: /^[a-zA-ZÀ-ÿ\s]+$/.test(search) ? search : f.name, phone: /^[\d\s()+\-]+$/.test(search) ? search : f.phone }));
-    setOpenCreate(true);
-  };
-
-  const handleCreate = async () => {
-    if (!form.name.trim() || !form.phone.trim()) {
-      toast.error("Informe nome e telefone");
-      return;
-    }
-    const phoneValidation = validatePhone(form.phone, { required: true });
-    if (!phoneValidation.valid) { setPhoneError(phoneValidation.message ?? "Telefone inválido"); return; }
-    setSaving(true);
-    const payload = {
-      establishment_id: establishmentId,
-      name: form.name.trim(),
-      phone: normalizePhone(form.phone),
-      acquisition_source: form.acquisition_source || null,
-    };
-    const firstRes = await supabase.from("clients").insert(payload).select("id, name, phone").single();
-    const { data, error } = firstRes.error && isRecoverableClientsFilterError(firstRes.error)
-      ? await supabase.from("clients").insert({
-          establishment_id: payload.establishment_id,
-          name: payload.name,
-          phone: payload.phone,
-        }).select("id, name, phone").single()
-      : firstRes;
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Cliente cadastrado");
-    await qc.invalidateQueries({ queryKey: ["clients-combobox"] });
-    await qc.invalidateQueries({ queryKey: ["clients"] });
-    onChange(data!.id, data as ClientLite);
-    setOpenCreate(false);
-    setForm({ name: "", phone: "", acquisition_source: "" });
-    setPhoneError("");
-    setSearch("");
-  };
 
   if (selected) {
     return (
@@ -216,47 +169,9 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
       )}
 
 
-      <Button type="button" variant="outline" className="w-full" onClick={openWithSearch}>
-        <UserPlus className="h-4 w-4 mr-2" /> Cadastrar novo cliente
+      <Button type="button" variant="outline" className="w-full" onClick={() => window.location.assign('/clients?new=1')}>
+        <UserPlus className="h-4 w-4 mr-2" /> Abrir ficha completa de novo cliente
       </Button>
-
-      <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cadastro rápido de cliente</DialogTitle>
-            <DialogDescription>Informe os dados básicos. Você pode complementar depois.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Nome *</Label>
-              <Input value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
-            </div>
-            <div>
-              <Label>Telefone *</Label>
-              <Input value={form.phone} aria-invalid={!!phoneError} onChange={(e) => { setForm(f => ({ ...f, phone: e.target.value })); setPhoneError(""); }} placeholder="(11) 99999-9999" inputMode="tel" />
-              {phoneError && <p className="mt-1 text-sm text-destructive">{phoneError}</p>}
-            </div>
-            <div>
-              <Label>Como chegou (opcional)</Label>
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={form.acquisition_source}
-                onChange={(e) => setForm(f => ({ ...f, acquisition_source: e.target.value }))}
-              >
-                <option value="">Selecione</option>
-                <option value="Indicação">Indicação</option>
-                <option value="Redes Sociais">Redes Sociais</option>
-                <option value="Google">Google</option>
-                <option value="Tráfego Pago">Tráfego Pago</option>
-                <option value="Outros">Outros</option>
-              </select>
-            </div>
-            <Button className="w-full" disabled={saving} onClick={handleCreate}>
-              {saving ? "Salvando..." : "Cadastrar e selecionar"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

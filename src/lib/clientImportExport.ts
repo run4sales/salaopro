@@ -187,9 +187,6 @@ export function parseRows(
 
     const errors: string[] = [];
     if (!name) errors.push("Nome obrigatório");
-    if (!phone && !email && !(name && birth_iso)) {
-      errors.push("Sem identificação (telefone, email ou nome+nascimento)");
-    }
     const emailValidation = validateEmail(email, { required: false });
     const phoneValidation = validatePhone(get("phone"), { required: false });
     if (!emailValidation.valid) errors.push(emailValidation.message ?? "Email inválido");
