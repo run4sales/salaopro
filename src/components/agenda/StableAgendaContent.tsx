@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Ban, Plus, CalendarDays, List, Upload, CalendarOff, UserX } from "lucide-react";
+import { Ban, Plus, CalendarDays, List, Upload, CalendarOff, UserX, LockKeyhole } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { AgendaCalendar, AgendaEvent } from "@/components/agenda/AgendaCalendar";
 import { AppointmentFormDialog } from "@/components/agenda/AppointmentFormDialog";
@@ -108,6 +109,7 @@ export default function StableAgendaContent() {
   const [selectedBlock, setSelectedBlock] = useState<AppointmentBlock | null>(null);
   const [selectedAppt, setSelectedAppt] = useState<any | null>(null);
   const [initialSlot, setInitialSlot] = useState<Date | null>(null);
+  const [slotChoiceOpen, setSlotChoiceOpen] = useState(false);
 
   const effectiveProfessionalId = isEmployee ? professionalId : selectedProfessionalId !== ALL_PROFESSIONALS ? selectedProfessionalId : null;
 
@@ -441,7 +443,7 @@ export default function StableAgendaContent() {
       const professional = agendaData.profMap.get(block.professional_id) ?? "Profissional";
       return {
         id: `block-${block.id}`,
-        title: `Bloqueado · ${professional}${block.reason ? ` · ${block.reason}` : ""}`,
+        title: `🔒 BLOQUEIO · ${format(new Date(block.start_time), "HH:mm")}–${format(new Date(block.end_time), "HH:mm")}${block.reason ? ` · ${block.reason}` : ""} · ${professional}`,
         start: new Date(block.start_time),
         end: new Date(block.end_time),
         status: "blocked",
@@ -468,7 +470,7 @@ export default function StableAgendaContent() {
 
   const handleNew = () => { setSelectedAppt(null); setInitialSlot(null); setFormOpen(true); };
   const handleNewBlock = () => { setSelectedBlock(null); setInitialSlot(null); setBlockOpen(true); };
-  const handleSlot = (slot: any) => { setSelectedAppt(null); setInitialSlot(slot.start); setFormOpen(true); };
+  const handleSlot = (slot: any) => { setSelectedAppt(null); setSelectedBlock(null); setInitialSlot(slot.start); setSlotChoiceOpen(true); };
   const handleEventClick = (e: AgendaEvent) => {
     if (e.type === "block") {
       setSelectedBlock(e.raw as AppointmentBlock);
@@ -697,6 +699,7 @@ export default function StableAgendaContent() {
           blocks={agendaData.blocks}
           businessHours={{ openingTime: businessHours.open, closingTime: businessHours.close, workingDays: businessHours.workingDays, weekly: businessHours.weekly }}
           initialDate={initialSlot}
+          initialProfessionalId={effectiveProfessionalId}
           appointment={selectedAppt}
           onSaved={refresh}
         />
@@ -709,6 +712,7 @@ export default function StableAgendaContent() {
           establishmentId={establishmentId}
           professionals={blockDialogProfessionals}
           initialDate={initialSlot}
+          initialProfessionalId={effectiveProfessionalId}
           block={selectedBlock}
           onSaved={refresh}
         />
@@ -721,9 +725,21 @@ export default function StableAgendaContent() {
         clientName={selectedAppt ? agendaData.clientMap.get(selectedAppt.client_id) : undefined}
         serviceName={selectedAppt ? (agendaData.serviceMap.get(selectedAppt.service_id) as any)?.name : undefined}
         professionalName={selectedAppt ? agendaData.profMap.get(selectedAppt.professional_id) : undefined}
+        canManage={establishmentRole === "owner" || establishmentRole === "admin"}
         onEdit={() => { setDetailsOpen(false); setFormOpen(true); }}
         onChanged={refresh}
       />
+
+      <Dialog open={slotChoiceOpen} onOpenChange={setSlotChoiceOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>O que deseja fazer?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">{initialSlot ? format(initialSlot, "dd/MM/yyyy 'às' HH:mm") : ""}{effectiveProfessionalId ? ` · ${selectedProfessionalName}` : ""}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button onClick={() => { setSlotChoiceOpen(false); setFormOpen(true); }}><Plus className="mr-2 h-4 w-4" />Agendar serviço</Button>
+            <Button variant="outline" disabled={isEmployee && blockDialogProfessionals.length === 0} onClick={() => { setSlotChoiceOpen(false); setBlockOpen(true); }}><LockKeyhole className="mr-2 h-4 w-4" />Bloquear horário</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {establishmentId && (
         <ImportAppointmentsDialog

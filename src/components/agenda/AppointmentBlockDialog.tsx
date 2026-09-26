@@ -21,6 +21,7 @@ interface Props {
   establishmentId: string;
   professionals: Professional[];
   initialDate?: Date | null;
+  initialProfessionalId?: string | null;
   block?: AppointmentBlock | null;
   onSaved?: () => void;
 }
@@ -58,6 +59,7 @@ export function AppointmentBlockDialog({
   establishmentId,
   professionals,
   initialDate,
+  initialProfessionalId,
   block,
   onSaved,
 }: Props) {
@@ -80,12 +82,12 @@ export function AppointmentBlockDialog({
     const start = initialDate ?? new Date();
     const end = new Date(start.getTime() + 60 * 60_000);
     setForm({
-      professional_id: professionals[0]?.id ?? "",
+      professional_id: professionals.find((professional) => professional.id === initialProfessionalId)?.id ?? professionals[0]?.id ?? "",
       start_time: toLocalInput(start),
       end_time: toLocalInput(end),
       reason: "",
     });
-  }, [open, block, initialDate, professionals]);
+  }, [open, block, initialDate, initialProfessionalId, professionals]);
 
   const save = async () => {
     const start = new Date(form.start_time);
