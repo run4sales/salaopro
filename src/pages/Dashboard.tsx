@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Calendar, Users, DollarSign, TrendingUp, Plus,
-  ArrowRight, Clock, Phone, CheckCircle2, CircleDashed, AlertCircle,
+  ArrowRight, Clock, Phone, CircleDashed, AlertCircle,
   UserX
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';

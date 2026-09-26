@@ -36,11 +36,12 @@ export function StrategicPanel({ establishmentId, today }: Props) {
       const appointments: ForecastAppointment[] = [];
       for (let offset = 0; ; offset += 1000) {
         const { data: page, error: appointmentsError } = await supabase.from("appointments")
-          .select("appointment_date, status, service_amount")
+          .select("id, appointment_date, status, service_amount")
           .eq("establishment_id", establishmentId)
           .gte("appointment_date", boundaries.tomorrowISO)
           .lt("appointment_date", boundaries.monthEndISO)
           .order("appointment_date", { ascending: true })
+          .order("id", { ascending: true })
           .range(offset, offset + 999);
         if (appointmentsError) throw appointmentsError;
         appointments.push(...(page ?? []));
