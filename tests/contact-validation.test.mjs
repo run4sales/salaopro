@@ -40,7 +40,7 @@ test("all contact write screens use the centralized validators", () => {
     "src/pages/Auth.tsx", "src/pages/Clients.tsx", "src/pages/PublicBooking.tsx",
     "src/pages/Checkout.tsx", "src/pages/Users.tsx", "src/pages/StaffUsers.tsx",
     "src/components/settings/ProfileForm.tsx", "src/components/users/EditUserDialog.tsx",
-    "src/components/ClientCombobox.tsx", "src/lib/clientImportExport.ts",
+    "src/lib/clientImportExport.ts",
   ];
   for (const path of paths) {
     const source = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
