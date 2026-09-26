@@ -1,2 +1,3 @@
 Dashboard estratégico reutiliza `fetchRealizedSales` e regras em `src/lib/finance/` e lê o snapshot `appointments.service_amount`; isso impede divergências de faturamento e reprecificação de agendamentos.
 Conflitos da agenda usam intervalos semiabertos por profissional em `src/lib/agendaConflicts.ts`; isso preserva encaixes adjacentes sem ignorar sobreposições reais.
+Proteções críticas da agenda e do faturamento usam gatilhos com travas por profissional/agendamento no banco; isso impede que pedidos simultâneos ou diretos contornem validações da interface.
