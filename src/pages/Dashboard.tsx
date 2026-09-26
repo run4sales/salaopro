@@ -5,14 +5,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Calendar, Users, DollarSign, TrendingUp, AlertTriangle, Plus,
-  ArrowRight, Clock, Phone, CheckCircle2, CircleDashed, AlertCircle,
-  Sparkles, Target, UserX
+  Calendar, Users, DollarSign, TrendingUp, Plus,
+  ArrowRight, Clock, Phone, CircleDashed, AlertCircle,
+  UserX
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { StrategicPanel } from '@/components/dashboard/StrategicPanel';
 
 const currencyBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -34,6 +35,7 @@ interface ApptRow {
   client_id: string;
   service_id: string;
   professional_id: string | null;
+  service_amount: number | null;
 }
 
 const Dashboard = () => {
@@ -52,26 +54,16 @@ const Dashboard = () => {
     queryKey: ['dashboard-agenda', profile?.id, startOfDay.toISOString()],
     enabled: !!profile?.id,
     queryFn: async () => {
-      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-
-      const [apptRes, salesTodayRes, salesMonthRes, clientsRes, servicesRes, profRes, goalRes] = await Promise.all([
+      const [apptRes, clientsRes, servicesRes, profRes] = await Promise.all([
         supabase.from('appointments')
-          .select('id, appointment_date, status, client_id, service_id, professional_id')
+          .select('id, appointment_date, status, client_id, service_id, professional_id, service_amount')
           .eq('establishment_id', profile!.id)
           .gte('appointment_date', startOfDay.toISOString())
           .lte('appointment_date', endOfDay.toISOString())
           .order('appointment_date', { ascending: true }),
-        supabase.from('sales').select('amount').eq('establishment_id', profile!.id)
-          .is('deleted_at', null)
-          .gte('sale_date', startOfDay.toISOString()).lte('sale_date', endOfDay.toISOString()),
-        supabase.from('sales').select('amount').eq('establishment_id', profile!.id)
-          .is('deleted_at', null)
-          .gte('sale_date', firstDayOfMonth.toISOString()).lte('sale_date', endOfDay.toISOString()),
         supabase.from('clients').select('id, name, last_service_date').eq('establishment_id', profile!.id),
         supabase.from('services').select('id, name, price, duration_minutes').eq('establishment_id', profile!.id),
         supabase.from('professionals').select('id, name, active').eq('establishment_id', profile!.id).eq('active', true),
-        supabase.from('goals').select('target_amount, current_amount').eq('establishment_id', profile!.id)
-          .eq('month', today.getMonth() + 1).eq('year', today.getFullYear()).maybeSingle(),
       ]);
 
       const appts = (apptRes.data ?? []) as ApptRow[];
@@ -89,15 +81,12 @@ const Dashboard = () => {
       const serviceMap = new Map(services.map((s: any) => [s.id, s]));
       const profMap = new Map(professionals.map((p: any) => [p.id, p.name]));
 
-      const todayRevenue = (salesTodayRes.data ?? []).reduce((s, x) => s + Number(x.amount), 0);
-      const monthRevenue = (salesMonthRes.data ?? []).reduce((s, x) => s + Number(x.amount), 0);
-
       const expectedToday = appts
         .filter(a => {
           const st = String(a.status ?? '').toLowerCase();
           return st !== 'cancelled' && st !== 'canceled' && st !== 'no_show';
         })
-        .reduce((s, a) => s + Number((serviceMap.get(a.service_id) as any)?.price ?? 0), 0);
+        .reduce((s, a) => s + Number(a.service_amount ?? 0), 0);
 
       // Inactive clients (>20d)
       const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 20);
@@ -105,10 +94,8 @@ const Dashboard = () => {
 
       return {
         appts, clientMap, serviceMap, profMap, professionals,
-        todayRevenue, monthRevenue, expectedToday,
+        expectedToday,
         inactiveCount: inactiveClients.length,
-        goalCurrent: Number(goalRes.data?.current_amount ?? monthRevenue),
-        goalTarget: Number(goalRes.data?.target_amount ?? 0),
       };
     },
   });
@@ -180,11 +167,11 @@ const Dashboard = () => {
     }));
   }, [data, enrichedAppts]);
 
-  const goalPct = data?.goalTarget ? Math.min(100, (data.goalCurrent / data.goalTarget) * 100) : 0;
-
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-6 md:py-8 space-y-6 max-w-6xl">
+
+        {canViewFinance && profile?.id && <StrategicPanel establishmentId={profile.id} today={today} />}
 
         {/* HERO — AGENDA DO DIA */}
         <section className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/95 via-primary to-primary/80 text-primary-foreground p-6 md:p-8 shadow-elegant">
@@ -338,15 +325,7 @@ const Dashboard = () => {
           </section>
         )}
 
-        {/* FINANCEIRO COMPACTO — apenas para administradores */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {canViewFinance && (
-            <>
-              <MiniStat icon={<DollarSign className="h-4 w-4" />} label="Hoje" value={isLoading ? '—' : currencyBRL(data?.todayRevenue ?? 0)} />
-              <MiniStat icon={<TrendingUp className="h-4 w-4" />} label="Mês" value={isLoading ? '—' : currencyBRL(data?.monthRevenue ?? 0)} />
-              <MiniStat icon={<Target className="h-4 w-4" />} label="Meta" value={data?.goalTarget ? `${goalPct.toFixed(0)}%` : '—'} progress={data?.goalTarget ? goalPct : undefined} />
-            </>
-          )}
           <MiniStat icon={<Users className="h-4 w-4" />} label="Inativos" value={isLoading ? '—' : String(data?.inactiveCount ?? 0)} hint="20+ dias" />
         </section>
 
