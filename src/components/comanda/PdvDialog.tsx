@@ -119,6 +119,16 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
     if (appliedCredit > availableCredit) { toast.error("Crédito insuficiente"); return; }
     setSubmitting(true);
     try {
+      const { data: currentComanda, error: currentError } = await supabase.from("comandas")
+        .select("status, appointment_id").eq("id", comanda.id).eq("establishment_id", establishmentId).single();
+      if (currentError) throw currentError;
+      if (!["open", "awaiting_payment"].includes(currentComanda.status)) throw new Error("Esta comanda já foi encerrada.");
+      if (currentComanda.appointment_id) {
+        const { data: existingSales, error: existingError } = await supabase.from("sales").select("id")
+          .eq("appointment_id", currentComanda.appointment_id).eq("establishment_id", establishmentId).is("deleted_at", null).limit(1);
+        if (existingError) throw existingError;
+        if (existingSales?.length) throw new Error("Este agendamento já possui venda faturada.");
+      }
       const subtotalSum = items.reduce((s, i) => s + Number(i.total), 0);
       const factor = subtotalSum > 0 ? total / subtotalSum : 1;
       const creditFactor = total > 0 ? appliedCredit / total : 0;
@@ -195,7 +205,8 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
         });
       }));
 
-      await supabase.from("comandas").update({ status: "paid", closed_at: new Date().toISOString(), total }).eq("id", comanda.id);
+      const { error: closeError } = await supabase.from("comandas").update({ status: "paid", closed_at: new Date().toISOString(), total }).eq("id", comanda.id);
+      if (closeError) throw closeError;
       if (comanda.appointment_id) {
         await supabase.from("appointments").update({ status: "completed" }).eq("id", comanda.appointment_id);
       }

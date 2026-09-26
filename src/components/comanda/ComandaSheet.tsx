@@ -37,6 +37,7 @@ export function ComandaSheet({ open, onOpenChange, comandaId, establishmentId, o
         supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId).eq("active", true).order("name"),
         supabase.from("clients").select("id, name").eq("establishment_id", establishmentId),
       ]);
+      if (c.error) throw c.error;
       return {
         comanda: c.data,
         items: items.data ?? [],
@@ -213,7 +214,7 @@ export function ComandaSheet({ open, onOpenChange, comandaId, establishmentId, o
 
             <div className="grid grid-cols-2 gap-2">
               <Button variant="outline" onClick={cancelComanda}>Cancelar comanda</Button>
-              <Button onClick={() => setPdvOpen(true)} disabled={(data?.items ?? []).length === 0}>
+              <Button onClick={() => setPdvOpen(true)} disabled={(data?.items ?? []).length === 0 || !["open", "awaiting_payment"].includes(data?.comanda?.status ?? "")}>
                 <CreditCard className="h-4 w-4 mr-1" />Finalizar
               </Button>
             </div>
@@ -221,7 +222,7 @@ export function ComandaSheet({ open, onOpenChange, comandaId, establishmentId, o
         </SheetContent>
       </Sheet>
 
-      {data?.comanda && (
+      {data?.comanda && ["open", "awaiting_payment"].includes(data.comanda.status) && (
         <PdvDialog
           open={pdvOpen}
           onOpenChange={setPdvOpen}
