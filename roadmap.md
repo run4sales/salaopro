@@ -15,3 +15,5 @@
 - [x] Tornar somente o nome obrigatório e oferecer campos configuráveis por salão
 - [x] Criar ficha CRM com indicadores reais, histórico, carteira, pacotes, combos e assinaturas
 - [x] Remover cadastro rápido e continuar na ficha completa após criar o cliente
+- [x] Restaurar ações operacionais nos agendamentos do próprio funcionário sem expor faturamento gerencial
+- [x] Cadastrar cliente durante o agendamento sem perder os campos já preenchidos
