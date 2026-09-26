@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, UserPlus, UserCircle2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BookingClientDialog } from "@/components/clients/BookingClientDialog";
 
 interface ClientLite { id: string; name: string; phone?: string | null }
 
@@ -56,6 +57,7 @@ interface Props {
 export function ClientCombobox({ establishmentId, value, onChange, compact = true, placeholder = "Buscar por nome ou telefone..." }: Props) {
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_CLIENTS);
+  const [newClientOpen, setNewClientOpen] = useState(false);
 
   const { data: clients, isLoading, isError } = useQuery<ClientLite[]>({
     queryKey: ["clients-combobox", establishmentId],
@@ -126,15 +128,16 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
             </div>
           )}
           {!isLoading && !isError && visibleClients.map(c => (
-            <button
+            <Button
               key={c.id}
               type="button"
+              variant="ghost"
               onClick={() => { onChange(c.id, c); setSearch(""); }}
-              className="w-full text-left px-3 py-2 hover:bg-muted text-sm border-b last:border-0 flex items-center justify-between"
+              className="h-auto w-full justify-between rounded-none px-3 py-2 text-left text-sm border-b last:border-0"
             >
               <span className="font-medium">{c.name}</span>
               {c.phone && <span className="text-xs text-muted-foreground">{c.phone}</span>}
-            </button>
+            </Button>
           ))}
           {!isLoading && !isError && filtered.length === 0 && (
             <div className="px-3 py-3 text-sm text-muted-foreground text-center">
@@ -155,9 +158,10 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
       )}
 
 
-      <Button type="button" variant="outline" className="w-full" onClick={() => window.location.assign('/clients?new=1')}>
-        <UserPlus className="h-4 w-4 mr-2" /> Abrir ficha completa de novo cliente
+      <Button type="button" variant="outline" className="w-full" onClick={() => setNewClientOpen(true)}>
+        <UserPlus className="h-4 w-4 mr-2" /> Cadastrar novo cliente
       </Button>
+      <BookingClientDialog open={newClientOpen} onOpenChange={setNewClientOpen} establishmentId={establishmentId} onCreated={client => { onChange(client.id, client); setSearch(""); }} />
     </div>
   );
 }

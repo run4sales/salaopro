@@ -727,6 +727,7 @@ export default function StableAgendaContent() {
         serviceName={selectedAppt ? (agendaData.serviceMap.get(selectedAppt.service_id) as any)?.name : undefined}
         professionalName={selectedAppt ? agendaData.profMap.get(selectedAppt.professional_id) : undefined}
         canManage={establishmentRole === "owner" || establishmentRole === "admin"}
+        canOperate={establishmentRole === "owner" || establishmentRole === "admin" || (isEmployee && !!professionalId && selectedAppt?.professional_id === professionalId)}
         onEdit={() => { setDetailsOpen(false); setFormOpen(true); }}
         onChanged={refresh}
       />

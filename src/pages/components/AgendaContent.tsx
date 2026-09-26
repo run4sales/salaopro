@@ -471,6 +471,8 @@ export default function AgendaContent() {
         clientName={selectedAppt ? data?.clientMap.get(selectedAppt.client_id) : undefined}
         serviceName={selectedAppt ? (data?.serviceMap.get(selectedAppt.service_id) as any)?.name : undefined}
         professionalName={selectedAppt ? data?.profMap.get(selectedAppt.professional_id) : undefined}
+        canManage={establishmentRole === "owner" || establishmentRole === "admin"}
+        canOperate={establishmentRole === "owner" || establishmentRole === "admin" || (isEmployee && !!professionalId && selectedAppt?.professional_id === professionalId)}
         onEdit={() => { setDetailsOpen(false); setFormOpen(true); }}
         onChanged={refresh}
       />

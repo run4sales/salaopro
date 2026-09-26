@@ -19,19 +19,20 @@ interface Props {
   serviceName?: string;
   professionalName?: string;
   canManage?: boolean;
+  canOperate?: boolean;
   onEdit: () => void;
   onChanged: () => void;
 }
 
 export function AppointmentDetailsDialog({
-  open, onOpenChange, appointment, clientName, serviceName, professionalName, canManage = false, onEdit, onChanged,
+  open, onOpenChange, appointment, clientName, serviceName, professionalName, canManage = false, canOperate = false, onEdit, onChanged,
 }: Props) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [comandaOpen, setComandaOpen] = useState(false);
   const { data: billing, refetch } = useQuery({
     queryKey: ["appointment-billing", appointment?.id],
-    enabled: open && !!appointment?.id && canManage,
+    enabled: open && !!appointment?.id && canOperate,
     queryFn: async () => {
       const [comandas, sales] = await Promise.all([
         supabase.from("comandas").select("id, status, total").eq("appointment_id", appointment.id).eq("establishment_id", appointment.establishment_id).order("opened_at", { ascending: false }),
@@ -106,17 +107,17 @@ export function AppointmentDetailsDialog({
           )}
         </div>
          <div className="flex flex-wrap gap-2 pt-2">
-           {canManage && <Button variant="outline" size="sm" onClick={onEdit}><Pencil className="h-3.5 w-3.5 mr-1" />Editar</Button>}
-           {canManage && !billing?.paid && !billing?.active && key !== "in_service" && key !== "completed" && key !== "canceled" && key !== "cancelled" && (
+            {canOperate && <Button variant="outline" size="sm" onClick={onEdit}><Pencil className="h-3.5 w-3.5 mr-1" />Editar</Button>}
+            {canOperate && !billing?.paid && !billing?.active && key !== "in_service" && key !== "completed" && key !== "canceled" && key !== "cancelled" && (
             <Button size="sm" onClick={startService}><Play className="h-3.5 w-3.5 mr-1" />Iniciar</Button>
           )}
-           {canManage && billing?.active && !billing.paid && <Button size="sm" onClick={() => { onOpenChange(false); setComandaOpen(true); }}><CreditCard className="mr-1 h-4 w-4" />Faturar comanda</Button>}
-           {canManage && key !== "canceled" && key !== "cancelled" && (
+            {canOperate && billing?.active && !billing.paid && <Button size="sm" onClick={() => { onOpenChange(false); setComandaOpen(true); }}><CreditCard className="mr-1 h-4 w-4" />Faturar comanda</Button>}
+            {canOperate && key !== "canceled" && key !== "cancelled" && (
             <Button variant="destructive" size="sm" onClick={() => setStatus("canceled")}><X className="h-3.5 w-3.5 mr-1" />Cancelar</Button>
           )}
         </div>
       </DialogContent>
     </Dialog>
-    {canManage && appointment && <ComandaSheet open={comandaOpen} onOpenChange={setComandaOpen} comandaId={billing?.active?.id ?? null} establishmentId={appointment.establishment_id} onClosed={() => { void refetch(); onChanged(); }} />}
+    {canOperate && appointment && <ComandaSheet open={comandaOpen} onOpenChange={setComandaOpen} comandaId={billing?.active?.id ?? null} establishmentId={appointment.establishment_id} onClosed={() => { void refetch(); onChanged(); }} />}
   </>);
 }
