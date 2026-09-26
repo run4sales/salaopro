@@ -32,16 +32,23 @@ export async function fetchRealizedSales(
   establishmentId: string,
   range: PeriodRange,
 ): Promise<FinanceSale[]> {
-  const { data, error } = await supabase
-    .from("sales")
-    .select(SALE_COLUMNS)
-    .eq("establishment_id", establishmentId)
-    .is("deleted_at", null)
-    .gte("sale_date", range.startISO)
-    .lt("sale_date", range.endExclusiveISO)
-    .order("sale_date", { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as unknown as FinanceSale[];
+  const rows: FinanceSale[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await supabase
+      .from("sales")
+      .select(SALE_COLUMNS)
+      .eq("establishment_id", establishmentId)
+      .is("deleted_at", null)
+      .gte("sale_date", range.startISO)
+      .lt("sale_date", range.endExclusiveISO)
+      .order("sale_date", { ascending: false })
+      .order("id", { ascending: false })
+      .range(offset, offset + 999);
+    if (error) throw error;
+    rows.push(...((data ?? []) as unknown as FinanceSale[]));
+    if (!data || data.length < 1000) break;
+  }
+  return rows;
 }
 
 async function fetchSaleProfessionals(saleIds: string[]): Promise<SaleProfessionalLike[]> {
