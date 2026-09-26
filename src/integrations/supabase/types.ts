@@ -454,6 +454,150 @@ export type Database = {
           },
         ]
       }
+      client_benefit_uses: {
+        Row: {
+          appointment_id: string | null
+          benefit_id: string
+          client_id: string
+          created_at: string
+          establishment_id: string
+          id: string
+          item_name: string
+          service_id: string | null
+          updated_at: string
+          used_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          benefit_id: string
+          client_id: string
+          created_at?: string
+          establishment_id: string
+          id?: string
+          item_name: string
+          service_id?: string | null
+          updated_at?: string
+          used_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          benefit_id?: string
+          client_id?: string
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          item_name?: string
+          service_id?: string | null
+          updated_at?: string
+          used_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_benefit_uses_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_benefit_uses_benefit_id_fkey"
+            columns: ["benefit_id"]
+            isOneToOne: false
+            referencedRelation: "client_benefits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_benefit_uses_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_benefit_uses_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_benefit_uses_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_benefits: {
+        Row: {
+          billing_period: string | null
+          client_id: string
+          created_at: string
+          ended_at: string | null
+          establishment_id: string
+          expires_at: string | null
+          id: string
+          items: Json
+          kind: string
+          name: string
+          next_billing_at: string | null
+          price: number
+          purchased_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          billing_period?: string | null
+          client_id: string
+          created_at?: string
+          ended_at?: string | null
+          establishment_id: string
+          expires_at?: string | null
+          id?: string
+          items?: Json
+          kind: string
+          name: string
+          next_billing_at?: string | null
+          price?: number
+          purchased_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          billing_period?: string | null
+          client_id?: string
+          created_at?: string
+          ended_at?: string | null
+          establishment_id?: string
+          expires_at?: string | null
+          id?: string
+          items?: Json
+          kind?: string
+          name?: string
+          next_billing_at?: string | null
+          price?: number
+          purchased_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_benefits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_benefits_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_credit_transactions: {
         Row: {
           amount: number
@@ -517,10 +661,12 @@ export type Database = {
       clients: {
         Row: {
           acquisition_source: string | null
+          address: string | null
           balance: number
           birth_date: string | null
           birth_day: number | null
           birth_month: number | null
+          cpf: string | null
           created_at: string
           credit_balance: number
           email: string | null
@@ -534,17 +680,20 @@ export type Database = {
           name: string
           nickname: string | null
           notes: string | null
-          phone: string
+          phone: string | null
           total_spent: number | null
           updated_at: string
           visit_count: number | null
+          whatsapp: string | null
         }
         Insert: {
           acquisition_source?: string | null
+          address?: string | null
           balance?: number
           birth_date?: string | null
           birth_day?: number | null
           birth_month?: number | null
+          cpf?: string | null
           created_at?: string
           credit_balance?: number
           email?: string | null
@@ -558,17 +707,20 @@ export type Database = {
           name: string
           nickname?: string | null
           notes?: string | null
-          phone: string
+          phone?: string | null
           total_spent?: number | null
           updated_at?: string
           visit_count?: number | null
+          whatsapp?: string | null
         }
         Update: {
           acquisition_source?: string | null
+          address?: string | null
           balance?: number
           birth_date?: string | null
           birth_day?: number | null
           birth_month?: number | null
+          cpf?: string | null
           created_at?: string
           credit_balance?: number
           email?: string | null
@@ -582,10 +734,11 @@ export type Database = {
           name?: string
           nickname?: string | null
           notes?: string | null
-          phone?: string
+          phone?: string | null
           total_spent?: number | null
           updated_at?: string
           visit_count?: number | null
+          whatsapp?: string | null
         }
         Relationships: [
           {
@@ -1400,6 +1553,7 @@ export type Database = {
         Row: {
           business_close_time: string
           business_open_time: string
+          client_fields: Json
           created_at: string
           establishment_id: string
           id: string
@@ -1411,6 +1565,7 @@ export type Database = {
         Insert: {
           business_close_time?: string
           business_open_time?: string
+          client_fields?: Json
           created_at?: string
           establishment_id: string
           id?: string
@@ -1422,6 +1577,7 @@ export type Database = {
         Update: {
           business_close_time?: string
           business_open_time?: string
+          client_fields?: Json
           created_at?: string
           establishment_id?: string
           id?: string
