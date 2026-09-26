@@ -116,6 +116,8 @@ export type Database = {
       appointment_services: {
         Row: {
           appointment_id: string
+          benefit_credit_id: string | null
+          benefit_type: string | null
           created_at: string
           establishment_id: string
           id: string
@@ -125,6 +127,8 @@ export type Database = {
         }
         Insert: {
           appointment_id: string
+          benefit_credit_id?: string | null
+          benefit_type?: string | null
           created_at?: string
           establishment_id: string
           id?: string
@@ -134,6 +138,8 @@ export type Database = {
         }
         Update: {
           appointment_id?: string
+          benefit_credit_id?: string | null
+          benefit_type?: string | null
           created_at?: string
           establishment_id?: string
           id?: string
@@ -752,6 +758,7 @@ export type Database = {
       }
       comanda_items: {
         Row: {
+          benefit_consumption_id: string | null
           comanda_id: string
           commission_amount: number
           commission_percentage: number
@@ -760,14 +767,17 @@ export type Database = {
           id: string
           kind: string
           name: string
+          payment_source: string
           professional_id: string | null
           qty: number
+          reference_unit_price: number | null
           service_id: string | null
           total: number
           unit_price: number
           updated_at: string
         }
         Insert: {
+          benefit_consumption_id?: string | null
           comanda_id: string
           commission_amount?: number
           commission_percentage?: number
@@ -776,14 +786,17 @@ export type Database = {
           id?: string
           kind?: string
           name: string
+          payment_source?: string
           professional_id?: string | null
           qty?: number
+          reference_unit_price?: number | null
           service_id?: string | null
           total?: number
           unit_price?: number
           updated_at?: string
         }
         Update: {
+          benefit_consumption_id?: string | null
           comanda_id?: string
           commission_amount?: number
           commission_percentage?: number
@@ -792,14 +805,23 @@ export type Database = {
           id?: string
           kind?: string
           name?: string
+          payment_source?: string
           professional_id?: string | null
           qty?: number
+          reference_unit_price?: number | null
           service_id?: string | null
           total?: number
           unit_price?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "comanda_items_benefit_consumption_id_fkey"
+            columns: ["benefit_consumption_id"]
+            isOneToOne: false
+            referencedRelation: "service_benefit_consumptions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "comanda_items_comanda_id_fkey"
             columns: ["comanda_id"]
@@ -856,6 +878,392 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      customer_package_credits: {
+        Row: {
+          contracted: number
+          customer_package_id: string
+          establishment_id: string
+          id: string
+          service_id: string
+          used: number
+        }
+        Insert: {
+          contracted: number
+          customer_package_id: string
+          establishment_id: string
+          id?: string
+          service_id: string
+          used?: number
+        }
+        Update: {
+          contracted?: number
+          customer_package_id?: string
+          establishment_id?: string
+          id?: string
+          service_id?: string
+          used?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_package_credits_customer_package_id_fkey"
+            columns: ["customer_package_id"]
+            isOneToOne: false
+            referencedRelation: "customer_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_package_credits_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_package_credits_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_packages: {
+        Row: {
+          amount_paid: number
+          client_id: string
+          created_at: string
+          created_by: string | null
+          establishment_id: string
+          expires_at: string
+          id: string
+          package_id: string
+          purchased_at: string
+          sale_id: string | null
+          starts_at: string
+          status: string
+        }
+        Insert: {
+          amount_paid: number
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          establishment_id: string
+          expires_at: string
+          id?: string
+          package_id: string
+          purchased_at?: string
+          sale_id?: string | null
+          starts_at?: string
+          status?: string
+        }
+        Update: {
+          amount_paid?: number
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          establishment_id?: string
+          expires_at?: string
+          id?: string
+          package_id?: string
+          purchased_at?: string
+          sale_id?: string | null
+          starts_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_packages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_packages_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_packages_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "service_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_packages_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_service_subscriptions: {
+        Row: {
+          asaas_customer_id: string | null
+          asaas_subscription_id: string | null
+          billing_reference: string | null
+          cancelled_at: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          establishment_id: string
+          id: string
+          next_renewal_at: string | null
+          plan_id: string
+          starts_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
+          billing_reference?: string | null
+          cancelled_at?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          establishment_id: string
+          id?: string
+          next_renewal_at?: string | null
+          plan_id: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
+          billing_reference?: string | null
+          cancelled_at?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          establishment_id?: string
+          id?: string
+          next_renewal_at?: string | null
+          plan_id?: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_service_subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_service_subscriptions_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_service_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "customer_subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_subscription_credits: {
+        Row: {
+          contracted: number
+          cycle_id: string
+          establishment_id: string
+          id: string
+          service_id: string
+          used: number
+        }
+        Insert: {
+          contracted: number
+          cycle_id: string
+          establishment_id: string
+          id?: string
+          service_id: string
+          used?: number
+        }
+        Update: {
+          contracted?: number
+          cycle_id?: string
+          establishment_id?: string
+          id?: string
+          service_id?: string
+          used?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_subscription_credits_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "customer_subscription_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_subscription_credits_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_subscription_credits_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_subscription_cycles: {
+        Row: {
+          asaas_payment_id: string | null
+          created_at: string
+          ends_at: string
+          establishment_id: string
+          id: string
+          paid_at: string | null
+          starts_at: string
+          status: string
+          subscription_id: string
+        }
+        Insert: {
+          asaas_payment_id?: string | null
+          created_at?: string
+          ends_at: string
+          establishment_id: string
+          id?: string
+          paid_at?: string | null
+          starts_at: string
+          status?: string
+          subscription_id: string
+        }
+        Update: {
+          asaas_payment_id?: string | null
+          created_at?: string
+          ends_at?: string
+          establishment_id?: string
+          id?: string
+          paid_at?: string | null
+          starts_at?: string
+          status?: string
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_subscription_cycles_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_subscription_cycles_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "customer_service_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_subscription_plan_items: {
+        Row: {
+          establishment_id: string
+          id: string
+          plan_id: string
+          quantity: number
+          service_id: string
+        }
+        Insert: {
+          establishment_id: string
+          id?: string
+          plan_id: string
+          quantity: number
+          service_id: string
+        }
+        Update: {
+          establishment_id?: string
+          id?: string
+          plan_id?: string
+          quantity?: number
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_subscription_plan_items_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_subscription_plan_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "customer_subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_subscription_plan_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_subscription_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          establishment_id: string
+          id: string
+          name: string
+          periodicity: string
+          price: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          establishment_id: string
+          id?: string
+          name: string
+          periodicity?: string
+          price: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          establishment_id?: string
+          id?: string
+          name?: string
+          periodicity?: string
+          price?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_subscription_plans_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       establishment_users: {
         Row: {
@@ -1460,6 +1868,210 @@ export type Database = {
           },
         ]
       }
+      service_benefit_consumptions: {
+        Row: {
+          appointment_id: string | null
+          benefit_type: string
+          client_id: string
+          comanda_id: string | null
+          consumed_at: string
+          consumed_by: string | null
+          establishment_id: string
+          id: string
+          package_credit_id: string | null
+          professional_id: string | null
+          reference_value: number
+          reversed_at: string | null
+          reversed_by: string | null
+          service_id: string
+          subscription_credit_id: string | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          benefit_type: string
+          client_id: string
+          comanda_id?: string | null
+          consumed_at?: string
+          consumed_by?: string | null
+          establishment_id: string
+          id?: string
+          package_credit_id?: string | null
+          professional_id?: string | null
+          reference_value: number
+          reversed_at?: string | null
+          reversed_by?: string | null
+          service_id: string
+          subscription_credit_id?: string | null
+        }
+        Update: {
+          appointment_id?: string | null
+          benefit_type?: string
+          client_id?: string
+          comanda_id?: string | null
+          consumed_at?: string
+          consumed_by?: string | null
+          establishment_id?: string
+          id?: string
+          package_credit_id?: string | null
+          professional_id?: string | null
+          reference_value?: number
+          reversed_at?: string | null
+          reversed_by?: string | null
+          service_id?: string
+          subscription_credit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_benefit_consumptions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_benefit_consumptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_benefit_consumptions_comanda_id_fkey"
+            columns: ["comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_benefit_consumptions_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_benefit_consumptions_package_credit_id_fkey"
+            columns: ["package_credit_id"]
+            isOneToOne: false
+            referencedRelation: "customer_package_credits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_benefit_consumptions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_benefit_consumptions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_benefit_consumptions_subscription_credit_id_fkey"
+            columns: ["subscription_credit_id"]
+            isOneToOne: false
+            referencedRelation: "customer_subscription_credits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_package_items: {
+        Row: {
+          created_at: string
+          establishment_id: string
+          id: string
+          package_id: string
+          quantity: number
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          establishment_id: string
+          id?: string
+          package_id: string
+          quantity: number
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          package_id?: string
+          quantity?: number
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_package_items_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_package_items_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "service_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_package_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_packages: {
+        Row: {
+          created_at: string
+          description: string | null
+          establishment_id: string
+          id: string
+          name: string
+          price: number
+          status: string
+          updated_at: string
+          validity_days: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          establishment_id: string
+          id?: string
+          name: string
+          price: number
+          status?: string
+          updated_at?: string
+          validity_days: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          establishment_id?: string
+          id?: string
+          name?: string
+          price?: number
+          status?: string
+          updated_at?: string
+          validity_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_packages_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_professionals: {
         Row: {
           created_at: string
@@ -1878,6 +2490,19 @@ export type Database = {
         Args: { p_establishment: string }
         Returns: undefined
       }
+      consume_service_benefit: {
+        Args: {
+          p_appointment_id?: string
+          p_benefit_type: string
+          p_client_id: string
+          p_comanda_id?: string
+          p_credit_id: string
+          p_professional_id?: string
+          p_reference_value?: number
+          p_service_id: string
+        }
+        Returns: string
+      }
       contact_email_error: {
         Args: { p_email: string; p_required?: boolean }
         Returns: string
@@ -1999,6 +2624,15 @@ export type Database = {
         Returns: boolean
       }
       normalize_br_phone: { Args: { p_phone: string }; Returns: string }
+      open_customer_subscription_cycle: {
+        Args: {
+          p_asaas_payment_id?: string
+          p_ends_at: string
+          p_starts_at: string
+          p_subscription_id: string
+        }
+        Returns: string
+      }
       pay_expense: {
         Args: {
           p_account: string
@@ -2066,6 +2700,16 @@ export type Database = {
         Returns: undefined
       }
       request_grace_unlock: { Args: never; Returns: Json }
+      sell_service_package: {
+        Args: {
+          p_amount_paid?: number
+          p_client_id: string
+          p_package_id: string
+          p_sale_id?: string
+          p_starts_at?: string
+        }
+        Returns: string
+      }
       slugify: { Args: { input: string }; Returns: string }
       staff_owns_appointment: {
         Args: { p_appointment_id: string; p_establishment_id: string }
