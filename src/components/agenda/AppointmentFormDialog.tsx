@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { findAgendaConflicts, type OccupiedInterval } from "@/lib/agendaConflicts";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ClientCombobox } from "@/components/ClientCombobox";
 import { ServiceSearchSelect } from "@/components/ServiceSearchSelect";
@@ -25,6 +26,7 @@ interface Props {
   blocks?: AppointmentBlock[];
   businessHours?: { openingTime: string; closingTime: string; workingDays: number[]; weekly?: WeeklyHours };
   initialDate?: Date | null;
+  initialProfessionalId?: string | null;
   appointment?: any | null;
   onSaved?: () => void;
 }
@@ -111,10 +113,12 @@ function MultiSelect({
 }
 
 export function AppointmentFormDialog({
-  open, onOpenChange, establishmentId, services, professionals, blocks = [], businessHours, initialDate, appointment, onSaved,
+  open, onOpenChange, establishmentId, services, professionals, blocks = [], businessHours, initialDate, initialProfessionalId, appointment, onSaved,
 }: Props) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [conflicts, setConflicts] = useState<OccupiedInterval[]>([]);
+  const [approvedSignature, setApprovedSignature] = useState("");
   const [form, setForm] = useState({
     client_id: "",
     service_ids: [] as string[],
@@ -131,6 +135,8 @@ export function AppointmentFormDialog({
 
   useEffect(() => {
     if (!open) return;
+    setConflicts([]);
+    setApprovedSignature("");
     const load = async () => {
       if (appointment?.id) {
         const [{ data: svc }, { data: prof }] = await Promise.all([
@@ -158,7 +164,7 @@ export function AppointmentFormDialog({
         setExistingDeposit(Number(appointment.deposit_amount ?? 0));
       } else {
         setForm({
-          client_id: "", service_ids: [], professional_ids: [],
+          client_id: "", service_ids: [], professional_ids: initialProfessionalId ? [initialProfessionalId] : [],
           appointment_date: initialDate ? toLocalInput(initialDate) : "",
           duration_minutes: "",
           service_amount: "",
@@ -170,7 +176,7 @@ export function AppointmentFormDialog({
       }
     };
     load();
-  }, [open, appointment, initialDate, services]);
+  }, [open, appointment, initialDate, initialProfessionalId, services]);
 
   const totalDuration = useMemo(() => {
     return services
@@ -193,7 +199,7 @@ export function AppointmentFormDialog({
     }));
   }, [open, appointment?.id, totalDuration, totalAmount]);
 
-  const handleSave = async () => {
+  const handleSave = async (confirmed = false) => {
     const durationMinutes = parseDurationInput(form.duration_minutes);
     if (!form.client_id || form.service_ids.length === 0 || form.professional_ids.length === 0 || !form.appointment_date || durationMinutes <= 0) {
       toast({ title: "Preencha cliente, serviço(s), profissional(is), data/hora e duração", variant: "destructive" });
@@ -234,47 +240,47 @@ export function AppointmentFormDialog({
       }
     }
 
-    const blocked = blocks.find((block) =>
-      form.professional_ids.includes(block.professional_id) &&
-      new Date(block.start_time) < end &&
-      new Date(block.end_time) > start
-    );
-
-    if (blocked) {
-      toast({
-        title: "Horário bloqueado",
-        description: blocked.reason || "Existe um bloqueio para este profissional no horário selecionado.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const { data: conflictingBlocks, error: blocksError } = await (supabase as any)
       .from("appointment_blocks")
-      .select("id, reason")
+      .select("id, professional_id, start_time, end_time, reason")
       .eq("establishment_id", establishmentId)
       .in("professional_id", form.professional_ids)
       .lt("start_time", end.toISOString())
       .gt("end_time", start.toISOString())
-      .limit(1);
+      .limit(1000);
 
     if (blocksError) {
       if (isRecoverableAppointmentSupportError(blocksError, "appointment_blocks")) {
-        console.warn("Agendamento salvo sem validação remota de bloqueios:", blocksError);
+        toast({ title: "Não foi possível verificar os bloqueios", variant: "destructive" });
+        return;
       } else {
         toast({ title: "Erro ao validar bloqueios", description: blocksError.message, variant: "destructive" });
         return;
       }
     }
 
-    if (!blocksError && (conflictingBlocks ?? []).length > 0) {
-      toast({
-        title: "Horário bloqueado",
-        description: conflictingBlocks[0].reason || "Existe um bloqueio para este profissional no horário selecionado.",
-        variant: "destructive",
-      });
-      return;
-    }
+    const { data: nearby, error: nearbyError } = await supabase.from("appointments")
+      .select("id, appointment_date, duration_minutes, professional_id, status")
+      .eq("establishment_id", establishmentId)
+      .gte("appointment_date", new Date(start.getTime() - 24 * 60 * 60_000).toISOString())
+      .lt("appointment_date", end.toISOString()).limit(1000);
+    if (nearbyError) { toast({ title: "Não foi possível verificar a agenda", description: nearbyError.message, variant: "destructive" }); return; }
+    const candidates = (nearby ?? []).filter(a => !["canceled", "cancelled", "completed"].includes(a.status ?? ""));
+    const ids = candidates.map(a => a.id);
+    const { data: linked, error: linkedError } = ids.length ? await supabase.from("appointment_professionals")
+      .select("appointment_id, professional_id").eq("establishment_id", establishmentId).in("appointment_id", ids) : { data: [], error: null };
+    if (linkedError) { toast({ title: "Não foi possível verificar os profissionais", description: linkedError.message, variant: "destructive" }); return; }
+    const occupied: OccupiedInterval[] = [
+      ...(conflictingBlocks ?? []).map((b: any) => ({ id: b.id, professionalId: b.professional_id, start: b.start_time, end: b.end_time, label: b.reason || "Bloqueio", type: "block" as const })),
+      ...candidates.flatMap(a => {
+        const assigned = [...new Set([a.professional_id, ...(linked ?? []).filter(p => p.appointment_id === a.id).map(p => p.professional_id)].filter(Boolean))] as string[];
+        return assigned.map(pid => ({ id: a.id, professionalId: pid, start: a.appointment_date, end: new Date(new Date(a.appointment_date).getTime() + Number(a.duration_minutes || 30) * 60_000).toISOString(), label: "Agendamento existente", type: "appointment" as const }));
+      }),
+    ];
+    const found = findAgendaConflicts(start, end, form.professional_ids, occupied, appointment?.id);
+    const signature = `${form.appointment_date}|${durationMinutes}|${form.professional_ids.join(",")}|${found.map(c => c.id).join(",")}`;
+    if (found.length && (!confirmed || signature !== approvedSignature)) { setApprovedSignature(signature); setConflicts(found); return; }
+    setConflicts([]);
 
     setSaving(true);
     const payload = {
@@ -512,11 +518,23 @@ export function AppointmentFormDialog({
             <label className="text-sm text-muted-foreground">Observações</label>
             <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Opcional" />
           </div>
-          <Button className="w-full" disabled={saving} onClick={handleSave}>
+          <Button className="w-full" disabled={saving} onClick={() => void handleSave()}>
             {saving ? "Salvando..." : appointment?.id ? "Salvar alterações" : "Confirmar agendamento"}
           </Button>
         </div>
       </DialogContent>
+      <Dialog open={conflicts.length > 0} onOpenChange={(value) => { if (!value) setConflicts([]); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Conflito de horário</DialogTitle><DialogDescription>O período coincide com compromissos deste profissional.</DialogDescription></DialogHeader>
+          <div className="max-h-48 space-y-2 overflow-y-auto text-sm">
+            {conflicts.map((item, index) => <div key={`${item.type}-${item.id}-${item.professionalId}-${index}`} className="border-b pb-2">
+              <strong>{item.type === "block" ? "Horário bloqueado" : "Agendamento"}</strong> · {professionals.find(p => p.id === item.professionalId)?.name ?? "Profissional"}<br />
+              {new Date(item.start).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}–{new Date(item.end).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · {item.label}
+            </div>)}
+          </div>
+          <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setConflicts([])}>Voltar</Button><Button onClick={() => void handleSave(true)}>Agendar mesmo assim</Button></div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
