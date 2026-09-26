@@ -1,0 +1,1 @@
+Dashboard estratégico reutiliza `fetchRealizedSales` e regras em `src/lib/finance/` e lê o snapshot `appointments.service_amount`; isso impede divergências de faturamento e reprecificação de agendamentos.

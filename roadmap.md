@@ -6,3 +6,5 @@
 - [x] Validar permissões, fluxos, desktop e mobile
 - [x] Restaurar salvamentos protegidos pelos gatilhos de validação de contato
 - [x] Unificar a comparação de telefone na importação de clientes
+- [ ] Transformar indicadores do dashboard em visão estratégica mensal sem alterar a agenda
+- [ ] Validar cálculos, isolamento e experiência em telas menores
