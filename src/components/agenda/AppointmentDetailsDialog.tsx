@@ -98,7 +98,7 @@ export function AppointmentDetailsDialog({
            {appointment.service_amount != null && <div className="flex justify-between"><span className="text-muted-foreground">Valor do serviço</span><span>{money(amount)}</span></div>}
            {deposit > 0 && <><div className="flex justify-between"><span className="text-muted-foreground">Sinal</span><span>{money(deposit)}</span></div><div className="flex justify-between font-medium"><span>Restante</span><span>{money(Math.max(0, amount - deposit))}</span></div></>}
            {canManage && <div className="flex justify-between border-t pt-2"><span className="text-muted-foreground">Faturamento</span><Badge variant={billing?.paid ? "default" : "secondary"}>{billing?.paid ? "Faturado" : "Não faturado"}</Badge></div>}
-           {billing?.paid && billing.total != null && <div className="flex justify-between"><span className="text-muted-foreground">Comanda</span><span>{money(Number(billing.total))}</span></div>}
+            {canManage && billing?.paid && billing.total != null && <div className="flex justify-between"><span className="text-muted-foreground">Comanda</span><span>{money(Number(billing.total))}</span></div>}
           {appointment.notes && (
             <div className="pt-2 border-t">
               <div className="text-muted-foreground mb-1">Observações</div>

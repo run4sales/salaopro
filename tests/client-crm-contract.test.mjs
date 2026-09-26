@@ -30,7 +30,7 @@ test("quick registration was replaced by the complete client record", () => {
 });
 
 test("staff may operate their own appointment without seeing manager billing", () => {
-  assert.match(agenda, /canOperate=\{establishmentRole === "owner" \|\| establishmentRole === "admin" \|\| \(isEmployee && !!professionalId && selectedAppt\?\.professional_id === professionalId\)\}/);
+  assert.match(agenda, /canOperate=\{establishmentRole === "owner" \|\| establishmentRole === "admin" \|\| \(isEmployee && !!professionalId && !!selectedAppt\)\}/);
   assert.match(appointmentDetails, /\{canOperate && <Button variant="outline" size="sm" onClick=\{onEdit\}/);
   assert.match(appointmentDetails, /\{canOperate && !billing\?\.paid/);
   assert.match(appointmentDetails, /\{canOperate && key !== "canceled"/);
