@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Search, UserPlus, UserCircle2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,19 +11,6 @@ interface ClientLite { id: string; name: string; phone?: string | null }
 const CLIENTS_PAGE_SIZE = 1000;
 const INITIAL_VISIBLE_CLIENTS = 50;
 const VISIBLE_CLIENTS_INCREMENT = 50;
-
-function isRecoverableClientsFilterError(error: any) {
-  if (!error) return false;
-  const code = String(error.code ?? "");
-  const message = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
-
-  return (
-    ["42703", "PGRST200", "PGRST204", "PGRST205"].includes(code) ||
-    message.includes("schema cache") ||
-    message.includes("does not exist") ||
-    message.includes("could not find")
-  );
-}
 
 async function fetchAllClients(establishmentId: string) {
 

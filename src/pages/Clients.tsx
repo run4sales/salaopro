@@ -46,7 +46,7 @@ const Clients = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [walletClient, setWalletClient] = useState<any>(null);
   const [deletingClient, setDeletingClient] = useState<any>(null);
-  const [contactErrors, setContactErrors] = useState({ phone: '', email: '' });
+  const [contactErrors, setContactErrors] = useState({ phone: '', whatsapp: '', email: '' });
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [clientFields, setClientFields] = useState(DEFAULT_CLIENT_FIELDS);
 
@@ -396,8 +396,9 @@ const Clients = () => {
     if (!newClient.name.trim()) return;
     const phoneValidation = validatePhone(newClient.phone, { required: false });
     const emailValidation = validateEmail(newClient.email, { required: false });
-    setContactErrors({ phone: phoneValidation.message ?? '', email: emailValidation.message ?? '' });
-    if (!phoneValidation.valid || !emailValidation.valid) return;
+    const whatsappValidation = validatePhone(newClient.whatsapp, { required: false });
+    setContactErrors({ phone: phoneValidation.message ?? '', whatsapp: whatsappValidation.message ?? '', email: emailValidation.message ?? '' });
+    if (!phoneValidation.valid || !whatsappValidation.valid || !emailValidation.valid) return;
     if (newClient.email) {
       const domainValidation = await checkEmailDomain(newClient.email);
       if (!domainValidation.valid) { setContactErrors((current) => ({ ...current, email: domainValidation.message ?? 'E-mail inválido.' })); return; }
@@ -411,7 +412,7 @@ const Clients = () => {
       birth_date: client.birth_date ? new Date(client.birth_date) : null,
       last_service_date: client.last_service_date ? new Date(client.last_service_date) : null,
     });
-    setContactErrors({ phone: '', email: '' });
+    setContactErrors({ phone: '', whatsapp: '', email: '' });
     setIsEditDialogOpen(true);
   };
 
@@ -420,8 +421,9 @@ const Clients = () => {
     if (!editingClient?.name?.trim()) return;
     const phoneValidation = validatePhone(editingClient.phone, { required: false });
     const emailValidation = validateEmail(editingClient.email, { required: false });
-    setContactErrors({ phone: phoneValidation.message ?? '', email: emailValidation.message ?? '' });
-    if (!phoneValidation.valid || !emailValidation.valid) return;
+    const whatsappValidation = validatePhone(editingClient.whatsapp, { required: false });
+    setContactErrors({ phone: phoneValidation.message ?? '', whatsapp: whatsappValidation.message ?? '', email: emailValidation.message ?? '' });
+    if (!phoneValidation.valid || !whatsappValidation.valid || !emailValidation.valid) return;
     if (editingClient.email) {
       const domainValidation = await checkEmailDomain(editingClient.email);
       if (!domainValidation.valid) { setContactErrors((current) => ({ ...current, email: domainValidation.message ?? 'E-mail inválido.' })); return; }
@@ -792,7 +794,7 @@ const Clients = () => {
               />
               {contactErrors.phone && <p className="text-sm text-destructive">{contactErrors.phone}</p>}
              </div>}
-             {clientFields.whatsapp && <div className="space-y-2"><Label htmlFor="whatsapp">WhatsApp</Label><Input id="whatsapp" value={newClient.whatsapp} onChange={(e) => setNewClient({ ...newClient, whatsapp: e.target.value })} placeholder="(11) 99999-9999" inputMode="tel" /></div>}
+             {clientFields.whatsapp && <div className="space-y-2"><Label htmlFor="whatsapp">WhatsApp</Label><Input id="whatsapp" value={newClient.whatsapp} onChange={(e) => { setNewClient({ ...newClient, whatsapp: e.target.value }); setContactErrors((current) => ({ ...current, whatsapp: '' })); }} placeholder="(11) 99999-9999" inputMode="tel" aria-invalid={!!contactErrors.whatsapp} />{contactErrors.whatsapp && <p className="text-sm text-destructive">{contactErrors.whatsapp}</p>}</div>}
              <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="nickname">Apelido</Label><Input id="nickname" value={newClient.nickname} onChange={(e) => setNewClient({ ...newClient, nickname: e.target.value })} /></div><div className="space-y-2"><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={newClient.instagram} onChange={(e) => setNewClient({ ...newClient, instagram: e.target.value })} placeholder="@cliente" /></div></div>
              {clientFields.email && <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -913,7 +915,7 @@ const Clients = () => {
                 />
                 {contactErrors.phone && <p className="text-sm text-destructive">{contactErrors.phone}</p>}
               </div>
-              <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="edit-whatsapp">WhatsApp</Label><Input id="edit-whatsapp" value={editingClient.whatsapp || ''} onChange={(e) => setEditingClient({ ...editingClient, whatsapp: e.target.value })} /></div><div className="space-y-2"><Label htmlFor="edit-cpf">CPF</Label><Input id="edit-cpf" value={editingClient.cpf || ''} onChange={(e) => setEditingClient({ ...editingClient, cpf: e.target.value })} /></div></div>
+              <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="edit-whatsapp">WhatsApp</Label><Input id="edit-whatsapp" value={editingClient.whatsapp || ''} onChange={(e) => { setEditingClient({ ...editingClient, whatsapp: e.target.value }); setContactErrors((current) => ({ ...current, whatsapp: '' })); }} aria-invalid={!!contactErrors.whatsapp} />{contactErrors.whatsapp && <p className="text-sm text-destructive">{contactErrors.whatsapp}</p>}</div><div className="space-y-2"><Label htmlFor="edit-cpf">CPF</Label><Input id="edit-cpf" value={editingClient.cpf || ''} onChange={(e) => setEditingClient({ ...editingClient, cpf: e.target.value })} /></div></div>
               <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="edit-nickname">Apelido</Label><Input id="edit-nickname" value={editingClient.nickname || ''} onChange={(e) => setEditingClient({ ...editingClient, nickname: e.target.value })} /></div><div className="space-y-2"><Label htmlFor="edit-instagram">Instagram</Label><Input id="edit-instagram" value={editingClient.instagram || ''} onChange={(e) => setEditingClient({ ...editingClient, instagram: e.target.value })} /></div></div>
               <div className="space-y-2"><Label htmlFor="edit-address">Endereço</Label><Input id="edit-address" value={editingClient.address || ''} onChange={(e) => setEditingClient({ ...editingClient, address: e.target.value })} /></div>
               <div className="space-y-2">
