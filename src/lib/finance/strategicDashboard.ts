@@ -1,4 +1,4 @@
-import { asNumber, countUniqueClients, round2, sumRealizedRevenue, type SaleLike } from "./revenueRules";
+import { asNumber, countUniqueClients, round2, sumRealizedRevenue, type SaleLike } from "./revenueRules.ts";
 
 export type ForecastAppointment = {
   appointment_date: string;
