@@ -700,6 +700,7 @@ export default function StableAgendaContent() {
           businessHours={{ openingTime: businessHours.open, closingTime: businessHours.close, workingDays: businessHours.workingDays, weekly: businessHours.weekly }}
           initialDate={initialSlot}
           initialProfessionalId={effectiveProfessionalId}
+          allowConflictOverride={establishmentRole === "owner" || establishmentRole === "admin"}
           appointment={selectedAppt}
           onSaved={refresh}
         />

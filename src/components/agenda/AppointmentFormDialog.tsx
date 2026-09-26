@@ -27,6 +27,7 @@ interface Props {
   businessHours?: { openingTime: string; closingTime: string; workingDays: number[]; weekly?: WeeklyHours };
   initialDate?: Date | null;
   initialProfessionalId?: string | null;
+  allowConflictOverride?: boolean;
   appointment?: any | null;
   onSaved?: () => void;
 }
@@ -113,7 +114,7 @@ function MultiSelect({
 }
 
 export function AppointmentFormDialog({
-  open, onOpenChange, establishmentId, services, professionals, blocks = [], businessHours, initialDate, initialProfessionalId, appointment, onSaved,
+  open, onOpenChange, establishmentId, services, professionals, blocks = [], businessHours, initialDate, initialProfessionalId, allowConflictOverride = false, appointment, onSaved,
 }: Props) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -262,7 +263,7 @@ export function AppointmentFormDialog({
     const { data: nearby, error: nearbyError } = await supabase.from("appointments")
       .select("id, appointment_date, duration_minutes, professional_id, status")
       .eq("establishment_id", establishmentId)
-      .gte("appointment_date", new Date(start.getTime() - 24 * 60 * 60_000).toISOString())
+      .gte("appointment_date", new Date(start.getTime() - 7 * 24 * 60 * 60_000).toISOString())
       .lt("appointment_date", end.toISOString()).limit(1000);
     if (nearbyError) { toast({ title: "Não foi possível verificar a agenda", description: nearbyError.message, variant: "destructive" }); return; }
     const candidates = (nearby ?? []).filter(a => !["canceled", "cancelled", "completed"].includes(a.status ?? ""));
@@ -279,7 +280,7 @@ export function AppointmentFormDialog({
     ];
     const found = findAgendaConflicts(start, end, form.professional_ids, occupied, appointment?.id);
     const signature = `${form.appointment_date}|${durationMinutes}|${form.professional_ids.join(",")}|${found.map(c => c.id).join(",")}`;
-    if (found.length && (!confirmed || signature !== approvedSignature)) { setApprovedSignature(signature); setConflicts(found); return; }
+    if (found.length && (!allowConflictOverride || !confirmed || signature !== approvedSignature)) { setApprovedSignature(signature); setConflicts(found); return; }
     setConflicts([]);
 
     setSaving(true);
@@ -532,7 +533,7 @@ export function AppointmentFormDialog({
               {new Date(item.start).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}–{new Date(item.end).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · {item.label}
             </div>)}
           </div>
-          <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setConflicts([])}>Voltar</Button><Button onClick={() => void handleSave(true)}>Agendar mesmo assim</Button></div>
+          <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setConflicts([])}>Voltar</Button>{allowConflictOverride && <Button onClick={() => void handleSave(true)}>Agendar mesmo assim</Button>}</div>
         </DialogContent>
       </Dialog>
     </Dialog>
