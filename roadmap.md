@@ -9,6 +9,6 @@
 - [x] Transformar indicadores do dashboard em visão estratégica mensal sem alterar a agenda
 - [ ] Validar cálculos, isolamento e experiência em telas menores — conta disponível para teste é de funcionário; requer acesso de gestor para validar o painel visualmente
 - [x] Diferenciar bloqueios e permitir escolher agendar ou bloquear ao clicar em um horário vazio
-- [ ] Exibir detalhes financeiros e abrir faturamento da comanda pela agenda sem duplicação — concluído o atalho e verificações; bloqueio transacional de cobranças simultâneas ainda pendente
+- [x] Exibir detalhes financeiros e abrir faturamento da comanda pela agenda sem duplicação, incluindo bloqueio de cobranças simultâneas
 - [x] Revisar permissões de funcionários em ações da agenda, comanda e vendas no servidor
-- [ ] Alertar sobre conflitos de intervalo por profissional com testes de sobreposição, limites e perfis — alerta e testes locais concluídos; validação atômica no servidor ainda pendente
+- [x] Alertar sobre conflitos de intervalo por profissional, preservando encaixes adjacentes, bloqueios absolutos e validação atômica para funcionários
