@@ -1911,6 +1911,14 @@ export type Database = {
       }
       request_grace_unlock: { Args: never; Returns: Json }
       slugify: { Args: { input: string }; Returns: string }
+      staff_owns_appointment: {
+        Args: { p_appointment_id: string; p_establishment_id: string }
+        Returns: boolean
+      }
+      staff_owns_comanda: {
+        Args: { p_comanda_id: string; p_establishment_id: string }
+        Returns: boolean
+      }
       unaccent: { Args: { "": string }; Returns: string }
       update_payable: {
         Args: { p_changes: Json; p_id: string }
