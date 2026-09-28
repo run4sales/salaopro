@@ -85,6 +85,20 @@ export function normalizePhone(value: unknown): string {
   return digits;
 }
 
+/** Format a Brazilian number during entry without inventing a missing DDD. */
+export function formatBrazilianPhone(value: string): string {
+  const raw = value.replace(/\D/g, "");
+  const digits = (value.trimStart().startsWith("+") && raw.startsWith("55")
+    ? raw.slice(2)
+    : raw.length > 11 && raw.startsWith("55") ? raw.slice(2) : raw).slice(0, 11);
+  if (digits.length <= 2) return digits;
+  const area = digits.slice(0, 2);
+  const subscriber = digits.slice(2);
+  if (subscriber.length <= 4) return `(${area}) ${subscriber}`;
+  const prefixLength = subscriber.length > 8 ? 5 : 4;
+  return `(${area}) ${subscriber.slice(0, prefixLength)}-${subscriber.slice(prefixLength)}`;
+}
+
 export function isSuspiciousPhone(value: string): boolean {
   const digits = normalizePhone(value);
   if (!digits) return false;
@@ -102,6 +116,9 @@ export function validatePhone(value: unknown, options: { required?: boolean } = 
     return options.required
       ? { valid: false, code: "required", message: PHONE_INVALID_MESSAGE, normalized }
       : { valid: true, normalized };
+  }
+  if (normalized.length === 8 || normalized.length === 9) {
+    return { valid: false, code: "invalid_format", message: "Inclua o DDD antes do número de telefone.", normalized };
   }
   if (/[a-z]/i.test(raw) || !/^[\d\s()+.-]+$/.test(raw)) {
     return { valid: false, code: "invalid_format", message: PHONE_INVALID_MESSAGE, normalized };

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePhone, validateEmail, validatePhone } from "../src/lib/contactValidation.ts";
+import { formatBrazilianPhone, normalizePhone, validateEmail, validatePhone } from "../src/lib/contactValidation.ts";
 import { readFileSync } from "node:fs";
 
 test("rejects malformed or clearly artificial emails", () => {
@@ -26,6 +26,16 @@ test("rejects malformed or artificial Brazilian phones", () => {
 test("accepts valid Brazilian landlines and mobile phones", () => {
   for (const phone of ["(11) 98765-4321", "11987654321", "+55 (21) 99876-5432", "1132345678", "55 31 3987-6543"])
     assert.equal(validatePhone(phone, { required: true }).valid, true, phone);
+});
+
+test("formats client phone input without guessing the area code", () => {
+  assert.equal(formatBrazilianPhone("11"), "11");
+  assert.equal(formatBrazilianPhone("11987654321"), "(11) 98765-4321");
+  assert.equal(formatBrazilianPhone("+55 (21) 99876-5432"), "(21) 99876-5432");
+  assert.equal(formatBrazilianPhone("5539876543"), "(55) 3987-6543");
+  assert.equal(formatBrazilianPhone("11 3234 5678"), "(11) 3234-5678");
+  assert.equal(formatBrazilianPhone("(11) "), "11");
+  assert.match(validatePhone("98765432").message ?? "", /DDD/);
 });
 
 test("client import uses the same phone key with or without Brazil country code", () => {

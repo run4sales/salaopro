@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { checkEmailDomain, normalizeEmail, normalizePhone, validateEmail, validatePhone } from "@/lib/contactValidation";
+import { checkEmailDomain, formatBrazilianPhone, normalizeEmail, normalizePhone, validateEmail, validatePhone } from "@/lib/contactValidation";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +45,7 @@ export function BookingClientDialog({ open, onOpenChange, establishmentId, onCre
     },
   });
   const show = (field: Field) => visible?.[field] !== false && (field !== "whatsapp" && field !== "cpf" && field !== "address" || visible?.[field] === true);
-  const update = (field: Field, value: string) => { setForm(current => ({ ...current, [field]: value })); setError(""); };
+  const update = (field: Field, value: string) => { setForm(current => ({ ...current, [field]: field === "phone" || field === "whatsapp" ? formatBrazilianPhone(value) : value })); setError(""); };
 
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -101,7 +101,7 @@ export function BookingClientDialog({ open, onOpenChange, establishmentId, onCre
             {field === "gender" || field === "acquisition_source" ? <select id={`booking-client-${field}`} value={form[field]} onChange={event => update(field, event.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground">
               <option value="">Selecione...</option>
               {(field === "gender" ? [["masculino", "Masculino"], ["feminino", "Feminino"], ["outro", "Outro"]] : [["indicacao", "Indicação"], ["redes_sociais", "Redes sociais"], ["google", "Google"], ["trafego_pago", "Tráfego pago"], ["outros", "Outros"]]).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
-            </select> : <Input id={`booking-client-${field}`} type={field === "email" ? "email" : field === "birth_date" ? "date" : "text"} inputMode={field === "phone" || field === "whatsapp" ? "tel" : field === "cpf" ? "numeric" : undefined} value={form[field]} onChange={event => update(field, event.target.value)} />}
+             </select> : <Input id={`booking-client-${field}`} type={field === "email" ? "email" : field === "birth_date" ? "date" : field === "phone" || field === "whatsapp" ? "tel" : "text"} inputMode={field === "phone" || field === "whatsapp" ? "tel" : field === "cpf" ? "numeric" : undefined} placeholder={field === "phone" || field === "whatsapp" ? "DDD + número: (11) 98765-4321" : undefined} value={form[field]} onChange={event => update(field, event.target.value)} />}
           </div>)}
         </div>
         {show("notes") && <div className="space-y-2"><Label htmlFor="booking-client-notes">Observações</Label><Textarea id="booking-client-notes" value={form.notes} onChange={event => update("notes", event.target.value)} /></div>}
