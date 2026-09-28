@@ -17,3 +17,4 @@
 - [x] Remover cadastro rápido e continuar na ficha completa após criar o cliente
 - [x] Restaurar ações operacionais nos agendamentos do próprio funcionário sem expor faturamento gerencial
 - [x] Cadastrar cliente durante o agendamento sem perder os campos já preenchidos
+- [x] Padronizar telefone e WhatsApp durante o cadastro e edição de clientes, orientando quando faltar DDD

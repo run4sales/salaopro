@@ -409,6 +409,8 @@ const Clients = () => {
   const handleEditClient = (client: any) => {
     setEditingClient({
       ...client,
+      phone: formatBrazilianPhone(client.phone ?? ''),
+      whatsapp: formatBrazilianPhone(client.whatsapp ?? ''),
       birth_date: client.birth_date ? new Date(client.birth_date) : null,
       last_service_date: client.last_service_date ? new Date(client.last_service_date) : null,
     });
@@ -907,7 +909,7 @@ const Clients = () => {
                 <Label htmlFor="edit-phone">Telefone</Label>
                 <Input
                   id="edit-phone"
-                  value={editingClient.phone}
+                 value={editingClient.phone || ''}
                    onChange={(e) => { setEditingClient({ ...editingClient, phone: formatBrazilianPhone(e.target.value) }); setContactErrors((current) => ({ ...current, phone: '' })); }}
                    placeholder="DDD + número: (11) 98765-4321"
                   inputMode="tel"
