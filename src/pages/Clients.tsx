@@ -23,7 +23,7 @@ import { exportClientsToXlsx, exportClientsToCsv } from '@/lib/clientImportExpor
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ClientWalletDialog } from '@/components/clients/ClientWalletDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { checkEmailDomain, normalizeEmail, normalizePhone, validateEmail, validatePhone } from '@/lib/contactValidation';
+import { checkEmailDomain, formatBrazilianPhone, normalizeEmail, normalizePhone, validateEmail, validatePhone } from '@/lib/contactValidation';
 import { ClientProfileDialog } from '@/components/clients/ClientProfileDialog';
 import { Switch } from '@/components/ui/switch';
 
@@ -409,6 +409,8 @@ const Clients = () => {
   const handleEditClient = (client: any) => {
     setEditingClient({
       ...client,
+      phone: formatBrazilianPhone(client.phone ?? ''),
+      whatsapp: formatBrazilianPhone(client.whatsapp ?? ''),
       birth_date: client.birth_date ? new Date(client.birth_date) : null,
       last_service_date: client.last_service_date ? new Date(client.last_service_date) : null,
     });
@@ -787,14 +789,14 @@ const Clients = () => {
               <Input
                 id="phone"
                 value={newClient.phone}
-                onChange={(e) => { setNewClient({ ...newClient, phone: e.target.value }); setContactErrors((current) => ({ ...current, phone: '' })); }}
-                placeholder="(11) 99999-9999"
+                 onChange={(e) => { setNewClient({ ...newClient, phone: formatBrazilianPhone(e.target.value) }); setContactErrors((current) => ({ ...current, phone: '' })); }}
+                 placeholder="DDD + número: (11) 98765-4321"
                 inputMode="tel"
                 aria-invalid={!!contactErrors.phone}
               />
               {contactErrors.phone && <p className="text-sm text-destructive">{contactErrors.phone}</p>}
              </div>}
-             {clientFields.whatsapp && <div className="space-y-2"><Label htmlFor="whatsapp">WhatsApp</Label><Input id="whatsapp" value={newClient.whatsapp} onChange={(e) => { setNewClient({ ...newClient, whatsapp: e.target.value }); setContactErrors((current) => ({ ...current, whatsapp: '' })); }} placeholder="(11) 99999-9999" inputMode="tel" aria-invalid={!!contactErrors.whatsapp} />{contactErrors.whatsapp && <p className="text-sm text-destructive">{contactErrors.whatsapp}</p>}</div>}
+              {clientFields.whatsapp && <div className="space-y-2"><Label htmlFor="whatsapp">WhatsApp</Label><Input id="whatsapp" type="tel" value={newClient.whatsapp} onChange={(e) => { setNewClient({ ...newClient, whatsapp: formatBrazilianPhone(e.target.value) }); setContactErrors((current) => ({ ...current, whatsapp: '' })); }} placeholder="DDD + número: (11) 98765-4321" inputMode="tel" aria-invalid={!!contactErrors.whatsapp} />{contactErrors.whatsapp && <p className="text-sm text-destructive">{contactErrors.whatsapp}</p>}</div>}
              <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="nickname">Apelido</Label><Input id="nickname" value={newClient.nickname} onChange={(e) => setNewClient({ ...newClient, nickname: e.target.value })} /></div><div className="space-y-2"><Label htmlFor="instagram">Instagram</Label><Input id="instagram" value={newClient.instagram} onChange={(e) => setNewClient({ ...newClient, instagram: e.target.value })} placeholder="@cliente" /></div></div>
              {clientFields.email && <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -907,15 +909,15 @@ const Clients = () => {
                 <Label htmlFor="edit-phone">Telefone</Label>
                 <Input
                   id="edit-phone"
-                  value={editingClient.phone}
-                  onChange={(e) => { setEditingClient({ ...editingClient, phone: e.target.value }); setContactErrors((current) => ({ ...current, phone: '' })); }}
-                  placeholder="(11) 99999-9999"
+                 value={editingClient.phone || ''}
+                   onChange={(e) => { setEditingClient({ ...editingClient, phone: formatBrazilianPhone(e.target.value) }); setContactErrors((current) => ({ ...current, phone: '' })); }}
+                   placeholder="DDD + número: (11) 98765-4321"
                   inputMode="tel"
                   aria-invalid={!!contactErrors.phone}
                 />
                 {contactErrors.phone && <p className="text-sm text-destructive">{contactErrors.phone}</p>}
               </div>
-              <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="edit-whatsapp">WhatsApp</Label><Input id="edit-whatsapp" value={editingClient.whatsapp || ''} onChange={(e) => { setEditingClient({ ...editingClient, whatsapp: e.target.value }); setContactErrors((current) => ({ ...current, whatsapp: '' })); }} aria-invalid={!!contactErrors.whatsapp} />{contactErrors.whatsapp && <p className="text-sm text-destructive">{contactErrors.whatsapp}</p>}</div><div className="space-y-2"><Label htmlFor="edit-cpf">CPF</Label><Input id="edit-cpf" value={editingClient.cpf || ''} onChange={(e) => setEditingClient({ ...editingClient, cpf: e.target.value })} /></div></div>
+               <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="edit-whatsapp">WhatsApp</Label><Input id="edit-whatsapp" type="tel" value={editingClient.whatsapp || ''} onChange={(e) => { setEditingClient({ ...editingClient, whatsapp: formatBrazilianPhone(e.target.value) }); setContactErrors((current) => ({ ...current, whatsapp: '' })); }} placeholder="DDD + número: (11) 98765-4321" inputMode="tel" aria-invalid={!!contactErrors.whatsapp} />{contactErrors.whatsapp && <p className="text-sm text-destructive">{contactErrors.whatsapp}</p>}</div><div className="space-y-2"><Label htmlFor="edit-cpf">CPF</Label><Input id="edit-cpf" value={editingClient.cpf || ''} onChange={(e) => setEditingClient({ ...editingClient, cpf: e.target.value })} /></div></div>
               <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="edit-nickname">Apelido</Label><Input id="edit-nickname" value={editingClient.nickname || ''} onChange={(e) => setEditingClient({ ...editingClient, nickname: e.target.value })} /></div><div className="space-y-2"><Label htmlFor="edit-instagram">Instagram</Label><Input id="edit-instagram" value={editingClient.instagram || ''} onChange={(e) => setEditingClient({ ...editingClient, instagram: e.target.value })} /></div></div>
               <div className="space-y-2"><Label htmlFor="edit-address">Endereço</Label><Input id="edit-address" value={editingClient.address || ''} onChange={(e) => setEditingClient({ ...editingClient, address: e.target.value })} /></div>
               <div className="space-y-2">
