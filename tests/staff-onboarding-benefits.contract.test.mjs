@@ -19,6 +19,15 @@ test('staff creation never adopts a pre-existing auth identity and compensates f
   assert.match(source, /MEMBERSHIP_CREATE_FAILED/);
 });
 
+test('staff creation translates weak-password auth failures into a clear validation response', () => {
+  const source = read('supabase/functions/create-staff-user/index.ts');
+  assert.match(source, /code\.includes\("weak_password"\)/);
+  assert.match(source, /easy to guess/);
+  assert.match(source, /"WEAK_PASSWORD"/);
+  assert.match(source, /senha é muito comum ou fácil de adivinhar/);
+  assert.match(source, /422/);
+});
+
 test('staff functions handle JWT validation and custom-domain CORS inside the handler', () => {
   const config = read('supabase/config.toml');
   assert.match(config, /\[functions\.create-staff-user\]\s*verify_jwt = false/);
@@ -28,16 +37,11 @@ test('staff functions handle JWT validation and custom-domain CORS inside the ha
   assert.match(cors, /url\.protocol === 'https:'/);
 });
 
-test('staff creation has a non-persistent safe fallback when the function is unavailable', () => {
+test('staff creation does not bypass the protected function with a client-side signup fallback', () => {
   const page = read('src/pages/StaffUsers.tsx');
-  assert.match(page, /persistSession: false/);
-  assert.match(page, /link_new_staff_user/);
-  assert.match(page, /create_establishment_user/);
-  assert.match(page, /linkError\?\.code === "PGRST202"/);
-  assert.match(page, /signup\.user\.identities\?\.length === 0/);
-  const migration = read('supabase/migrations/20260827170000_safe_staff_signup_fallback.sql');
-  assert.match(migration, /id=p_user_id AND lower\(email\)=lower\(trim\(p_email\)\)/);
-  assert.doesNotMatch(migration, /SELECT id INTO.*auth\.users WHERE lower\(email\)/s);
+  assert.match(page, /functions\.invoke\("create-staff-user"/);
+  assert.doesNotMatch(page, /persistSession: false/);
+  assert.doesNotMatch(page, /auth\.signUp/);
 });
 
 test('comanda is seeded from per-service appointment price snapshots', () => {

@@ -6,6 +6,27 @@ const MAX_BODY_BYTES = 16 * 1024;
 const ALLOWED_ROLES = new Set(["admin", "employee"]);
 const HEX_COLOR = /^#[0-9A-F]{6}$/;
 
+type AuthAdminError = { code?: string; message?: string; status?: number };
+
+function mapAuthCreateError(error: AuthAdminError): RequestError {
+  const code = error.code?.toLowerCase() ?? "";
+  const message = error.message?.toLowerCase() ?? "";
+  const duplicate = code.includes("email_exists") || /already|registered|exists/.test(message);
+  if (duplicate) return new RequestError("EMAIL_EXISTS", "Este e-mail já está cadastrado.", 409);
+
+  const weakPassword = code.includes("weak_password") || /weak|easy to guess|pwned|compromised/.test(message);
+  if (weakPassword) {
+    return new RequestError(
+      "WEAK_PASSWORD",
+      "Essa senha é muito comum ou fácil de adivinhar. Escolha uma senha mais forte, com letras, números e símbolos.",
+      422,
+    );
+  }
+
+  console.error("auth user creation failed", { code: error.code, status: error.status });
+  return new RequestError("AUTH_CREATE_FAILED", "Não foi possível criar o acesso do funcionário.", 502);
+}
+
 class RequestError extends Error {
   constructor(public code: string, message: string, public status = 400) { super(message); }
 }
@@ -81,8 +102,7 @@ Deno.serve(async (req) => {
     });
 
     if (createErr) {
-      const duplicate = /already|registered|exists/i.test(createErr.message ?? "");
-      throw new RequestError(duplicate ? "EMAIL_EXISTS" : "AUTH_CREATE_FAILED", duplicate ? "Este e-mail já está cadastrado." : "Não foi possível criar o acesso do funcionário.", duplicate ? 409 : 502);
+      throw mapAuthCreateError(createErr);
     }
     const userId = createdUser.user?.id;
     if (!userId) throw new RequestError("AUTH_CREATE_FAILED", "Não foi possível criar o acesso do funcionário.", 502);
