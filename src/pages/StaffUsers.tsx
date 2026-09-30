@@ -364,9 +364,10 @@ export default function Users() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 6 caracteres"
+              placeholder="6+ caracteres, letras e números"
               minLength={6}
             />
+            <p className="mt-1 text-xs text-muted-foreground">Evite senhas comuns ou fáceis de adivinhar.</p>
           </div>
 
           <div>

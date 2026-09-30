@@ -19,6 +19,15 @@ test('staff creation never adopts a pre-existing auth identity and compensates f
   assert.match(source, /MEMBERSHIP_CREATE_FAILED/);
 });
 
+test('staff creation translates weak-password auth failures into a clear validation response', () => {
+  const source = read('supabase/functions/create-staff-user/index.ts');
+  assert.match(source, /code\.includes\("weak_password"\)/);
+  assert.match(source, /easy to guess/);
+  assert.match(source, /"WEAK_PASSWORD"/);
+  assert.match(source, /senha é muito comum ou fácil de adivinhar/);
+  assert.match(source, /422/);
+});
+
 test('comanda is seeded from per-service appointment price snapshots', () => {
   const source = read('src/lib/comanda.ts');
   assert.match(source, /appointment_services/);
