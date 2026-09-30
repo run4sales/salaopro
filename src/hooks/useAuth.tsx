@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +15,8 @@ interface AuthContextType {
   updatePassword: (password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   loading: boolean;
+  profileError: string | null;
+  retryProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,24 +48,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [establishmentRole, setEstablishmentRole] = useState<"owner" | "admin" | "employee" | null>(null);
   const [professionalId, setProfessionalId] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const profileRequestRef = useRef(0);
+  const sessionLoadRef = useRef(0);
   const { toast } = useToast();
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
+    const requestId = ++profileRequestRef.current;
+    const isCurrent = () => requestId === profileRequestRef.current;
     try {
       const resetProfileContext = () => {
         setProfile(null);
         setEstablishmentRole(null);
         setProfessionalId(null);
       };
+      setProfileError(null);
 
-      const { data: ownerProfile, error: ownerError } = await withTimeout<any>(
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle() as any,
-        'Busca do perfil proprietário'
-      );
+      const [ownerResult, employeeResult, fallbackResult] = await Promise.allSettled([
+        withTimeout<any>(supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle() as any, 'Busca do perfil proprietário'),
+        withTimeout<any>((supabase as any).rpc('get_my_employee_context'), 'Busca do vínculo do funcionário'),
+        withTimeout<any>(
+          supabase.from('establishment_users' as any)
+            .select('role, professional_id, establishment_id')
+            .eq('user_id', userId)
+            .eq('active', true)
+            .maybeSingle() as any,
+          'Busca alternativa do vínculo do funcionário'
+        ),
+      ]);
+      if (!isCurrent()) return;
+
+      const ownerResponse = ownerResult.status === 'fulfilled' ? ownerResult.value : null;
+      const ownerProfile = ownerResponse?.data;
+      const ownerError = ownerResponse?.error ?? (ownerResult.status === 'rejected' ? ownerResult.reason : null);
       if (ownerError) {
         console.warn('Erro ao buscar perfil proprietário:', ownerError);
       }
@@ -74,10 +91,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      const { data: employeeContext, error: employeeContextError } = await withTimeout<any>(
-        (supabase as any).rpc('get_my_employee_context'),
-        'Busca do vínculo do funcionário'
-      );
+      const employeeResponse = employeeResult.status === 'fulfilled' ? employeeResult.value : null;
+      const employeeContext = employeeResponse?.data;
+      const employeeContextError = employeeResponse?.error ?? (employeeResult.status === 'rejected' ? employeeResult.reason : null);
 
       if (employeeContextError) {
         console.warn('Erro ao buscar contexto seguro do funcionário:', employeeContextError);
@@ -85,17 +101,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       const context = employeeContext as any;
 
+      const fallbackResponse = fallbackResult.status === 'fulfilled' ? fallbackResult.value : null;
+      const fallbackError = fallbackResponse?.error ?? (fallbackResult.status === 'rejected' ? fallbackResult.reason : null);
       const membershipResult = context?.establishment_id
         ? { data: context, error: null }
-        : await withTimeout<any>(
-            supabase
-              .from('establishment_users' as any)
-              .select('role, professional_id, establishment_id')
-              .eq('user_id', userId)
-              .eq('active', true)
-              .maybeSingle() as any,
-            'Busca alternativa do vínculo do funcionário'
-          );
+        : { data: fallbackResponse?.data, error: fallbackError };
 
       const { data: membershipData, error: membershipError } = membershipResult as any;
       if (membershipError) {
@@ -104,6 +114,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const membership = membershipData as any;
       if (!membership?.establishment_id) {
         resetProfileContext();
+        setProfileError(ownerError && employeeContextError && membershipError
+          ? 'Não foi possível carregar seus dados. Tente novamente.'
+          : 'Seu acesso está autenticado, mas não possui vínculo ativo com um salão.');
         return;
       }
 
@@ -119,44 +132,61 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Enriquece dados do salão sem bloquear a liberação da tela do funcionário.
       void (async () => {
-        const { data: linkedProfile, error: linkedProfileError } = await withTimeout<any>(
-          (supabase as any).rpc('get_my_establishment_profile'),
-          'Busca de dados do estabelecimento vinculado'
-        );
+        try {
+          const { data: linkedProfile, error: linkedProfileError } = await withTimeout<any>(
+            (supabase as any).rpc('get_my_establishment_profile'),
+            'Busca de dados do estabelecimento vinculado'
+          );
 
-        if (linkedProfileError) {
-          console.warn('Erro ao buscar perfil do estabelecimento vinculado:', linkedProfileError);
-          return;
-        }
+          if (linkedProfileError) {
+            console.warn('Erro ao buscar perfil do estabelecimento vinculado:', linkedProfileError);
+            return;
+          }
 
-        if (linkedProfile) {
-          setProfile(linkedProfile);
+          if (linkedProfile && isCurrent()) setProfile(linkedProfile);
+        } catch (error) {
+          console.warn('Erro ao enriquecer perfil do estabelecimento:', error);
         }
       })();
     } catch (error) {
       console.error('Error fetching profile:', error);
+      if (!isCurrent()) return;
       setProfile(null);
       setEstablishmentRole(null);
       setProfessionalId(null);
+      setProfileError('Não foi possível carregar seus dados. Tente novamente.');
     }
-  };
+  }, []);
+
+  const retryProfile = useCallback(async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    try {
+      await fetchProfile(user.id);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchProfile, user?.id]);
 
   useEffect(() => {
     let active = true;
 
     const loadFor = async (s: Session | null) => {
       if (!active) return;
+      const loadId = ++sessionLoadRef.current;
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
         setLoading(true);
         await fetchProfile(s.user.id);
       } else {
+        profileRequestRef.current += 1;
         setProfile(null);
         setEstablishmentRole(null);
         setProfessionalId(null);
+        setProfileError(null);
       }
-      if (active) setLoading(false);
+      if (active && loadId === sessionLoadRef.current) setLoading(false);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -164,10 +194,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setTimeout(() => { void loadFor(s); }, 0);
     });
 
-    supabase.auth.getSession().then(({ data: { session: s } }) => { void loadFor(s); });
+    supabase.auth.getSession()
+      .then(({ data: { session: s } }) => { void loadFor(s); })
+      .catch((error) => {
+        console.error('Erro ao restaurar sessão:', error);
+        if (!active) return;
+        setProfileError('Não foi possível carregar seus dados. Tente novamente.');
+        setLoading(false);
+      });
 
     return () => { active = false; subscription.unsubscribe(); };
-  }, []);
+  }, [fetchProfile]);
 
   const signUp = async (email: string, password: string, metadata?: any) => {
     const redirectUrl = `${window.location.origin}/`;
@@ -281,6 +318,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loading,
     establishmentRole,
     professionalId,
+    profileError,
+    retryProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

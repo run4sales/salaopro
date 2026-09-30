@@ -10,11 +10,14 @@ import StoreBlockedGate, { isStoreBlocked } from "@/components/StoreBlockedGate"
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 
 export default function AppLayout() {
   const location = useLocation();
-  const { user, loading: authLoading, establishmentRole } = useAuth();
-  const { data: sub, isLoading: subLoading } = useSubscription();
+  const { user, loading: authLoading, establishmentRole, profileError, retryProfile } = useAuth();
+  const isOwner = establishmentRole === "owner";
+  const { data: sub, isLoading: subLoading } = useSubscription(isOwner);
 
   // Gate: usuário precisa estar autenticado e com contexto de estabelecimento carregado.
   if (authLoading) {
@@ -25,9 +28,21 @@ export default function AppLayout() {
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
+  if (profileError) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-background p-6 text-foreground">
+        <div className="w-full max-w-md rounded-md border bg-card p-6 text-center">
+          <AlertCircle className="mx-auto mb-3 h-9 w-9 text-destructive" />
+          <h1 className="font-semibold">Não foi possível carregar seu acesso</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{profileError}</p>
+          <Button className="mt-5" onClick={() => void retryProfile()}>Tentar novamente</Button>
+        </div>
+      </div>
+    );
+  }
+
   // Apenas owners passam pelo gate de plano (funcionários do estabelecimento não escolhem plano).
   // Nunca trate role null como owner, pois funcionários chegam com role async durante o login.
-  const isOwner = establishmentRole === "owner";
   const isEmployee = establishmentRole === "employee";
   const employeeAllowedRoutes = new Set(["/agenda", "/atendimentos", "/services", "/products", "/sales"]);
   const storeBlocked = isStoreBlocked(sub);

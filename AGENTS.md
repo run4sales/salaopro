@@ -5,3 +5,4 @@ Ficha CRM deriva consumo de `sales` não excluídas, visitas de agendamentos fin
 O cadastro de cliente dentro de fluxos operacionais usa a ficha completa em diálogo local e atualiza a busca existente; isso mantém o formulário em andamento sem navegar ou recriar um cadastro simplificado.
 Campos de telefone e WhatsApp na ficha de cliente usam `formatBrazilianPhone` durante a digitação e `validatePhone` antes de salvar; isso preserva o DDD informado sem inventar dados e mantém o armazenamento normalizado.
 Falhas conhecidas da autenticação administrativa são convertidas em erros de validação específicos nas funções de usuários; isso evita apresentar rejeições corrigíveis como indisponibilidade interna.
+O contexto de acesso é resolvido em paralelo, ignora respostas antigas e expõe erro com nova tentativa; isso impede loading infinito após login de colaborador.
