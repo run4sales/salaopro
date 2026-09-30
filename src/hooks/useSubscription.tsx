@@ -39,11 +39,12 @@ export interface SubscriptionInfo {
   grace_ends_at?: string | null;
 }
 
-export function useSubscription(enabled = true) {
-  const { user } = useAuth();
+export function useSubscription(enabled?: boolean) {
+  const { user, establishmentRole } = useAuth();
+  const shouldFetch = enabled ?? establishmentRole === "owner";
   return useQuery({
     queryKey: ["my-subscription", user?.id],
-    enabled: enabled && !!user?.id,
+    enabled: shouldFetch && !!user?.id,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
     refetchOnMount: "always",

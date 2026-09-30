@@ -50,6 +50,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [professionalId, setProfessionalId] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const profileRequestRef = useRef(0);
+  const sessionLoadRef = useRef(0);
   const { toast } = useToast();
 
   const fetchProfile = useCallback(async (userId: string) => {
@@ -131,18 +132,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Enriquece dados do salão sem bloquear a liberação da tela do funcionário.
       void (async () => {
-        const { data: linkedProfile, error: linkedProfileError } = await withTimeout<any>(
-          (supabase as any).rpc('get_my_establishment_profile'),
-          'Busca de dados do estabelecimento vinculado'
-        );
+        try {
+          const { data: linkedProfile, error: linkedProfileError } = await withTimeout<any>(
+            (supabase as any).rpc('get_my_establishment_profile'),
+            'Busca de dados do estabelecimento vinculado'
+          );
 
-        if (linkedProfileError) {
-          console.warn('Erro ao buscar perfil do estabelecimento vinculado:', linkedProfileError);
-          return;
-        }
+          if (linkedProfileError) {
+            console.warn('Erro ao buscar perfil do estabelecimento vinculado:', linkedProfileError);
+            return;
+          }
 
-        if (linkedProfile) {
-          if (isCurrent()) setProfile(linkedProfile);
+          if (linkedProfile && isCurrent()) setProfile(linkedProfile);
+        } catch (error) {
+          console.warn('Erro ao enriquecer perfil do estabelecimento:', error);
         }
       })();
     } catch (error) {
@@ -170,6 +173,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const loadFor = async (s: Session | null) => {
       if (!active) return;
+      const loadId = ++sessionLoadRef.current;
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
@@ -182,7 +186,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setProfessionalId(null);
         setProfileError(null);
       }
-      if (active) setLoading(false);
+      if (active && loadId === sessionLoadRef.current) setLoading(false);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -190,7 +194,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setTimeout(() => { void loadFor(s); }, 0);
     });
 
-    supabase.auth.getSession().then(({ data: { session: s } }) => { void loadFor(s); });
+    supabase.auth.getSession()
+      .then(({ data: { session: s } }) => { void loadFor(s); })
+      .catch((error) => {
+        console.error('Erro ao restaurar sessão:', error);
+        if (!active) return;
+        setProfileError('Não foi possível carregar seus dados. Tente novamente.');
+        setLoading(false);
+      });
 
     return () => { active = false; subscription.unsubscribe(); };
   }, [fetchProfile]);

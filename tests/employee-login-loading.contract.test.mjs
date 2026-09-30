@@ -10,6 +10,7 @@ test("employee context lookups run together and stale responses are ignored", ()
   assert.match(authSource, /Promise\.allSettled/);
   assert.match(authSource, /profileRequestRef/);
   assert.match(authSource, /if \(!isCurrent\(\)\) return/);
+  assert.match(authSource, /loadId === sessionLoadRef\.current/);
 });
 
 test("profile failures leave loading and expose retry", () => {
