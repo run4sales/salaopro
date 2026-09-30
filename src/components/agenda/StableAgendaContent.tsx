@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Ban, Plus, CalendarDays, List, Upload, CalendarOff, UserX, LockKeyhole } from "lucide-react";
+import { Ban, Plus, CalendarDays, List, Upload, CalendarOff, UserX, LockKeyhole, AlertCircle, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { AgendaCalendar, AgendaEvent } from "@/components/agenda/AgendaCalendar";
@@ -32,6 +32,17 @@ const FILTER_STORAGE_KEY = "agenda.professionalFilter";
 const APPOINTMENT_ID_BATCH_SIZE = 500;
 const APPOINTMENT_FIELDS = "id, establishment_id, appointment_date, duration_minutes, service_amount, status, notes, client_id, service_id, professional_id";
 const APPOINTMENT_CORE_FIELDS = "id, establishment_id, appointment_date, status, notes, client_id, service_id, professional_id";
+const EMPLOYEE_AGENDA_TIMEOUT_MS = 12000;
+
+function withEmployeeAgendaTimeout<T>(promise: PromiseLike<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(
+      () => reject(new Error("A agenda demorou para responder")),
+      EMPLOYEE_AGENDA_TIMEOUT_MS,
+    );
+    Promise.resolve(promise).then(resolve).catch(reject).finally(() => window.clearTimeout(timeout));
+  });
+}
 
 function isRecoverableAgendaResourceError(error: any, resourceName: string) {
   if (!error) return false;
@@ -198,16 +209,18 @@ export default function StableAgendaContent() {
     }
   }, [isEmployee, professionals, selectedProfessionalId]);
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ["agenda", establishmentId, range.start.toISOString(), range.end.toISOString(), effectiveProfessionalId, isEmployee],
     enabled: isEmployee ? !!professionalId : !!establishmentId,
     queryFn: async () => {
       // Funcionários usam a RPC segura (SECURITY DEFINER), que já aplica o isolamento
       // por loja e por profissional, inclusive agendamentos com múltiplos profissionais.
       if (isEmployee) {
-        const { data: employeeAgenda, error: employeeAgendaError } = await (supabase as any).rpc(
-          "get_my_employee_agenda",
-          { _start: range.start.toISOString(), _end: range.end.toISOString() }
+        const { data: employeeAgenda, error: employeeAgendaError } = await withEmployeeAgendaTimeout<any>(
+          (supabase as any).rpc(
+            "get_my_employee_agenda",
+            { _start: range.start.toISOString(), _end: range.end.toISOString() }
+          )
         );
         if (employeeAgendaError) throw employeeAgendaError;
 
@@ -527,7 +540,21 @@ export default function StableAgendaContent() {
     setCustomEnd(toDateInputValue(nextEnd));
   };
 
-  if (!establishmentId) return <div className="rounded-md border p-6 bg-card text-sm text-muted-foreground">Carregando perfil...</div>;
+  if (!establishmentId) return null;
+
+  if (isEmployee && isError) {
+    console.error("Erro ao carregar agenda do funcionário:", error);
+    return (
+      <div className="rounded-md border bg-card p-8 text-center">
+        <AlertCircle className="mx-auto mb-3 h-9 w-9 text-destructive" />
+        <div className="font-medium">Não foi possível carregar sua agenda</div>
+        <p className="mt-1 text-sm text-muted-foreground">Tente novamente. Se o problema continuar, avise a administração.</p>
+        <Button className="mt-4" variant="outline" onClick={() => void refetch()} disabled={isFetching}>
+          <RefreshCw className="mr-2 h-4 w-4" /> Tentar novamente
+        </Button>
+      </div>
+    );
+  }
 
   if (employeeWithoutProfessional) {
     return (
