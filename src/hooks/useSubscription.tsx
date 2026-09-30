@@ -39,11 +39,11 @@ export interface SubscriptionInfo {
   grace_ends_at?: string | null;
 }
 
-export function useSubscription() {
+export function useSubscription(enabled = true) {
   const { user } = useAuth();
   return useQuery({
     queryKey: ["my-subscription", user?.id],
-    enabled: !!user?.id,
+    enabled: enabled && !!user?.id,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
     refetchOnMount: "always",

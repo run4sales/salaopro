@@ -19,3 +19,4 @@
 - [x] Cadastrar cliente durante o agendamento sem perder os campos já preenchidos
 - [x] Padronizar telefone e WhatsApp durante o cadastro e edição de clientes, orientando quando faltar DDD
 - [x] Informar corretamente quando a senha de um novo funcionário for recusada por ser comum ou insegura
+- [x] Corrigir o login do colaborador para concluir vínculo, agenda, estados vazios e erros sem loading infinito
