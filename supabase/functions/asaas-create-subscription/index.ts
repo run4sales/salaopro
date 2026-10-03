@@ -127,8 +127,45 @@ Deno.serve(async (req) => {
     }
     console.info('[asaas-create] Customer associado', { establishmentId: profile.id, customerId });
 
-    // 2) Cancel previous subscription if exists
+    // 2) Reuse a compatible pending charge instead of creating duplicates.
     if (sub?.asaas_subscription_id) {
+      const pendingResponse = await fetch(
+        `${ASAAS_BASE}/subscriptions/${sub.asaas_subscription_id}/payments?status=PENDING&limit=100`,
+        { headers },
+      );
+      if (pendingResponse.ok) {
+        const pendingJson = await pendingResponse.json().catch(() => ({}));
+        const pendingPayment = pendingJson?.data?.find((payment: { id?: string; value?: number; billingType?: string; invoiceUrl?: string; dueDate?: string }) =>
+          Number(payment.value ?? 0) === Number(plan.monthly_price)
+          && (!payment.billingType || payment.billingType === body.billing_type)
+          && sub.plan_id === plan.id
+        );
+        if (pendingPayment) {
+          const paymentLink = pendingPayment.invoiceUrl ?? null;
+          const { error: reuseError } = await admin.from('subscriptions').update({
+            status: 'pending', asaas_customer_id: customerId, billing_type: body.billing_type,
+            payment_link: paymentLink, billing_cpf_cnpj: onlyDigits(body.cpf_cnpj),
+            billing_name: body.name, billing_email: emailValidation.normalized,
+            next_billing_at: pendingPayment.dueDate
+              ? new Date(`${pendingPayment.dueDate}T12:00:00.000Z`).toISOString()
+              : sub.next_billing_at,
+          }).eq('id', sub.id);
+          if (reuseError) throw reuseError;
+          console.info('[asaas-create] Cobrança pendente reutilizada', {
+            establishmentId: profile.id, customerId,
+            subscriptionId: sub.asaas_subscription_id, paymentId: pendingPayment.id,
+          });
+          return new Response(JSON.stringify({
+            ok: true, reused: true, subscription_id: sub.asaas_subscription_id,
+            customer_id: customerId, payment_link: paymentLink,
+            next_due_date: pendingPayment.dueDate ?? null,
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      } else if (pendingResponse.status !== 404) {
+        throw new Error(`Falha ao consultar cobranças pendentes: HTTP ${pendingResponse.status}`);
+      }
+
+      // No compatible pending charge exists; replace the old subscription.
       const cancelResponse = await fetch(`${ASAAS_BASE}/subscriptions/${sub.asaas_subscription_id}`, {
         method: 'DELETE', headers,
       });
@@ -173,6 +210,7 @@ Deno.serve(async (req) => {
 
     // 5) Update local subscription
     const { data: updated, error: updateError } = await admin.from('subscriptions').update({
+      status: 'pending',
       plan_id: plan.id,
       monthly_amount: plan.monthly_price,
       asaas_customer_id: customerId,
