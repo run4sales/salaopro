@@ -31,6 +31,11 @@ async function tokensMatch(expected: string, received: string | null) {
   return difference === 0;
 }
 
+async function sha256(value: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -75,13 +80,19 @@ Deno.serve(async (req) => {
       return json({ error: 'Invalid webhook payload' }, 400);
     }
 
+    const providerEventId = typeof payload.id === 'string' && payload.id.trim()
+      ? payload.id.trim()
+      : await sha256(rawBody);
+
     // Log
     const { data: log, error: logError } = await admin.from('asaas_webhook_logs').insert({
       event,
       asaas_payment_id: paymentId ?? null,
       asaas_subscription_id: subscriptionId ?? null,
+      provider_event_id: providerEventId,
       payload,
     }).select('id').single();
+    if (logError?.code === '23505') return json({ ok: true, duplicate: true });
     if (logError) throw logError;
     logId = log.id;
 
@@ -89,18 +100,18 @@ Deno.serve(async (req) => {
     // subscription field, so the customer is a necessary fallback.
     let establishmentId: string | null = null;
     let localSubId: string | null = null;
-    let localSub: { id: string; establishment_id: string; pending_plan_id: string | null } | null = null;
+    let localSub: { id: string; establishment_id: string; pending_plan_id: string | null; manual_blocked_at: string | null } | null = null;
     let customerServiceSub: { id: string; establishment_id: string } | null = null;
     if (subscriptionId) {
       const { data: sub, error } = await admin.from('subscriptions')
-        .select('id, establishment_id, pending_plan_id')
+        .select('id, establishment_id, pending_plan_id, manual_blocked_at')
         .eq('asaas_subscription_id', subscriptionId).maybeSingle();
       if (error) throw error;
       localSub = sub;
     }
     if (!localSub && customerId) {
       const { data: sub, error } = await admin.from('subscriptions')
-        .select('id, establishment_id, pending_plan_id')
+        .select('id, establishment_id, pending_plan_id, manual_blocked_at')
         .eq('asaas_customer_id', customerId).maybeSingle();
       if (error) throw error;
       localSub = sub;
@@ -168,8 +179,11 @@ Deno.serve(async (req) => {
       switch (event) {
         case 'PAYMENT_CONFIRMED':
         case 'PAYMENT_RECEIVED': {
-          updates.status = 'active';
-          updates.last_payment_at = new Date().toISOString();
+          if (!localSub.manual_blocked_at) updates.status = 'active';
+          updates.last_payment_at = payment.paymentDate
+            ?? payment.clientPaymentDate
+            ?? payment.confirmedDate
+            ?? new Date().toISOString();
           updates.canceled_at = null;
           const base = payment.dueDate
             ? new Date(`${payment.dueDate}T12:00:00.000Z`)
@@ -205,11 +219,11 @@ Deno.serve(async (req) => {
           break;
         }
         case 'PAYMENT_OVERDUE':
-          updates.status = 'past_due';
+          if (!localSub.manual_blocked_at) updates.status = 'past_due';
           break;
         case 'PAYMENT_REFUNDED':
         case 'PAYMENT_DELETED':
-          updates.status = 'canceled';
+          if (!localSub.manual_blocked_at) updates.status = 'canceled';
           break;
       }
       if (Object.keys(updates).length > 0) {

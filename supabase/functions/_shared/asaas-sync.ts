@@ -14,6 +14,7 @@ type LocalSubscription = {
   asaas_customer_id: string | null;
   asaas_subscription_id: string | null;
   pending_plan_id: string | null;
+  manual_blocked_at: string | null;
 };
 
 type AsaasCustomer = Json & { id: string; externalReference?: string };
@@ -119,7 +120,7 @@ export async function syncAsaasSubscription(
   const started = Date.now();
   const trace = [`[${source}] Buscando assinatura do estabelecimento ${establishmentId}`];
   const { data: local, error: localError } = await admin.from('subscriptions').select(
-    'id, establishment_id, status, plan_id, monthly_amount, asaas_customer_id, asaas_subscription_id, pending_plan_id',
+    'id, establishment_id, status, plan_id, monthly_amount, asaas_customer_id, asaas_subscription_id, pending_plan_id, manual_blocked_at',
   ).eq('establishment_id', establishmentId).maybeSingle();
   if (localError) throw localError;
   if (!local) throw new Error(`Assinatura local não encontrada para ${establishmentId}`);
@@ -160,8 +161,8 @@ export async function syncAsaasSubscription(
     `/subscriptions/${encodeURIComponent(remoteSubscription.id)}/payments`,
     apiKey,
   );
+  const latestPayment = newestPayment(payments);
   const paidPayment = newestPayment(payments.filter((row) => PAID_STATUSES.has(row.status ?? '')));
-  const latestPayment = paidPayment ?? newestPayment(payments);
   trace.push(`Último pagamento: ${latestPayment?.id ?? 'nenhum'} (${latestPayment?.status ?? 'sem status'})`);
 
   for (const payment of payments) {
@@ -183,13 +184,17 @@ export async function syncAsaasSubscription(
     if (error) throw error;
   }
 
-  const newStatus = latestPayment?.status === 'OVERDUE'
+  const remoteStatus = latestPayment?.status ?? '';
+  const derivedStatus = remoteStatus === 'OVERDUE'
     ? 'past_due'
-    : CANCELED_STATUSES.has(latestPayment?.status ?? '')
+    : CANCELED_STATUSES.has(remoteStatus)
     ? 'canceled'
-    : paidPayment
+    : PAID_STATUSES.has(remoteStatus)
     ? 'active'
+    : remoteStatus === 'PENDING'
+    ? 'pending'
     : subscription.status;
+  const newStatus = subscription.manual_blocked_at ? subscription.status : derivedStatus;
   const lastPaymentAt = paidPayment
     ? paidPayment.paymentDate ?? paidPayment.clientPaymentDate ?? paidPayment.confirmedDate ?? new Date().toISOString()
     : null;
@@ -201,10 +206,10 @@ export async function syncAsaasSubscription(
     next_billing_at: remoteSubscription.nextDueDate
       ? new Date(`${remoteSubscription.nextDueDate}T12:00:00.000Z`).toISOString()
       : null,
-    status: newStatus,
   };
-  if (paidPayment) {
-    updates.last_payment_at = lastPaymentAt;
+  if (!subscription.manual_blocked_at) updates.status = newStatus;
+  if (paidPayment) updates.last_payment_at = lastPaymentAt;
+  if (latestPayment && PAID_STATUSES.has(latestPayment.status ?? '')) {
     updates.trial_ends_at = null;
     updates.canceled_at = null;
     updates.grace_started_at = null;
@@ -214,7 +219,8 @@ export async function syncAsaasSubscription(
   const { error: updateError } = await admin.from('subscriptions').update(updates).eq('id', subscription.id);
   if (updateError) throw updateError;
   trace.push(`Status atualizado: ${subscription.status} -> ${newStatus}`);
-  if (paidPayment) trace.push('Trial encerrado. Conta liberada.');
+  if (subscription.manual_blocked_at) trace.push('Bloqueio manual preservado; cobrança registrada sem liberar acesso.');
+  if (latestPayment && PAID_STATUSES.has(latestPayment.status ?? '')) trace.push('Trial encerrado. Conta liberada.');
 
   const result: SyncResult = {
     establishment_id: establishmentId,
@@ -243,7 +249,7 @@ export async function syncAsaasSubscription(
     plan_id: subscription.plan_id,
     changed: result.changed,
     duration_ms: result.duration_ms,
-    details: { trace, subscription: remoteSubscription, latest_payment: latestPayment },
+    details: { trace, subscription: remoteSubscription, latest_payment: latestPayment, manual_block_preserved: Boolean(subscription.manual_blocked_at) },
   });
   if (logError) throw logError;
   return result;
