@@ -15,6 +15,13 @@
       "when": 1791227465058,
       "tag": "0001_track_and_exclude_canceled_appointments",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791227802826,
+      "tag": "0002_accept_and_normalize_brazilian_phones",
+      "breakpoints": true
     }
   ]
 }
