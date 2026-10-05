@@ -8,6 +8,13 @@
       "when": 1791226949722,
       "tag": "0000_fix_asaas_subscription_state_consistency",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791227465058,
+      "tag": "0001_track_and_exclude_canceled_appointments",
+      "breakpoints": true
     }
   ]
 }
