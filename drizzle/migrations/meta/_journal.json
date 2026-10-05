@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791226949722,
+      "tag": "0000_fix_asaas_subscription_state_consistency",
+      "breakpoints": true
+    }
+  ]
+}

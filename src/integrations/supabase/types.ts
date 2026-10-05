@@ -2437,6 +2437,13 @@ export type Database = {
         Args: { p_recurrence_id: string; p_until?: string }
         Returns: number
       }
+      get_admin_subscription_states: {
+        Args: never
+        Returns: {
+          establishment_id: string
+          state: string
+        }[]
+      }
       get_my_employee_agenda: {
         Args: { _end: string; _start: string }
         Returns: Json
