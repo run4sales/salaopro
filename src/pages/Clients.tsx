@@ -194,8 +194,8 @@ const Clients = () => {
     // Search filter
     const matchesSearch = !searchTerm || 
       client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (client.phone && normalizePhone(client.phone).includes(normalizedSearchPhone)) ||
-      (client.whatsapp && normalizePhone(client.whatsapp).includes(normalizedSearchPhone)) ||
+      (normalizedSearchPhone && client.phone && normalizePhone(client.phone).includes(normalizedSearchPhone)) ||
+      (normalizedSearchPhone && client.whatsapp && normalizePhone(client.whatsapp).includes(normalizedSearchPhone)) ||
       (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase()));
     
     if (!matchesSearch) return false;
