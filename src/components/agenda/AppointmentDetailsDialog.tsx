@@ -1,5 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Play, X, CreditCard } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -30,6 +31,7 @@ export function AppointmentDetailsDialog({
   const { toast } = useToast();
   const navigate = useNavigate();
   const [comandaOpen, setComandaOpen] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState("");
   const { data: billing, refetch } = useQuery({
     queryKey: ["appointment-billing", appointment?.id],
     enabled: open && !!appointment?.id && canOperate,
@@ -52,8 +54,8 @@ export function AppointmentDetailsDialog({
 
   const setStatus = async (status: string) => {
     const payload = status === "canceled"
-      ? { status, canceled_at: new Date().toISOString() }
-      : { status, canceled_at: null };
+      ? { status, canceled_at: new Date().toISOString(), cancellation_reason: cancellationReason.trim() || null }
+      : { status, canceled_at: null, cancellation_reason: null };
     const { error } = await supabase.from("appointments").update(payload).eq("id", appointment.id);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Status atualizado" });
@@ -110,6 +112,15 @@ export function AppointmentDetailsDialog({
           )}
         </div>
          <div className="flex flex-wrap gap-2 pt-2">
+            {canOperate && key !== "canceled" && key !== "cancelled" && (
+              <Input
+                value={cancellationReason}
+                onChange={(event) => setCancellationReason(event.target.value)}
+                placeholder="Motivo do cancelamento (opcional)"
+                aria-label="Motivo do cancelamento"
+                className="w-full"
+              />
+            )}
             {canOperate && <Button variant="outline" size="sm" onClick={onEdit}><Pencil className="h-3.5 w-3.5 mr-1" />Editar</Button>}
             {canOperate && !billing?.paid && !billing?.active && key !== "in_service" && key !== "completed" && key !== "canceled" && key !== "cancelled" && (
             <Button size="sm" onClick={startService}><Play className="h-3.5 w-3.5 mr-1" />Iniciar</Button>
