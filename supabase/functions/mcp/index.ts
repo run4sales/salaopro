@@ -18,8 +18,15 @@ function supabaseForUser(ctx) {
   });
 }
 
+// src/lib/appointmentStatus.ts
+function normalizeStatus(s) {
+  const k = (s || "scheduled").trim().toLowerCase();
+  if (k === "pending") return "scheduled";
+  if (["cancelled", "cancelado", "cancelada"].includes(k)) return "canceled";
+  return k;
+}
+
 // src/lib/canceledAppointments.ts
-import { normalizeStatus } from "npm:@/lib/appointmentStatus";
 function isCanceledAppointment(appointment) {
   return normalizeStatus(appointment.status) === "canceled";
 }

@@ -1,4 +1,4 @@
-import { normalizeStatus } from "@/lib/appointmentStatus";
+import { normalizeStatus } from "./appointmentStatus.ts";
 
 export type CanceledAppointmentLike = {
   status?: string | null;
