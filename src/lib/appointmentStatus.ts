@@ -48,8 +48,8 @@ export const STATUS_OPTIONS: { value: AppointmentStatus; label: string }[] = [
 ];
 
 export function normalizeStatus(s?: string | null): string {
-  const k = (s || "scheduled").toLowerCase();
+  const k = (s || "scheduled").trim().toLowerCase();
   if (k === "pending") return "scheduled";
-  if (k === "cancelled") return "canceled";
+  if (["cancelled", "cancelado", "cancelada"].includes(k)) return "canceled";
   return k;
 }

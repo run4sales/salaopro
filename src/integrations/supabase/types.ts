@@ -152,6 +152,8 @@ export type Database = {
       appointments: {
         Row: {
           appointment_date: string
+          canceled_at: string | null
+          cancellation_reason: string | null
           client_id: string
           created_at: string
           deposit_amount: number
@@ -168,6 +170,8 @@ export type Database = {
         }
         Insert: {
           appointment_date: string
+          canceled_at?: string | null
+          cancellation_reason?: string | null
           client_id: string
           created_at?: string
           deposit_amount?: number
@@ -184,6 +188,8 @@ export type Database = {
         }
         Update: {
           appointment_date?: string
+          canceled_at?: string | null
+          cancellation_reason?: string | null
           client_id?: string
           created_at?: string
           deposit_amount?: number

@@ -21,6 +21,7 @@ import { AppointmentDetailsDialog } from "@/components/agenda/AppointmentDetails
 import { AppointmentBlockDialog } from "@/components/agenda/AppointmentBlockDialog";
 import ImportAppointmentsDialog from "@/components/agenda/ImportAppointmentsDialog";
 import { STATUS_LABELS, STATUS_VARIANTS, STATUS_OPTIONS, normalizeStatus } from "@/lib/appointmentStatus";
+import { isCanceledAppointment } from "@/lib/canceledAppointments";
 import { BUSINESS_HOURS_SELECT, DEFAULT_CLOSING_TIME, DEFAULT_OPENING_TIME, DEFAULT_WORKING_DAYS, buildDefaultWeeklyHours, getWeeklyBounds, normalizeTimeValue, normalizeWeeklyHours, normalizeWorkingDays, type WeeklyHours } from "@/lib/businessHours";
 
 type PeriodMode = "day" | "week" | "month" | "custom";
@@ -60,7 +61,7 @@ function isRecoverableAgendaResourceError(error: any, resourceName: string) {
 }
 
 function isVisibleAppointment(appointment: any) {
-  return Boolean(appointment);
+  return Boolean(appointment) && !isCanceledAppointment(appointment);
 }
 
 const getWeekOptions = () => ({ locale: ptBR, weekStartsOn: 0 as const });

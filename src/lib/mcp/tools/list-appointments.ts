@@ -1,6 +1,7 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "./_shared";
+import { isCanceledAppointment } from "../../canceledAppointments";
 
 
 
@@ -32,7 +33,7 @@ export default defineTool({
 
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
 
-    const appointments = (data ?? []).map((row) => {
+    const appointments = (data ?? []).filter((row) => !isCanceledAppointment(row)).map((row) => {
       const startTime = row.appointment_date as string;
       const duration = Number(row.duration_minutes ?? 30);
       const endTime = new Date(new Date(startTime).getTime() + duration * 60_000).toISOString();
