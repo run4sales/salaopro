@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE, logAdminAction, deriveEffectiveStatus } from "./shared";
+import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE, logAdminAction } from "./shared";
 
 
 type Row = {
@@ -32,6 +32,7 @@ type Row = {
     trial_ends_at?: string | null;
     asaas_subscription_id: string | null;
     inferred?: boolean;
+    effective_state?: string;
     plan?: { name: string };
   };
 
@@ -61,7 +62,7 @@ export default function AdminCompanies() {
         .order("created_at", { ascending: false });
       if (error) throw error;
 
-      const [{ data: subs }, { data: fetchedPlans }] = await Promise.all([
+      const [{ data: subs }, { data: fetchedPlans }, { data: states, error: statesError }] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
           .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, trial_ends_at, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
@@ -69,7 +70,10 @@ export default function AdminCompanies() {
           .from("subscription_plans")
           .select("id, name, slug, monthly_price")
           .eq("active", true),
+        (supabase as any).rpc("get_admin_subscription_states"),
       ]);
+      if (statesError) throw statesError;
+      const stateMap = new Map<string, string>((states ?? []).map((row: any) => [row.establishment_id, row.state]));
       const subsMap = new Map<string, any>();
       (subs ?? []).forEach((s: any) => {
         subsMap.set(s.establishment_id, {
@@ -80,6 +84,7 @@ export default function AdminCompanies() {
           next_billing_at: s.next_billing_at,
           trial_ends_at: s.trial_ends_at,
           asaas_subscription_id: s.asaas_subscription_id,
+          effective_state: stateMap.get(s.establishment_id) ?? s.status,
           plan: s.subscription_plans ? { name: s.subscription_plans.name } : undefined,
         });
       });
@@ -109,6 +114,7 @@ export default function AdminCompanies() {
             monthly_amount: Number(chosenPlan?.monthly_price || 0),
             next_billing_at: null,
             asaas_subscription_id: null,
+            effective_state: "no_subscription",
             inferred: true,
             plan: chosenPlan ? { name: chosenPlan.name } : undefined,
           },
@@ -133,7 +139,7 @@ export default function AdminCompanies() {
   const rows = useMemo(() => {
     const data = profilesQuery.data ?? [];
     return data.filter((r) => {
-      const effective = deriveEffectiveStatus(r.subscription?.status, r.subscription?.trial_ends_at, r.subscription?.next_billing_at);
+      const effective = r.subscription?.effective_state ?? "no_subscription";
       if (statusFilter !== "all" && effective !== statusFilter) return false;
       if (planFilter !== "all" && r.subscription?.plan_id !== planFilter) return false;
       if (search) {
@@ -211,6 +217,14 @@ export default function AdminCompanies() {
       updates.next_billing_at = null;
     }
     if (billingStatus === "active") updates.last_payment_at = new Date().toISOString();
+    if (billingStatus === "blocked") {
+      updates.manual_blocked_at = new Date().toISOString();
+      updates.manual_blocked_reason = "Bloqueio manual pela edição de cobrança";
+      updates.canceled_at = new Date().toISOString();
+    } else {
+      updates.manual_blocked_at = null;
+      updates.manual_blocked_reason = null;
+    }
 
     const { error } = await (supabase as any)
       .from("subscriptions")
@@ -366,7 +380,7 @@ export default function AdminCompanies() {
               <TableBody>
                 {rows.map((r) => {
                   const rawStatus = r.subscription?.status ?? "trial";
-                  const status = deriveEffectiveStatus(rawStatus, r.subscription?.trial_ends_at, r.subscription?.next_billing_at);
+                  const status = r.subscription?.effective_state ?? "no_subscription";
                   return (
                     <TableRow key={r.id} className="hover:bg-muted/30">
                       <TableCell className="font-medium">{r.business_name}</TableCell>
