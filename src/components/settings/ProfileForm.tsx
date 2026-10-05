@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { checkEmailDomain, normalizePhone, validateEmail, validatePhone } from "@/lib/contactValidation";
+import { checkEmailDomain, formatBrazilianPhone, normalizePhone, validateEmail, validatePhone } from "@/lib/contactValidation";
 
 interface ProfileFormProps {
   profile: {
@@ -20,7 +20,7 @@ interface ProfileFormProps {
 export function ProfileForm({ profile }: ProfileFormProps) {
   const [businessName, setBusinessName] = useState(profile.business_name || "");
   const [ownerName, setOwnerName] = useState(profile.owner_name || "");
-  const [phone, setPhone] = useState(profile.phone || "");
+  const [phone, setPhone] = useState(formatBrazilianPhone(profile.phone || ""));
   const [email, setEmail] = useState(profile.email || "");
   const [city, setCity] = useState(profile.city || "");
   const [saving, setSaving] = useState(false);
@@ -70,7 +70,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
 
       <div className="space-y-2">
         <Label>Telefone</Label>
-        <Input value={phone} inputMode="tel" aria-invalid={!!errors.phone} onChange={(e) => { setPhone(e.target.value); setErrors((current) => ({ ...current, phone: "" })); }} required />
+        <Input value={phone} inputMode="tel" aria-invalid={!!errors.phone} onChange={(e) => { setPhone(formatBrazilianPhone(e.target.value)); setErrors((current) => ({ ...current, phone: "" })); }} required />
         {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
       </div>
 

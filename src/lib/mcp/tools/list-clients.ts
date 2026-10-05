@@ -1,6 +1,7 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "./_shared";
+import { normalizePhone } from "../../contactValidation";
 
 
 
@@ -24,8 +25,10 @@ export default defineTool({
       .limit(limit ?? 50);
 
     if (search && search.trim()) {
-      const s = `%${search.trim()}%`;
-      q = q.or(`name.ilike.${s},phone.ilike.${s},email.ilike.${s}`);
+      const raw = search.trim();
+      const s = `%${raw.replace(/[,%()]/g, "")}%`;
+      const phone = normalizePhone(raw);
+      q = q.or(`name.ilike.${s},phone.ilike.%${phone || raw.replace(/\D/g, "")}%,email.ilike.${s}`);
     }
 
     const { data, error } = await q;

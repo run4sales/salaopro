@@ -1,3 +1,4 @@
+import { normalizePhone } from "@/lib/contactValidation";
 import { useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -122,7 +123,7 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
     const clientByName = new Map<string, string>();
     (clientsRes.data ?? []).forEach((c: any) => clientByName.set(c.name.trim().toLowerCase(), c.id));
     const clientByPhone = new Map<string, string>();
-    (clientsRes.data ?? []).forEach((c: any) => { if (c.phone) clientByPhone.set(String(c.phone).replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, ""), c.id); });
+    (clientsRes.data ?? []).forEach((c: any) => { if (c.phone) clientByPhone.set(normalizePhone(c.phone), c.id); });
     const serviceByName = new Map<string, string>();
     (servicesRes.data ?? []).forEach((s: any) => serviceByName.set(s.name.trim().toLowerCase(), s.id));
     const profByName = new Map<string, string>();

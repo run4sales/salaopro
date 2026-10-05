@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, CreditCard, FileText, QrCode, ExternalLink, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { checkEmailDomain, normalizePhone, validateEmail, validatePhone } from "@/lib/contactValidation";
+import { checkEmailDomain, formatBrazilianPhone, normalizePhone, validateEmail, validatePhone } from "@/lib/contactValidation";
 
 type BillingType = "CREDIT_CARD" | "BOLETO" | "PIX";
 
@@ -230,7 +230,7 @@ export default function Checkout() {
                   </div>
                   <div>
                     <Label htmlFor="phone">Celular</Label>
-                    <Input id="phone" inputMode="tel" value={phone} aria-invalid={!!contactErrors.phone} onChange={(e) => { setPhone(e.target.value); setContactErrors((current) => ({ ...current, phone: "" })); }} />
+                    <Input id="phone" inputMode="tel" value={phone} aria-invalid={!!contactErrors.phone} onChange={(e) => { setPhone(formatBrazilianPhone(e.target.value)); setContactErrors((current) => ({ ...current, phone: "" })); }} />
                     {contactErrors.phone && <p className="mt-1 text-sm text-destructive">{contactErrors.phone}</p>}
                   </div>
                   <div>

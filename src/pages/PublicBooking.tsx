@@ -11,7 +11,7 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isSameDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { normalizePhone, validatePhone } from "@/lib/contactValidation";
+import { formatBrazilianPhone, normalizePhone, validatePhone } from "@/lib/contactValidation";
 import {
   DEFAULT_CLOSING_TIME,
   DEFAULT_OPENING_TIME,
@@ -316,7 +316,7 @@ export default function PublicBooking() {
             </div>
             <div>
               <label className="text-sm text-muted-foreground">Telefone (WhatsApp)</label>
-              <Input value={phone} inputMode="tel" aria-invalid={!!phoneError} onChange={(e) => { setPhone(e.target.value); setPhoneError(""); }} placeholder="(11) 99999-9999" />
+              <Input value={phone} inputMode="tel" aria-invalid={!!phoneError} onChange={(e) => { setPhone(formatBrazilianPhone(e.target.value)); setPhoneError(""); }} placeholder="(11) 99999-9999" />
               {phoneError && <p className="mt-1 text-sm text-destructive">{phoneError}</p>}
             </div>
             <div>

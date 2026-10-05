@@ -190,11 +190,12 @@ const Clients = () => {
 
   // Filter and search clients
   const filteredClients = allClients?.filter(client => {
+    const normalizedSearchPhone = normalizePhone(searchTerm);
     // Search filter
     const matchesSearch = !searchTerm || 
       client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (client.phone && client.phone.includes(searchTerm)) ||
-      (client.whatsapp && client.whatsapp.includes(searchTerm)) ||
+      (normalizedSearchPhone && client.phone && normalizePhone(client.phone).includes(normalizedSearchPhone)) ||
+      (normalizedSearchPhone && client.whatsapp && normalizePhone(client.whatsapp).includes(normalizedSearchPhone)) ||
       (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase()));
     
     if (!matchesSearch) return false;
@@ -444,7 +445,8 @@ const Clients = () => {
 
   const openWhatsApp = (phone: string, name: string) => {
     const message = `Olá ${name}! Temos novidades especiais para você no nosso salão. Entre em contato para saber mais!`;
-    const whatsappUrl = `https://wa.me/55${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    const normalizedPhone = normalizePhone(phone);
+    const whatsappUrl = `https://wa.me/${encodeURIComponent(`55${normalizedPhone}`)}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 

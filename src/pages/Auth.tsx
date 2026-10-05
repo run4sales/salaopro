@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { checkEmailDomain, normalizePhone, validateEmail, validatePhone } from '@/lib/contactValidation';
+import { checkEmailDomain, formatBrazilianPhone, normalizePhone, validateEmail, validatePhone } from '@/lib/contactValidation';
 
 const Auth = () => {
   const { user, signIn, signUp, resetPassword, updatePassword } = useAuth();
@@ -345,7 +345,7 @@ const Auth = () => {
                     <Input
                       id="phone"
                       value={signupData.phone}
-                      onChange={(e) => { setSignupData({ ...signupData, phone: e.target.value }); setSignupErrors((current) => ({ ...current, phone: '' })); }}
+                      onChange={(e) => { setSignupData({ ...signupData, phone: formatBrazilianPhone(e.target.value) }); setSignupErrors((current) => ({ ...current, phone: '' })); }}
                       inputMode="tel"
                       aria-invalid={!!signupErrors.phone}
                       required

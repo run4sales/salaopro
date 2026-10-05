@@ -13,4 +13,6 @@ Deno.test("contact validation accepts legitimate formats", () => {
   assertEquals(validateEmail("x7z9q2@provedor.net").valid, true);
   assertEquals(validatePhone("(11) 98765-4321").valid, true);
   assertEquals(validatePhone("55 31 3987-6543").valid, true);
+  assertEquals(validatePhone("11941408381").valid, true);
+  assertEquals(validatePhone("+55 11 94140-8381").normalized, "11941408381");
 });

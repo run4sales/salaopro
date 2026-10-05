@@ -1,7 +1,5 @@
 # Roadmap
 
-- [x] Preservar agendamentos cancelados e registrar data/motivo.
-- [x] Remover cancelados da agenda operacional e liberar disponibilidade.
-- [x] Excluir cancelados de previsões e métricas operacionais.
-- [x] Criar relatório de cancelamentos com filtros e valores originais.
-- [x] Validar testes e compilação.
+- [x] Padronizar e validar telefones brasileiros em todos os cadastros.
+- [x] Garantir normalização no banco, buscas e prevenção de duplicidades.
+- [x] Cobrir formatos válidos e inválidos com testes.
