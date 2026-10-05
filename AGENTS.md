@@ -7,3 +7,4 @@ Campos de telefone e WhatsApp na ficha de cliente usam `formatBrazilianPhone` du
 Falhas conhecidas da autenticação administrativa são convertidas em erros de validação específicos nas funções de usuários; isso evita apresentar rejeições corrigíveis como indisponibilidade interna.
 O contexto de acesso é resolvido em paralelo, ignora respostas antigas e expõe erro com nova tentativa; isso impede loading infinito após login de colaborador.
 Estados de assinatura são definidos por `get_subscription_state`; webhook, reconciliação e telas administrativas preservam bloqueio manual e usam essa regra canônica para evitar divergência de acesso.
+Cancelamentos de agendamento são soft-state em `appointments.status`, usam `canceled` como valor canônico e mantêm snapshots financeiros para histórico e relatórios.

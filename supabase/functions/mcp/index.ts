@@ -18,6 +18,12 @@ function supabaseForUser(ctx) {
   });
 }
 
+// src/lib/canceledAppointments.ts
+import { normalizeStatus } from "npm:@/lib/appointmentStatus";
+function isCanceledAppointment(appointment) {
+  return normalizeStatus(appointment.status) === "canceled";
+}
+
 // src/lib/mcp/tools/list-appointments.ts
 var list_appointments_default = defineTool({
   name: "list_appointments",
@@ -38,7 +44,7 @@ var list_appointments_default = defineTool({
     const end = end_date ?? new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
     const { data, error } = await supabaseForUser(ctx).from("appointments").select("id, appointment_date, duration_minutes, status, notes, client_id, professional_id, service_id").gte("appointment_date", start).lt("appointment_date", end).order("appointment_date", { ascending: true }).limit(limit ?? 100);
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
-    const appointments = (data ?? []).map((row) => {
+    const appointments = (data ?? []).filter((row) => !isCanceledAppointment(row)).map((row) => {
       const startTime = row.appointment_date;
       const duration = Number(row.duration_minutes ?? 30);
       const endTime = new Date(new Date(startTime).getTime() + duration * 6e4).toISOString();

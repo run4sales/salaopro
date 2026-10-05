@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isCanceledAppointment } from "@/lib/canceledAppointments";
 
 interface Props { establishmentId: string; startDate: Date; endDate: Date }
 
@@ -39,7 +40,7 @@ export function OperationMetrics({ establishmentId, startDate, endDate }: Props)
 
       const busyHours = Array.from(byHour.entries()).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([h,c]) => ({ hour: h, count: c }));
 
-      const canceled = appts.filter((a: any) => (a.status||"").toLowerCase()==="canceled").length;
+      const canceled = appts.filter(isCanceledAppointment).length;
       const noShows = appts.filter((a: any) => (a.status||"").toLowerCase()==="no_show").length;
 
       // Average time between visits (in days)

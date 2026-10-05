@@ -51,7 +51,10 @@ export function AppointmentDetailsDialog({
   const deposit = Number(appointment.deposit_amount ?? 0);
 
   const setStatus = async (status: string) => {
-    const { error } = await supabase.from("appointments").update({ status }).eq("id", appointment.id);
+    const payload = status === "canceled"
+      ? { status, canceled_at: new Date().toISOString() }
+      : { status, canceled_at: null };
+    const { error } = await supabase.from("appointments").update(payload).eq("id", appointment.id);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Status atualizado" });
     onChanged();

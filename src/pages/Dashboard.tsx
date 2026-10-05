@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { StrategicPanel } from '@/components/dashboard/StrategicPanel';
+import { isCanceledAppointment } from '@/lib/canceledAppointments';
 
 const currencyBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -66,7 +67,7 @@ const Dashboard = () => {
         supabase.from('professionals').select('id, name, active').eq('establishment_id', profile!.id).eq('active', true),
       ]);
 
-      const appts = (apptRes.data ?? []) as ApptRow[];
+      const appts = ((apptRes.data ?? []) as ApptRow[]).filter((appointment) => !isCanceledAppointment(appointment));
       const services = servicesRes.data ?? [];
       const professionals = profRes.data ?? [];
       const clients = clientsRes.data ?? [];
@@ -84,7 +85,7 @@ const Dashboard = () => {
       const expectedToday = appts
         .filter(a => {
           const st = String(a.status ?? '').toLowerCase();
-          return st !== 'cancelled' && st !== 'canceled' && st !== 'no_show';
+          return !isCanceledAppointment(a) && st !== 'no_show';
         })
         .reduce((s, a) => s + Number(a.service_amount ?? 0), 0);
 
@@ -111,7 +112,7 @@ const Dashboard = () => {
       const end = new Date(start.getTime() + dur * 60_000);
       let visualStatus: 'completed' | 'late' | 'next' | 'upcoming' | 'cancelled' = 'upcoming';
       if (a.status === 'completed') visualStatus = 'completed';
-      else if (a.status === 'cancelled' || a.status === 'no_show') visualStatus = 'cancelled';
+      else if (isCanceledAppointment(a) || a.status === 'no_show') visualStatus = 'cancelled';
       else if (end < now) visualStatus = 'late';
       return {
         ...a,

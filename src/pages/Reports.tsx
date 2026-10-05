@@ -9,7 +9,8 @@ import { ProfessionalServicesReport } from "@/components/reports/ProfessionalSer
 import { CommissionsReport } from "@/components/reports/CommissionsReport";
 import { ExpensesReport } from "@/components/reports/ExpensesReport";
 import { CashFlowReport } from "@/components/reports/CashFlowReport";
-import { BarChart3, DollarSign, Users, Wallet, TrendingDown, Banknote } from "lucide-react";
+import { CanceledAppointmentsReport } from "@/components/reports/CanceledAppointmentsReport";
+import { BarChart3, DollarSign, Users, Wallet, TrendingDown, Banknote, CalendarX2 } from "lucide-react";
 
 export default function Reports() {
   const { user, profile } = useAuth();
@@ -70,6 +71,9 @@ export default function Reports() {
             <TabsTrigger value="cashflow" className="gap-2">
               <Banknote className="h-4 w-4" /> Fluxo de caixa
             </TabsTrigger>
+            <TabsTrigger value="cancellations" className="gap-2">
+              <CalendarX2 className="h-4 w-4" /> Cancelamentos
+            </TabsTrigger>
           </TabsList>
 
           {profile?.id ? (
@@ -80,6 +84,7 @@ export default function Reports() {
               <TabsContent value="commissions"><CommissionsReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
               <TabsContent value="expenses"><ExpensesReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
               <TabsContent value="cashflow"><CashFlowReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
+              <TabsContent value="cancellations"><CanceledAppointmentsReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
             </>
           ) : (
             <div className="text-sm text-muted-foreground">Carregando perfil…</div>
