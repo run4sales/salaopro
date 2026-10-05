@@ -76,6 +76,15 @@ var list_appointments_default = defineTool({
 // src/lib/mcp/tools/list-clients.ts
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z2 } from "npm:zod@^3.25.76";
+
+// src/lib/contactValidation.ts
+function normalizePhone(value) {
+  let digits = String(value ?? "").replace(/\D/g, "");
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) digits = digits.slice(2);
+  return digits;
+}
+
+// src/lib/mcp/tools/list-clients.ts
 var list_clients_default = defineTool2({
   name: "list_clients",
   title: "List clients",
@@ -91,8 +100,10 @@ var list_clients_default = defineTool2({
     }
     let q = supabaseForUser(ctx).from("clients").select("id, name, phone, email, birth_date, notes").order("name", { ascending: true }).limit(limit ?? 50);
     if (search && search.trim()) {
-      const s = `%${search.trim()}%`;
-      q = q.or(`name.ilike.${s},phone.ilike.${s},email.ilike.${s}`);
+      const raw = search.trim();
+      const s = `%${raw.replace(/[,%()]/g, "")}%`;
+      const phone = normalizePhone(raw);
+      q = q.or(`name.ilike.${s},phone.ilike.%${phone || raw.replace(/\D/g, "")}%,email.ilike.${s}`);
     }
     const { data, error } = await q;
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };

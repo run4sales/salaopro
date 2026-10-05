@@ -1,4 +1,5 @@
 /* global Deno */
+import { normalizePhone, validatePhone } from '../contact-validation.ts';
 const AGENDOR_BASE_URL = 'https://api.agendor.com.br/v3';
 
 export type SignupLeadBody = {
@@ -49,11 +50,6 @@ function envValueAsNumberOrString(name: string) {
 
 function normalizeText(value?: string) {
   return value?.trim() || undefined;
-}
-
-function normalizePhone(value?: string) {
-  const digits = onlyDigits(value);
-  return digits || normalizeText(value);
 }
 
 function getAgendorHeaders(apiKey: string) {
@@ -171,12 +167,15 @@ async function findOrganizationByName(name: string, apiKey: string) {
 export async function syncAgendorSignupLead(body: SignupLeadBody, apiKey: string): Promise<AgendorSyncResult> {
   const businessName = normalizeText(body.business_name);
   const email = normalizeText(body.email);
+  const phoneValidation = validatePhone(body.phone, false);
 
   if (!businessName) {
     throw new Error('Nome do salão é obrigatório');
   }
 
-  const organizationPayload = buildOrganizationPayload(body);
+  if (!phoneValidation.valid) throw new Error(phoneValidation.message ?? 'Telefone inválido');
+  const normalizedBody = { ...body, phone: phoneValidation.normalized || undefined };
+  const organizationPayload = buildOrganizationPayload(normalizedBody);
   const organization = await agendorRequest<{ id?: number }>('/organizations/upsert', {
     method: 'POST',
     body: JSON.stringify(organizationPayload),
@@ -196,7 +195,7 @@ export async function syncAgendorSignupLead(body: SignupLeadBody, apiKey: string
     throw new Error('Agendor não retornou o ID da empresa criada');
   }
 
-  const dealPayload = buildDealPayload(body);
+  const dealPayload = buildDealPayload(normalizedBody);
   const deal = await agendorRequest<{ id?: number }>(`/organizations/${organizationId}/deals`, {
     method: 'POST',
     body: JSON.stringify(dealPayload),

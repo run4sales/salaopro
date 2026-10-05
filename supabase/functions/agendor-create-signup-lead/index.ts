@@ -1,5 +1,6 @@
 /* global Deno */
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { normalizePhone, validatePhone } from '../_shared/contact-validation.ts';
 
 const AGENDOR_BASE_URL = 'https://api.agendor.com.br/v3';
 
@@ -46,11 +47,6 @@ function envValueAsNumberOrString(name: string) {
 
 function normalizeText(value?: string) {
   return value?.trim() || undefined;
-}
-
-function normalizePhone(value?: string) {
-  const digits = onlyDigits(value);
-  return digits || normalizeText(value);
 }
 
 function getAgendorHeaders(apiKey: string) {
@@ -171,6 +167,7 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as SignupLeadBody;
     const businessName = normalizeText(body.business_name);
     const email = normalizeText(body.email);
+    const phoneValidation = validatePhone(body.phone, true);
 
     if (!businessName || !email) {
       return new Response(JSON.stringify({ error: 'Nome do salão e email são obrigatórios' }), {
@@ -179,7 +176,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const organizationPayload = buildOrganizationPayload(body);
+    if (!phoneValidation.valid) return new Response(JSON.stringify({ error: phoneValidation.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+    const organizationPayload = buildOrganizationPayload({ ...body, phone: phoneValidation.normalized });
     let organizationId = organizationPayload.cnpj ? undefined : await findOrganizationByEmail(email, apiKey);
 
     if (!organizationId) {
