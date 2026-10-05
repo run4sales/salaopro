@@ -24,6 +24,7 @@ type SubRow = {
   plan_id?: string | null;
   plan?: { name: string; monthly_price?: number };
   inferred?: boolean;
+  effective_state?: string;
 };
 
 export default function AdminSubscriptions() {
@@ -32,15 +33,18 @@ export default function AdminSubscriptions() {
   const subsQuery = useQuery({
     queryKey: ["admin-subscriptions-full"],
     queryFn: async () => {
-      const [{ data: profiles, error: profilesError }, { data: plans, error: plansError }] = await Promise.all([
+      const [{ data: profiles, error: profilesError }, { data: plans, error: plansError }, { data: states, error: statesError }] = await Promise.all([
         supabase
           .from("profiles")
           .select("id, business_name, created_at, plan")
           .order("created_at", { ascending: false }),
         supabase.from("subscription_plans").select("id, name, slug, monthly_price"),
+        (supabase as any).rpc("get_admin_subscription_states"),
       ]);
       if (profilesError) throw profilesError;
       if (plansError) throw plansError;
+      if (statesError) throw statesError;
+      const stateMap = new Map<string, string>((states ?? []).map((row: any) => [row.establishment_id, row.state]));
 
       const plansBySlug = new Map<string, Plan>();
       (plans ?? []).forEach((p: Plan) => plansBySlug.set(p.slug, p));
@@ -57,6 +61,7 @@ export default function AdminSubscriptions() {
           ...s,
           plan: s.subscription_plans,
           profile: undefined,
+          effective_state: stateMap.get(s.establishment_id) ?? s.status,
         });
       });
 
@@ -83,6 +88,7 @@ export default function AdminSubscriptions() {
           plan_id: chosenPlan?.id ?? null,
           plan: chosenPlan ? { name: chosenPlan.name, monthly_price: chosenPlan.monthly_price } : undefined,
           inferred: true,
+          effective_state: "no_subscription",
         } satisfies SubRow;
       }) as SubRow[];
     },
@@ -92,11 +98,11 @@ export default function AdminSubscriptions() {
   const now = Date.now();
   const in7days = now + 7 * 24 * 3600 * 1000;
 
-  const trialsActive = all.filter((s) => s.status === "trial");
+  const trialsActive = all.filter((s) => ["trial_active", "trial_expiring"].includes(s.effective_state ?? ""));
   const trialsExpiring = trialsActive.filter(
     (s) => s.trial_ends_at && new Date(s.trial_ends_at).getTime() < in7days
   );
-  const overdue = all.filter((s) => s.status === "past_due");
+  const overdue = all.filter((s) => ["overdue", "blocked", "blocked_manual"].includes(s.effective_state ?? ""));
 
   async function syncSubscription(establishmentId: string) {
     setSyncingId(establishmentId);
@@ -174,7 +180,9 @@ export default function AdminSubscriptions() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {all.map((s) => (
+                {all.map((s) => {
+                  const state = s.effective_state ?? s.status;
+                  return (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.profile?.business_name ?? "—"}</TableCell>
                     <TableCell>
@@ -183,8 +191,8 @@ export default function AdminSubscriptions() {
                     </TableCell>
                     <TableCell>{fmtBRL(Number(s.monthly_amount || s.plan?.monthly_price || 0))}</TableCell>
                     <TableCell>
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs border ${STATUS_TONE[s.status]}`}>
-                        {STATUS_LABEL[s.status] ?? s.status}
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs border ${STATUS_TONE[state]}`}>
+                        {STATUS_LABEL[state] ?? state}
                       </span>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(s.started_at)}</TableCell>
@@ -202,7 +210,8 @@ export default function AdminSubscriptions() {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
                 {all.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center text-muted-foreground py-8">

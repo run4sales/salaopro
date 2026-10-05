@@ -1,15 +1,23 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type SubStatus = "trial" | "trial_expired" | "active" | "past_due" | "pending" | "canceled" | "blocked";
+export type SubStatus = "trial_active" | "trial_expiring" | "trial_expired" | "active_paid" | "payment_pending" | "grace_active" | "overdue" | "pending" | "canceled" | "blocked" | "blocked_manual" | "no_subscription";
 
 export const STATUS_LABEL: Record<string, string> = {
   trial: "Em teste",
+  trial_active: "Em teste",
+  trial_expiring: "Teste expirando",
   trial_expired: "Teste expirado",
   active: "Ativo",
   past_due: "Pendente",
   pending: "Pendente",
   canceled: "Cancelado",
   blocked: "Bloqueado",
+  blocked_manual: "Bloqueio manual",
+  active_paid: "Ativo",
+  payment_pending: "Pagamento próximo",
+  grace_active: "Liberação temporária",
+  overdue: "Pendente",
+  no_subscription: "Sem assinatura",
 };
 
 export const STATUS_TONE: Record<string, string> = {
@@ -20,32 +28,15 @@ export const STATUS_TONE: Record<string, string> = {
   pending: "bg-warning/15 text-warning border-warning/30",
   canceled: "bg-muted text-muted-foreground border-border",
   blocked: "bg-destructive/15 text-destructive border-destructive/30",
+  blocked_manual: "bg-destructive/15 text-destructive border-destructive/30",
+  active_paid: "bg-success/15 text-success border-success/30",
+  payment_pending: "bg-warning/15 text-warning border-warning/30",
+  grace_active: "bg-accent/15 text-accent border-accent/30",
+  overdue: "bg-warning/15 text-warning border-warning/30",
+  trial_active: "bg-accent/15 text-accent border-accent/30",
+  trial_expiring: "bg-warning/15 text-warning border-warning/30",
+  no_subscription: "bg-muted text-muted-foreground border-border",
 };
-
-/**
- * Deriva o status efetivo de uma assinatura levando em conta expiração de trial
- * e atraso de pagamento. Bloqueio manual (status='blocked') sempre prevalece.
- */
-export function deriveEffectiveStatus(
-  status: string | null | undefined,
-  trial_ends_at?: string | null,
-  next_billing_at?: string | null
-): string {
-  if (!status) return "trial";
-  if (status === "blocked" || status === "canceled") return status;
-
-  const now = Date.now();
-  if (status === "trial") {
-    if (trial_ends_at && new Date(trial_ends_at).getTime() <= now) return "trial_expired";
-    return "trial";
-  }
-  if (status === "active") {
-    if (next_billing_at && new Date(next_billing_at).getTime() + 7 * 86_400_000 <= now) return "blocked";
-    if (next_billing_at && new Date(next_billing_at).getTime() <= now) return "past_due";
-    return "active";
-  }
-  return status;
-}
 
 export const fmtBRL = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
