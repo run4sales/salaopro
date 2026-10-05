@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { formatBrazilianPhone, normalizePhone, validateEmail, validatePhone } from "../src/lib/contactValidation.ts";
+import { combineBrazilianPhone, formatBrazilianPhone, normalizePhone, validateEmail, validatePhone } from "../src/lib/contactValidation.ts";
 import { readFileSync } from "node:fs";
 
 test("rejects malformed or clearly artificial emails", () => {
@@ -24,8 +24,20 @@ test("rejects malformed or artificial Brazilian phones", () => {
 });
 
 test("accepts valid Brazilian landlines and mobile phones", () => {
-  for (const phone of ["(11) 98765-4321", "11987654321", "+55 (21) 99876-5432", "1132345678", "55 31 3987-6543"])
+  for (const phone of ["11941408381", "11 94140-8381", "(11) 94140-8381", "(11)94140-8381", "11-94140-8381", "+55 11 94140-8381", "+5511941408381", "5511941408381", "1133334444", "(11) 3333-4444", "(11)/94140.8381"])
     assert.equal(validatePhone(phone, { required: true }).valid, true, phone);
+});
+
+test("rejects invalid DDD, length, letters, excess digits and foreign country codes", () => {
+  for (const phone of ["10123456789", "1194140838", "119414083810", "11941A08381", "+54 11 94140-8381"])
+    assert.equal(validatePhone(phone, { required: true }).valid, false, phone);
+  assert.equal(validatePhone("", { required: true }).valid, false);
+});
+
+test("combines separate DDD without duplicating a complete number", () => {
+  assert.equal(combineBrazilianPhone("11", "941408381"), "11941408381");
+  assert.equal(combineBrazilianPhone("11", "11941408381"), "11941408381");
+  assert.equal(combineBrazilianPhone("11", "+55 11 94140-8381"), "11941408381");
 });
 
 test("formats client phone input without guessing the area code", () => {

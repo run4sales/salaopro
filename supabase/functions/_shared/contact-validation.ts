@@ -16,6 +16,12 @@ export function normalizePhone(value: unknown) {
   if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) digits = digits.slice(2);
   return digits;
 }
+export function combineBrazilianPhone(areaCode: unknown, phone: unknown) {
+  const area = String(areaCode ?? "").replace(/\D/g, "").slice(0, 2);
+  const normalizedPhone = normalizePhone(phone);
+  if (normalizedPhone.length === 10 || normalizedPhone.length === 11) return normalizedPhone;
+  return normalizePhone(`${area}${normalizedPhone}`);
+}
 function repeated(value: string) {
   if (value.length < 8) return false;
   return [1, 2].some((size) => value.length % size === 0 && value === value.slice(0, size).repeat(value.length / size));
@@ -43,10 +49,10 @@ export function validatePhone(value: unknown, required = true): ContactValidatio
   const raw = String(value ?? "");
   const normalized = normalizePhone(raw);
   if (!normalized) return required ? { valid: false, code: "invalid_format", message: PHONE_INVALID_MESSAGE, normalized } : { valid: true, normalized };
-  if (/[a-z]/i.test(raw) || !/^[\d\s()+.-]+$/.test(raw)) return { valid: false, code: "invalid_format", message: PHONE_INVALID_MESSAGE, normalized };
+  if (/[a-z]/i.test(raw)) return { valid: false, code: "invalid_format", message: PHONE_INVALID_MESSAGE, normalized };
   if (isSuspiciousPhone(normalized)) return { valid: false, code: "suspicious", message: PHONE_SUSPICIOUS_MESSAGE, normalized };
   const area = Number(normalized.slice(0, 2));
   const number = normalized.slice(2);
-  if (!VALID_DDDS.has(area) || !((normalized.length === 10 && /^[2-5]\d{7}$/.test(number)) || (normalized.length === 11 && /^9[6-9]\d{7}$/.test(number)))) return { valid: false, code: "invalid_format", message: PHONE_INVALID_MESSAGE, normalized };
+  if (!VALID_DDDS.has(area) || !((normalized.length === 10 && /^[2-5]\d{7}$/.test(number)) || (normalized.length === 11 && /^9\d{8}$/.test(number)))) return { valid: false, code: "invalid_format", message: PHONE_INVALID_MESSAGE, normalized };
   return { valid: true, normalized };
 }

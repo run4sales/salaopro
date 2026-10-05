@@ -85,6 +85,13 @@ export function normalizePhone(value: unknown): string {
   return digits;
 }
 
+export function combineBrazilianPhone(areaCode: unknown, phone: unknown): string {
+  const area = String(areaCode ?? "").replace(/\D/g, "").slice(0, 2);
+  const normalizedPhone = normalizePhone(phone);
+  if (normalizedPhone.length === 10 || normalizedPhone.length === 11) return normalizedPhone;
+  return normalizePhone(`${area}${normalizedPhone}`);
+}
+
 /** Format a Brazilian number during entry without inventing a missing DDD. */
 export function formatBrazilianPhone(value: string): string {
   const raw = value.replace(/\D/g, "");
@@ -120,7 +127,7 @@ export function validatePhone(value: unknown, options: { required?: boolean } = 
   if (normalized.length === 8 || normalized.length === 9) {
     return { valid: false, code: "invalid_format", message: "Inclua o DDD antes do número de telefone.", normalized };
   }
-  if (/[a-z]/i.test(raw) || !/^[\d\s()+.-]+$/.test(raw)) {
+  if (/[a-z]/i.test(raw)) {
     return { valid: false, code: "invalid_format", message: PHONE_INVALID_MESSAGE, normalized };
   }
   if (isSuspiciousPhone(normalized)) {
@@ -130,7 +137,7 @@ export function validatePhone(value: unknown, options: { required?: boolean } = 
   const subscriber = normalized.slice(2);
   const validLengthAndPrefix =
     (normalized.length === 10 && /^[2-5]\d{7}$/.test(subscriber)) ||
-    (normalized.length === 11 && /^9[6-9]\d{7}$/.test(subscriber));
+    (normalized.length === 11 && /^9\d{8}$/.test(subscriber));
   if (!VALID_BR_AREA_CODES.has(areaCode) || !validLengthAndPrefix) {
     return { valid: false, code: "invalid_format", message: PHONE_INVALID_MESSAGE, normalized };
   }

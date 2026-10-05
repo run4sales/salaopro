@@ -130,7 +130,7 @@ function buildDealPayload(body: SignupLeadBody) {
       'Negócio criado automaticamente a partir de um cadastro no SalaoPro.',
       ownerName ? `Responsável: ${ownerName}` : undefined,
       normalizeText(body.email) ? `Email: ${normalizeText(body.email)}` : undefined,
-      normalizeText(body.phone) ? `Telefone: ${normalizeText(body.phone)}` : undefined,
+      normalizePhone(body.phone) ? `Telefone: ${normalizePhone(body.phone)}` : undefined,
       selectedPlan ? `Plano escolhido: ${selectedPlan}` : undefined,
     ].filter(Boolean).join('\n'),
     startTime: new Date().toISOString(),
