@@ -23,6 +23,6 @@
 - [x] Auditar cadastro, assinatura, cobrança, webhook, reconciliação e estados da integração Asaas
 - [x] Deduplicar webhooks, preservar bloqueios manuais e usar a data real do pagamento
 - [x] Corrigir reconciliação para considerar a cobrança mais recente e respeitar carência de 48 horas
-- [ ] Aplicar a migration, unificar as telas administrativas e publicar as funções Asaas corrigidas
-- [ ] Confirmar agendamento horário e segredo da reconciliação sem executar cobranças reais
-- [ ] Executar testes e validar o estado final do app
+- [x] Aplicar a migration, unificar as telas administrativas e publicar as funções Asaas corrigidas
+- [ ] Confirmar agendamento horário e segredo da reconciliação sem executar cobranças reais — bloqueado: `pg_cron` não está instalado e `ASAAS_SYNC_SECRET` ainda não está configurado
+- [x] Executar testes de regressão e validar o build final do app
