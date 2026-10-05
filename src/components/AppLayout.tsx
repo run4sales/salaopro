@@ -17,7 +17,8 @@ export default function AppLayout() {
   const location = useLocation();
   const { user, loading: authLoading, establishmentRole, profileError, retryProfile } = useAuth();
   const isOwner = establishmentRole === "owner";
-  const { data: sub, isLoading: subLoading } = useSubscription(isOwner);
+  const managesEstablishment = isOwner || establishmentRole === "admin";
+  const { data: sub, isLoading: subLoading } = useSubscription(managesEstablishment);
 
   // Gate: usuário precisa estar autenticado e com contexto de estabelecimento carregado.
   if (authLoading) {
@@ -41,7 +42,7 @@ export default function AppLayout() {
     );
   }
 
-  // Apenas owners passam pelo gate de plano (funcionários do estabelecimento não escolhem plano).
+  // Proprietários e gestores passam pelo gate de plano; funcionários operacionais não escolhem plano.
   // Nunca trate role null como owner, pois funcionários chegam com role async durante o login.
   const isEmployee = establishmentRole === "employee";
   const employeeAllowedRoutes = new Set(["/agenda", "/atendimentos", "/services", "/products", "/sales"]);
@@ -54,7 +55,7 @@ export default function AppLayout() {
   // Gate: dono precisa escolher plano se ainda não escolheu.
   // Se a loja já está bloqueada, o modal obrigatório deve prevalecer nas áreas internas.
   if (
-    isOwner &&
+    managesEstablishment &&
     !storeBlocked &&
     !subLoading &&
     sub &&

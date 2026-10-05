@@ -41,7 +41,7 @@ export interface SubscriptionInfo {
 
 export function useSubscription(enabled?: boolean) {
   const { user, establishmentRole } = useAuth();
-  const shouldFetch = enabled ?? establishmentRole === "owner";
+  const shouldFetch = enabled ?? establishmentRole === "owner" || establishmentRole === "admin";
   return useQuery({
     queryKey: ["my-subscription", user?.id],
     enabled: shouldFetch && !!user?.id,
