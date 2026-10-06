@@ -1,7 +1,8 @@
 # Roadmap
 
-- [ ] Corrigir acesso sem pagamento no checkout e na reconciliação.
-- [ ] Corrigir busca de clientes e filtros administrativos; validar testes e publicar funções corrigidas.
+- [x] Corrigir acesso sem pagamento no checkout e na reconciliação; regra canônica aplicada e funções Asaas publicadas.
+- [x] Corrigir busca de clientes e filtros administrativos; sete testes passaram e compilação aprovada.
+- [ ] Ativar busca corrigida do assistente e filtros no site publicado: depende da próxima publicação; plataforma reteve a função MCP até essa etapa.
 
 - [x] Corrigir bloqueio próprio do funcionário; verificar autorização real, negar outro profissional/loja/anônimo e preservar gestores; nove testes passaram.
 
