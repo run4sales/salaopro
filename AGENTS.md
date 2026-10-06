@@ -8,3 +8,4 @@ Falhas conhecidas da autenticação administrativa são convertidas em erros de 
 O contexto de acesso é resolvido em paralelo, ignora respostas antigas e expõe erro com nova tentativa; isso impede loading infinito após login de colaborador.
 Estados de assinatura são definidos por `get_subscription_state`; webhook, reconciliação e telas administrativas preservam bloqueio manual e usam essa regra canônica para evitar divergência de acesso.
 Cancelamentos de agendamento são soft-state em `appointments.status`, usam `canceled` como valor canônico e mantêm snapshots financeiros para histórico e relatórios.
+Appointment writes acquire a synchronous single-flight gate before validation and retain the inserted ID across partial-save retries; this prevents duplicate rows without conflating legitimate rebookings with canceled history.
