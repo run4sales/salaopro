@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createSingleFlight } from "@/lib/singleFlight";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,6 +119,8 @@ export function AppointmentFormDialog({
 }: Props) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const saveGate = useRef(createSingleFlight());
+  const savedAppointmentId = useRef<string | undefined>(undefined);
   const [conflicts, setConflicts] = useState<OccupiedInterval[]>([]);
   const [approvedSignature, setApprovedSignature] = useState("");
   const [form, setForm] = useState({
@@ -136,6 +139,7 @@ export function AppointmentFormDialog({
 
   useEffect(() => {
     if (!open) return;
+    savedAppointmentId.current = undefined;
     setConflicts([]);
     setApprovedSignature("");
     const load = async () => {
@@ -200,7 +204,7 @@ export function AppointmentFormDialog({
     }));
   }, [open, appointment?.id, totalDuration, totalAmount]);
 
-  const handleSave = async (confirmed = false) => {
+  const performSave = async (confirmed = false) => {
     const durationMinutes = parseDurationInput(form.duration_minutes);
     if (!form.client_id || form.service_ids.length === 0 || form.professional_ids.length === 0 || !form.appointment_date || durationMinutes <= 0) {
       toast({ title: "Preencha cliente, serviço(s), profissional(is), data/hora e duração", variant: "destructive" });
@@ -296,31 +300,18 @@ export function AppointmentFormDialog({
       status: form.status,
       notes: form.notes || null,
     };
-    const corePayload = {
-      establishment_id: payload.establishment_id,
-      client_id: payload.client_id,
-      service_id: payload.service_id,
-      professional_id: payload.professional_id,
-      appointment_date: payload.appointment_date,
-      status: payload.status,
-      notes: payload.notes,
-    };
-
-    let appointmentId = appointment?.id as string | undefined;
+    let appointmentId = (appointment?.id ?? savedAppointmentId.current) as string | undefined;
     if (appointmentId) {
-      const firstRes = await (supabase as any).from("appointments").update(payload).eq("id", appointmentId);
-      const { error } = firstRes.error && isRecoverableAppointmentSupportError(firstRes.error, "appointments")
-        ? await (supabase as any).from("appointments").update(corePayload).eq("id", appointmentId)
-        : firstRes;
+      const { error } = await supabase.from("appointments").update(payload).eq("id", appointmentId).eq("establishment_id", establishmentId);
       if (error) { setSaving(false); toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
     } else {
-      const firstRes = await (supabase as any).from("appointments").insert(payload).select("id").single();
-      const { data, error } = firstRes.error && isRecoverableAppointmentSupportError(firstRes.error, "appointments")
-        ? await (supabase as any).from("appointments").insert(corePayload).select("id").single()
-        : firstRes;
+      const { data, error } = await supabase.from("appointments").insert(payload).select("id").single();
       if (error || !data) { setSaving(false); toast({ title: "Erro ao salvar", description: error?.message, variant: "destructive" }); return; }
       appointmentId = data.id;
+      savedAppointmentId.current = data.id;
     }
+    if (!appointmentId) return;
+    const persistedId = appointmentId;
 
     // Replace join rows with immutable per-service price snapshots. When a custom
     // total was negotiated, distribute it proportionally (the final item absorbs
@@ -344,16 +335,20 @@ export function AppointmentFormDialog({
 
     // Snapshots are immutable once a comanda exists, so only touch the rows when
     // they actually change — and surface any rejection instead of failing silently.
-    const { data: currentServices } = await supabase
+    const { data: currentServices, error: currentServicesError } = await supabase
       .from("appointment_services")
       .select("service_id, unit_price")
-      .eq("appointment_id", appointmentId!);
+      .eq("appointment_id", persistedId);
+    if (currentServicesError) {
+      toast({ title: "Erro ao consultar serviços", description: currentServicesError.message, variant: "destructive" });
+      return;
+    }
     const key = (rows: { service_id: string; unit_price: number | string }[]) =>
       rows.map(r => `${r.service_id}:${Number(r.unit_price ?? 0).toFixed(2)}`).sort().join("|");
     const servicesChanged = key((currentServices ?? []) as any) !== key(desiredServices);
 
     if (servicesChanged) {
-      const { error: delErr } = await supabase.from("appointment_services").delete().eq("appointment_id", appointmentId!);
+      const { error: delErr } = await supabase.from("appointment_services").delete().eq("appointment_id", persistedId);
       if (delErr) {
         setSaving(false);
         toast({ title: "Não foi possível alterar os serviços", description: "Este agendamento já possui uma comanda aberta. Edite os itens diretamente na comanda.", variant: "destructive" });
@@ -361,7 +356,7 @@ export function AppointmentFormDialog({
       }
       if (desiredServices.length) {
         const { error: insErr } = await supabase.from("appointment_services").insert(
-          desiredServices.map(row => ({ ...row, appointment_id: appointmentId!, establishment_id: establishmentId })) as any
+          desiredServices.map(row => ({ ...row, appointment_id: persistedId, establishment_id: establishmentId })) as any
         );
         if (insErr) {
           setSaving(false);
@@ -371,7 +366,7 @@ export function AppointmentFormDialog({
       }
     }
 
-    const { error: delProfErr } = await supabase.from("appointment_professionals").delete().eq("appointment_id", appointmentId!);
+    const { error: delProfErr } = await supabase.from("appointment_professionals").delete().eq("appointment_id", persistedId);
     if (delProfErr) {
       setSaving(false);
       toast({ title: "Erro ao salvar profissionais", description: delProfErr.message, variant: "destructive" });
@@ -379,7 +374,7 @@ export function AppointmentFormDialog({
     }
     if (form.professional_ids.length) {
       const { error: insProfErr } = await supabase.from("appointment_professionals").insert(
-        form.professional_ids.map(pid => ({ appointment_id: appointmentId!, professional_id: pid, establishment_id: establishmentId }))
+        form.professional_ids.map(pid => ({ appointment_id: persistedId, professional_id: pid, establishment_id: establishmentId }))
       );
       if (insProfErr) {
         setSaving(false);
@@ -413,8 +408,21 @@ export function AppointmentFormDialog({
     onSaved?.();
   };
 
+  const handleSave = async (confirmed = false) => {
+    await saveGate.current.run(async () => {
+      setSaving(true);
+      try {
+        await performSave(confirmed);
+      } catch (error) {
+        toast({ title: "Erro ao salvar", description: error instanceof Error ? error.message : "Tente novamente.", variant: "destructive" });
+      } finally {
+        setSaving(false);
+      }
+    });
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(value) => { if (!saving) onOpenChange(value); }}>
       <DialogContent className="flex max-h-[92svh] w-[calc(100vw-1rem)] max-w-lg grid-rows-none flex-col gap-3 overflow-hidden p-4 sm:w-[calc(100%-2rem)] sm:p-6">
         <DialogHeader className="shrink-0 pr-8">
           <DialogTitle>{appointment?.id ? "Editar agendamento" : "Novo agendamento"}</DialogTitle>
@@ -534,7 +542,7 @@ export function AppointmentFormDialog({
               {new Date(item.start).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}–{new Date(item.end).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · {item.label}
             </div>)}
           </div>
-          <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setConflicts([])}>Voltar</Button>{allowConflictOverride && conflicts.every(conflict => conflict.type === "appointment") && <Button onClick={() => void handleSave(true)}>Agendar mesmo assim</Button>}</div>
+          <div className="flex justify-end gap-2"><Button variant="outline" disabled={saving} onClick={() => setConflicts([])}>Voltar</Button>{allowConflictOverride && conflicts.every(conflict => conflict.type === "appointment") && <Button disabled={saving} onClick={() => void handleSave(true)}>Agendar mesmo assim</Button>}</div>
         </DialogContent>
       </Dialog>
     </Dialog>

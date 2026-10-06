@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createSingleFlight } from "@/lib/singleFlight";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -49,6 +50,8 @@ export default function PublicBooking() {
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const saveGate = useRef(createSingleFlight());
   const { toast } = useToast();
 
   useEffect(() => {
@@ -174,7 +177,7 @@ export default function PublicBooking() {
     const startTime = new Date(date);
     startTime.setHours(hh, mm, 0, 0);
     const { data, error } = await supabase.rpc("create_public_booking", {
-      establishment: resolvedId!,
+      establishment: resolvedId ?? "",
       client_name: clientName,
       p_phone: normalizePhone(phone),
       p_services: serviceIds,
@@ -188,6 +191,19 @@ export default function PublicBooking() {
     }
     toast({ title: "Agendamento confirmado!", description: `Código: ${data}` });
     setSlot("");
+  };
+
+  const submitOnce = async () => {
+    await saveGate.current.run(async () => {
+      setSaving(true);
+      try {
+        await handleSubmit();
+      } catch (error) {
+        toast({ title: "Não foi possível agendar", description: error instanceof Error ? error.message : "Tente novamente.", variant: "destructive" });
+      } finally {
+        setSaving(false);
+      }
+    });
   };
 
   if (lookupState === "loading") {
@@ -323,7 +339,7 @@ export default function PublicBooking() {
               <label className="text-sm text-muted-foreground">Observações</label>
               <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Opcional" />
             </div>
-            <Button className="w-full" disabled={!canSubmit} onClick={handleSubmit}>Confirmar agendamento</Button>
+            <Button className="w-full" disabled={!canSubmit || saving} onClick={submitOnce}>{saving ? "Salvando..." : "Confirmar agendamento"}</Button>
             {selectedServices.length > 0 && (
               <div className="space-y-1 text-xs text-muted-foreground">
                 <p>Duração total: {totalDuration} min</p>
