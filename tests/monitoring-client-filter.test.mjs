@@ -8,7 +8,7 @@ test('name search never adds an empty phone condition in source and deployed bun
   for (const path of ['src/lib/mcp/tools/list-clients.ts', 'supabase/functions/mcp/index.ts']) {
     const source = read(path);
     const body = source.match(/const raw = search.trim\(\);([\s\S]*?)q = q.or\(filters.join\(","\)\);/)[1];
-    const build = new Function('search', 'normalizePhone', `${body}; return filters;`);
+    const build = new Function('search', 'normalizePhone', `const raw = search.trim(); ${body}; return filters;`);
     const normalize = (s) => s.replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
     assert.deepEqual(build('Maria', normalize), ['name.ilike.%Maria%', 'email.ilike.%Maria%']);
     assert.deepEqual(build('maria@example.com', normalize), ['name.ilike.%maria@example.com%', 'email.ilike.%maria@example.com%']);
