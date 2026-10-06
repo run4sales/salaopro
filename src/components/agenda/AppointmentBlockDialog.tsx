@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createSingleFlight } from "@/lib/singleFlight";
+import { getBlockPersistenceErrorMessage } from "@/lib/appointmentBlockErrors";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,28 +33,6 @@ function toLocalInput(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function isAppointmentBlocksSchemaError(error: any) {
-  if (!error) return false;
-
-  const code = String(error.code ?? "");
-  const message = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`.toLowerCase();
-
-  return (
-    ["42P01", "PGRST205"].includes(code) ||
-    message.includes("appointment_blocks") ||
-    message.includes("schema cache") ||
-    message.includes("could not find")
-  );
-}
-
-function getBlockPersistenceErrorMessage(error: any) {
-  if (isAppointmentBlocksSchemaError(error)) {
-    return "O recurso de bloqueio ainda não está disponível no banco. Aplique as migrations e aguarde o schema cache atualizar.";
-  }
-
-  return error?.message ?? "Não foi possível salvar o bloqueio.";
-}
-
 export function AppointmentBlockDialog({
   open,
   onOpenChange,
@@ -65,6 +45,7 @@ export function AppointmentBlockDialog({
 }: Props) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const writeGate = useRef(createSingleFlight());
   const [form, setForm] = useState({ professional_id: "", start_time: "", end_time: "", reason: "" });
 
   useEffect(() => {
@@ -92,7 +73,7 @@ export function AppointmentBlockDialog({
   const save = async () => {
     const start = new Date(form.start_time);
     const end = new Date(form.end_time);
-    if (!form.professional_id || !form.start_time || !form.end_time || end <= start) {
+    if (!professionals.some(professional => professional.id === form.professional_id) || !Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) {
       toast({ title: "Informe profissional, início e fim válidos", variant: "destructive" });
       return;
     }
@@ -106,12 +87,12 @@ export function AppointmentBlockDialog({
       reason: form.reason || null,
     };
 
-    const { error } = block?.id
-      ? await (supabase as any).from("appointment_blocks").update(payload).eq("id", block.id)
-      : await (supabase as any).from("appointment_blocks").insert(payload);
+    const { data, error } = block?.id
+      ? await supabase.from("appointment_blocks").update(payload).eq("id", block.id).eq("establishment_id", establishmentId).select("id").single()
+      : await supabase.from("appointment_blocks").insert(payload).select("id").single();
 
     setSaving(false);
-    if (error) {
+    if (error || !data) {
       toast({ title: "Erro ao salvar bloqueio", description: getBlockPersistenceErrorMessage(error), variant: "destructive" });
       return;
     }
@@ -124,7 +105,7 @@ export function AppointmentBlockDialog({
   const remove = async () => {
     if (!block?.id) return;
     setSaving(true);
-    const { error } = await (supabase as any).from("appointment_blocks").delete().eq("id", block.id);
+    const { error } = await supabase.from("appointment_blocks").delete().eq("id", block.id).eq("establishment_id", establishmentId).select("id").single();
     setSaving(false);
     if (error) {
       toast({ title: "Erro ao excluir bloqueio", description: getBlockPersistenceErrorMessage(error), variant: "destructive" });
@@ -135,8 +116,21 @@ export function AppointmentBlockDialog({
     onSaved?.();
   };
 
+  const persistOnce = async (action: () => Promise<void>) => {
+    await writeGate.current.run(async () => {
+      setSaving(true);
+      try {
+        await action();
+      } catch (error) {
+        toast({ title: "Não foi possível alterar o bloqueio", description: error instanceof Error ? error.message : "Tente novamente.", variant: "destructive" });
+      } finally {
+        setSaving(false);
+      }
+    });
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(value) => { if (!saving) onOpenChange(value); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{block?.id ? "Editar bloqueio" : "Bloquear horário"}</DialogTitle>
@@ -168,10 +162,10 @@ export function AppointmentBlockDialog({
             <Input value={form.reason} onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))} placeholder="Ex: almoço, reunião, folga..." />
           </div>
           <div className="flex justify-between gap-2 pt-2">
-            {block?.id ? <Button type="button" variant="destructive" disabled={saving} onClick={remove}>Excluir</Button> : <span />}
+            {block?.id ? <Button type="button" variant="destructive" disabled={saving} onClick={() => void persistOnce(remove)}>Excluir</Button> : <span />}
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button type="button" disabled={saving} onClick={save}>{saving ? "Salvando..." : "Salvar"}</Button>
+              <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancelar</Button>
+              <Button type="button" disabled={saving} onClick={() => void persistOnce(save)}>{saving ? "Salvando..." : "Salvar"}</Button>
             </div>
           </div>
         </div>

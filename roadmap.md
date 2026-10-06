@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Corrigir bloqueio próprio do funcionário; verificar autorização real, negar outro profissional/loja/anônimo e preservar gestores; nove testes passaram.
+
 - [x] Padronizar e validar telefones brasileiros em todos os cadastros.
 - [x] Garantir normalização no banco, buscas e prevenção de duplicidades.
 - [x] Cobrir formatos válidos e inválidos com testes.
