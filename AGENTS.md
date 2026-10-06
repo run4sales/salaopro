@@ -6,7 +6,7 @@ O cadastro de cliente dentro de fluxos operacionais usa a ficha completa em diá
 Campos de telefone e WhatsApp na ficha de cliente usam `formatBrazilianPhone` durante a digitação e `validatePhone` antes de salvar; isso preserva o DDD informado sem inventar dados e mantém o armazenamento normalizado.
 Falhas conhecidas da autenticação administrativa são convertidas em erros de validação específicos nas funções de usuários; isso evita apresentar rejeições corrigíveis como indisponibilidade interna.
 O contexto de acesso é resolvido em paralelo, ignora respostas antigas e expõe erro com nova tentativa; isso impede loading infinito após login de colaborador.
-Estados de assinatura são definidos por `get_subscription_state`; webhook, reconciliação e telas administrativas preservam bloqueio manual e usam essa regra canônica para evitar divergência de acesso.
+Subscription access uses canonical get_subscription_state; unpaid checkout and reconciliation preserve access status and deadlines, and unknown states fail closed so creating invoices cannot unlock a salon.
 Cancelamentos de agendamento são soft-state em `appointments.status`, usam `canceled` como valor canônico e mantêm snapshots financeiros para histórico e relatórios.
 Appointment writes acquire a synchronous single-flight gate before validation and retain the inserted ID across partial-save retries; this prevents duplicate rows without conflating legitimate rebookings with canceled history.
 Appointment block RLS uses an authenticated SECURITY DEFINER ownership predicate; this preserves own-professional isolation without restrictive membership read policies masking employee authorization.

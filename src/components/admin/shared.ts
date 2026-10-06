@@ -41,6 +41,11 @@ export const STATUS_TONE: Record<string, string> = {
 export const fmtBRL = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
 
+export const EFFECTIVE_STATUS_OPTIONS = [
+  "trial_active", "trial_expiring", "trial_expired", "active_paid",
+  "payment_pending", "overdue", "grace_active", "blocked", "blocked_manual", "no_subscription",
+].map((value) => ({ value, label: STATUS_LABEL[value] }));
+
 export const fmtDate = (v: string | null | undefined) =>
   v ? new Date(v).toLocaleDateString("pt-BR") : "—";
 

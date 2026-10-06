@@ -191,8 +191,6 @@ export async function syncAsaasSubscription(
     ? 'canceled'
     : PAID_STATUSES.has(remoteStatus)
     ? 'active'
-    : remoteStatus === 'PENDING'
-    ? 'pending'
     : subscription.status;
   const newStatus = subscription.manual_blocked_at ? subscription.status : derivedStatus;
   const lastPaymentAt = paidPayment
@@ -203,13 +201,13 @@ export async function syncAsaasSubscription(
     asaas_subscription_id: remoteSubscription.id,
     billing_type: remoteSubscription.billingType ?? latestPayment?.billingType ?? null,
     monthly_amount: Number(remoteSubscription.value ?? subscription.monthly_amount),
-    next_billing_at: remoteSubscription.nextDueDate
-      ? new Date(`${remoteSubscription.nextDueDate}T12:00:00.000Z`).toISOString()
-      : null,
   };
   if (!subscription.manual_blocked_at) updates.status = newStatus;
   if (paidPayment) updates.last_payment_at = lastPaymentAt;
   if (latestPayment && PAID_STATUSES.has(latestPayment.status ?? '')) {
+    updates.next_billing_at = remoteSubscription.nextDueDate
+      ? new Date(`${remoteSubscription.nextDueDate}T12:00:00.000Z`).toISOString()
+      : null;
     updates.trial_ends_at = null;
     updates.canceled_at = null;
     updates.grace_started_at = null;
