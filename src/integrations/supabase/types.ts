@@ -2352,6 +2352,10 @@ export type Database = {
         Args: { p_establishment: string }
         Returns: undefined
       }
+      can_manage_appointment_block: {
+        Args: { p_establishment: string; p_professional: string }
+        Returns: boolean
+      }
       consume_service_benefit: {
         Args: {
           p_appointment_id?: string

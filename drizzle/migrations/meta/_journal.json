@@ -22,6 +22,13 @@
       "when": 1791227802826,
       "tag": "0002_accept_and_normalize_brazilian_phones",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791316297604,
+      "tag": "0003_fix_employee_own_appointment_block_access",
+      "breakpoints": true
     }
   ]
 }
