@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE, logAdminAction } from "./shared";
+import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE, EFFECTIVE_STATUS_OPTIONS, logAdminAction } from "./shared";
 
 
 type Row = {
@@ -333,8 +333,8 @@ export default function AdminCompanies() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os status</SelectItem>
-            {Object.entries(STATUS_LABEL).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
+            {EFFECTIVE_STATUS_OPTIONS.map(({ value, label }) => (
+              <SelectItem key={value} value={value}>{label}</SelectItem>
             ))}
           </SelectContent>
         </Select>

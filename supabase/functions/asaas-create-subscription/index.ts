@@ -143,12 +143,9 @@ Deno.serve(async (req) => {
         if (pendingPayment) {
           const paymentLink = pendingPayment.invoiceUrl ?? null;
           const { error: reuseError } = await admin.from('subscriptions').update({
-            status: 'pending', asaas_customer_id: customerId, billing_type: body.billing_type,
+            asaas_customer_id: customerId, billing_type: body.billing_type,
             payment_link: paymentLink, billing_cpf_cnpj: onlyDigits(body.cpf_cnpj),
             billing_name: body.name, billing_email: emailValidation.normalized,
-            next_billing_at: pendingPayment.dueDate
-              ? new Date(`${pendingPayment.dueDate}T12:00:00.000Z`).toISOString()
-              : sub.next_billing_at,
           }).eq('id', sub.id);
           if (reuseError) throw reuseError;
           console.info('[asaas-create] Cobrança pendente reutilizada', {
@@ -210,7 +207,6 @@ Deno.serve(async (req) => {
 
     // 5) Update local subscription
     const { data: updated, error: updateError } = await admin.from('subscriptions').update({
-      status: 'pending',
       plan_id: plan.id,
       monthly_amount: plan.monthly_price,
       asaas_customer_id: customerId,
@@ -220,7 +216,6 @@ Deno.serve(async (req) => {
       billing_cpf_cnpj: onlyDigits(body.cpf_cnpj),
       billing_name: body.name,
       billing_email: emailValidation.normalized,
-      next_billing_at: subJson.nextDueDate ? new Date(subJson.nextDueDate).toISOString() : null,
     }).eq('establishment_id', profile.id).select('id').single();
     if (updateError || !updated) throw updateError ?? new Error('Assinatura local não atualizada');
     console.info('[asaas-create] Associação persistida', {

@@ -26,9 +26,13 @@ export default defineTool({
 
     if (search && search.trim()) {
       const raw = search.trim();
-      const s = `%${raw.replace(/[,%()]/g, "")}%`;
+      const term = raw.replace(/[,%()_*\\"\r\n]/g, "");
+      if (!term) return { content: [{ type: "text", text: "Invalid search term" }], isError: true };
+      const s = `%${term}%`;
       const phone = normalizePhone(raw);
-      q = q.or(`name.ilike.${s},phone.ilike.%${phone || raw.replace(/\D/g, "")}%,email.ilike.${s}`);
+      const filters = [`name.ilike.${s}`, `email.ilike.${s}`];
+      if (phone) filters.push(`phone.ilike.%${phone}%`);
+      q = q.or(filters.join(","));
     }
 
     const { data, error } = await q;

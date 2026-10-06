@@ -74,9 +74,7 @@ export function canCreateClients(state?: SubscriptionState) {
 
 /** Loja totalmente bloqueada (não pode usar nada) */
 export function isFullyBlocked(state?: SubscriptionState) {
-  return ["blocked", "blocked_manual", "no_subscription", "trial_expired", "overdue"].includes(
-    state ?? "no_subscription"
-  );
+  return !["trial_active", "trial_expiring", "active_paid", "payment_pending", "grace_active"].includes(state ?? "no_subscription");
 }
 
 /** Loja em estado bloqueado em que ainda pode pedir liberação de 48h */
