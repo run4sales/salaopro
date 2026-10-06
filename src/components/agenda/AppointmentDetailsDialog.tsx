@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Pencil, Play, X, CreditCard } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { ComandaSheet } from "@/components/comanda/ComandaSheet";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { createSingleFlight } from "@/lib/singleFlight";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { STATUS_LABELS, STATUS_VARIANTS, normalizeStatus } from "@/lib/appointmentStatus";
@@ -32,6 +33,8 @@ export function AppointmentDetailsDialog({
   const navigate = useNavigate();
   const [comandaOpen, setComandaOpen] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
+  const [updating, setUpdating] = useState(false);
+  const statusGate = useRef(createSingleFlight());
   const { data: billing, refetch } = useQuery({
     queryKey: ["appointment-billing", appointment?.id],
     enabled: open && !!appointment?.id && canOperate,
@@ -56,11 +59,24 @@ export function AppointmentDetailsDialog({
     const payload = status === "canceled"
       ? { status, canceled_at: new Date().toISOString(), cancellation_reason: cancellationReason.trim() || null }
       : { status, canceled_at: null, cancellation_reason: null };
-    const { error } = await supabase.from("appointments").update(payload).eq("id", appointment.id);
+    const { error } = await supabase.from("appointments").update(payload).eq("id", appointment.id).eq("establishment_id", appointment.establishment_id);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Status atualizado" });
     onChanged();
     onOpenChange(false);
+  };
+
+  const cancelOnce = async () => {
+    await statusGate.current.run(async () => {
+      setUpdating(true);
+      try {
+        await setStatus("canceled");
+      } catch (error) {
+        toast({ title: "Erro ao cancelar", description: error instanceof Error ? error.message : "Tente novamente.", variant: "destructive" });
+      } finally {
+        setUpdating(false);
+      }
+    });
   };
 
   const startService = async () => {
@@ -127,7 +143,7 @@ export function AppointmentDetailsDialog({
           )}
             {canOperate && billing?.active && !billing.paid && <Button size="sm" onClick={() => { onOpenChange(false); setComandaOpen(true); }}><CreditCard className="mr-1 h-4 w-4" />Faturar comanda</Button>}
             {canOperate && key !== "canceled" && key !== "cancelled" && (
-            <Button variant="destructive" size="sm" onClick={() => setStatus("canceled")}><X className="h-3.5 w-3.5 mr-1" />Cancelar</Button>
+            <Button variant="destructive" size="sm" disabled={updating} onClick={cancelOnce}><X className="h-3.5 w-3.5 mr-1" />{updating ? "Cancelando..." : "Cancelar"}</Button>
           )}
         </div>
       </DialogContent>
