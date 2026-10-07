@@ -30,3 +30,17 @@ test("partial saves retain their appointment ID rather than inserting another ro
   assert.equal((source.match(/\.from\("appointments"\)\.insert\(/g) ?? []).length, 1);
   assert.match(source, /saveGate\.current\.run/);
 });
+
+test("catalog refresh cannot reset the save identity and partial saves do not conflict with themselves", () => {
+  const source = readFileSync(new URL("../src/components/agenda/AppointmentFormDialog.tsx", import.meta.url), "utf8");
+  assert.match(source, /if \(initializedSession\.current === session\) return/);
+  assert.match(source, /findAgendaConflicts\(start, end, form\.professional_ids, occupied, appointment\?\.id \?\? savedAppointmentId\.current\)/);
+});
+
+test("lost insert responses reuse a stable request ID and recover only that appointment", () => {
+  const source = readFileSync(new URL("../src/components/agenda/AppointmentFormDialog.tsx", import.meta.url), "utf8");
+  assert.match(source, /insert\(\{ \.\.\.payload, id: requestId \}\)/);
+  assert.match(source, /creationRequestId\.current = requestId/);
+  assert.match(source, /\.eq\("id", requestId\)\.eq\("establishment_id", establishmentId\)/);
+  assert.match(source, /savedAppointmentId\.current = recovered\.id/);
+});

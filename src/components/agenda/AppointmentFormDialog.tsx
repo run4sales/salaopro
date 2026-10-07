@@ -121,6 +121,8 @@ export function AppointmentFormDialog({
   const [saving, setSaving] = useState(false);
   const saveGate = useRef(createSingleFlight());
   const savedAppointmentId = useRef<string | undefined>(undefined);
+  const creationRequestId = useRef<string | undefined>(undefined);
+  const initializedSession = useRef<string | undefined>(undefined);
   const [conflicts, setConflicts] = useState<OccupiedInterval[]>([]);
   const [approvedSignature, setApprovedSignature] = useState("");
   const [form, setForm] = useState({
@@ -138,8 +140,13 @@ export function AppointmentFormDialog({
   const [existingDeposit, setExistingDeposit] = useState(0);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { initializedSession.current = undefined; return; }
+    const session = `${establishmentId}:${appointment?.id ?? "new"}`;
+    // Refetching catalogs must not reset a partially saved appointment or form.
+    if (initializedSession.current === session) return;
+    initializedSession.current = session;
     savedAppointmentId.current = undefined;
+    creationRequestId.current = crypto.randomUUID();
     setConflicts([]);
     setApprovedSignature("");
     const load = async () => {
@@ -181,7 +188,7 @@ export function AppointmentFormDialog({
       }
     };
     load();
-  }, [open, appointment, initialDate, initialProfessionalId, services]);
+  }, [open, establishmentId, appointment, initialDate, initialProfessionalId, services]);
 
   const totalDuration = useMemo(() => {
     return services
@@ -282,7 +289,7 @@ export function AppointmentFormDialog({
         return assigned.map(pid => ({ id: a.id, professionalId: pid, start: a.appointment_date, end: new Date(new Date(a.appointment_date).getTime() + Number(a.duration_minutes || 30) * 60_000).toISOString(), label: "Agendamento existente", type: "appointment" as const }));
       }),
     ];
-    const found = findAgendaConflicts(start, end, form.professional_ids, occupied, appointment?.id);
+    const found = findAgendaConflicts(start, end, form.professional_ids, occupied, appointment?.id ?? savedAppointmentId.current);
     const signature = `${form.appointment_date}|${durationMinutes}|${form.professional_ids.join(",")}|${found.map(c => c.id).join(",")}`;
     const hasAbsoluteBlock = found.some(conflict => conflict.type === "block");
     if (found.length && (hasAbsoluteBlock || !allowConflictOverride || !confirmed || signature !== approvedSignature)) { setApprovedSignature(signature); setConflicts(found); return; }
@@ -305,10 +312,25 @@ export function AppointmentFormDialog({
       const { error } = await supabase.from("appointments").update(payload).eq("id", appointmentId).eq("establishment_id", establishmentId);
       if (error) { setSaving(false); toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
     } else {
-      const { data, error } = await supabase.from("appointments").insert(payload).select("id").single();
-      if (error || !data) { setSaving(false); toast({ title: "Erro ao salvar", description: error?.message, variant: "destructive" }); return; }
+      const requestId = creationRequestId.current ?? crypto.randomUUID();
+      creationRequestId.current = requestId;
+      const { data, error } = await supabase.from("appointments").insert({ ...payload, id: requestId }).select("id").single();
+      if (error || !data) {
+        // A response can be lost after the insert committed. Recover only this
+        // form's ID, never another client's booking or a canceled history row.
+        const { data: recovered } = await supabase.from("appointments").select("id")
+          .eq("id", requestId).eq("establishment_id", establishmentId).maybeSingle();
+        if (!recovered) {
+          setSaving(false);
+          toast({ title: "Erro ao salvar", description: error?.message, variant: "destructive" });
+          return;
+        }
+        appointmentId = recovered.id;
+        savedAppointmentId.current = recovered.id;
+      } else {
       appointmentId = data.id;
       savedAppointmentId.current = data.id;
+      }
     }
     if (!appointmentId) return;
     const persistedId = appointmentId;
