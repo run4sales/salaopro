@@ -44,3 +44,10 @@ test("lost insert responses reuse a stable request ID and recover only that appo
   assert.match(source, /\.eq\("id", requestId\)\.eq\("establishment_id", establishmentId\)/);
   assert.match(source, /savedAppointmentId\.current = recovered\.id/);
 });
+
+test("appointment imports acquire a synchronous gate and cannot close during writes", () => {
+  const source = readFileSync(new URL("../src/components/agenda/ImportAppointmentsDialog.tsx", import.meta.url), "utf8");
+  assert.match(source, /importGate\.current\.run/);
+  assert.match(source, /if \(importing\) return/);
+  assert.match(source, /onClick=\{importOnce\} disabled=\{importing \|\| validRows\.length === 0\}/);
+});
