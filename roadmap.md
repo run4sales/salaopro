@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Investigar novos relatos de agendamentos duplicados e corrigir a causa, preservando histórico.
+
 - [x] Corrigir acesso sem pagamento no checkout e na reconciliação; regra canônica aplicada e funções Asaas publicadas.
 - [x] Corrigir busca de clientes e filtros administrativos; sete testes passaram e compilação aprovada.
 - [ ] Ativar busca corrigida do assistente e filtros no site publicado: depende da próxima publicação; plataforma reteve a função MCP até essa etapa.
