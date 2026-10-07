@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Confirmar dez pares duplicados; proteger inserções no banco, recuperar salvamento por ID estável, impedir reset durante atualização da agenda e proteger importações contra cliques simultâneos; doze testes e verificações reais com rollback passaram, compilação aprovada.
+
 - [x] Corrigir acesso sem pagamento no checkout e na reconciliação; regra canônica aplicada e funções Asaas publicadas.
 - [x] Corrigir busca de clientes e filtros administrativos; sete testes passaram e compilação aprovada.
 - [ ] Ativar busca corrigida do assistente e filtros no site publicado: depende da próxima publicação; plataforma reteve a função MCP até essa etapa.

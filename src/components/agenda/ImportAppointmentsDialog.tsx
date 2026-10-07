@@ -1,4 +1,5 @@
 import { normalizePhone } from "@/lib/contactValidation";
+import { createSingleFlight } from "@/lib/singleFlight";
 import { useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,8 @@ interface ImportResult {
 export default function ImportAppointmentsDialog({ open, onOpenChange, establishmentId, onImported }: Props) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const importGate = useRef(createSingleFlight());
+  const [importing, setImporting] = useState(false);
   const [step, setStep] = useState<Step>("upload");
   const [fileName, setFileName] = useState("");
   const [headers, setHeaders] = useState<string[]>([]);
@@ -68,6 +71,7 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
   };
 
   const close = (v: boolean) => {
+    if (importing) return;
     if (!v) reset();
     onOpenChange(v);
   };
@@ -214,6 +218,20 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
     setResult({ created, failed });
     setStep("done");
     if (created > 0) onImported();
+  };
+
+  const importOnce = async () => {
+    await importGate.current.run(async () => {
+      setImporting(true);
+      try {
+        await runImport();
+      } catch (error) {
+        setStep("preview");
+        toast({ title: "Erro ao importar", description: error instanceof Error ? error.message : "Tente novamente.", variant: "destructive" });
+      } finally {
+        setImporting(false);
+      }
+    });
   };
 
   return (
@@ -388,7 +406,7 @@ export default function ImportAppointmentsDialog({ open, onOpenChange, establish
           {step === "preview" && (
             <>
               <Button variant="outline" onClick={reset}>Trocar arquivo</Button>
-              <Button onClick={runImport} disabled={validRows.length === 0}>
+              <Button onClick={importOnce} disabled={importing || validRows.length === 0}>
                 Importar {validRows.length} agendamentos
               </Button>
             </>

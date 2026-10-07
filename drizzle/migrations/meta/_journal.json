@@ -43,6 +43,13 @@
       "when": 1791316946237,
       "tag": "0005_fail_closed_subscription_pending_access",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791382174199,
+      "tag": "0006_prevent_exact_duplicate_appointments",
+      "breakpoints": true
     }
   ]
 }
