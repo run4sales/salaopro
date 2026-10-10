@@ -4,21 +4,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fmtBRL } from "./shared";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 
+import SaaSInvoiceSummary from "./SaaSInvoiceSummary";
+import { useSaaSInvoices } from "@/hooks/useSaaSInvoices";
+import { brazilMonth, invoiceMonthMetrics } from "@/lib/saasInvoiceMetrics";
+
 const COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--primary-glow))", "hsl(var(--success))"];
 
 export default function AdminSaaSFinance() {
   const subsQuery = useQuery({
     queryKey: ["admin-finance-subs"],
+    refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("subscriptions")
-        .select("status, monthly_amount, started_at, plan_id, subscription_plans!subscriptions_plan_id_fkey(name)");
+        .select("establishment_id, status, monthly_amount, started_at, plan_id, subscription_plans!subscriptions_plan_id_fkey(name)");
       if (error) throw error;
-      return (data ?? []) as { status: string; monthly_amount: number; started_at: string; plan_id: string; subscription_plans: { name: string } | null }[];
+      const { data: states, error: statesError } = await (supabase as any).rpc("get_admin_subscription_states");
+      if (statesError) throw statesError;
+      const stateMap = new Map<string, string>((states ?? []).map((row: any) => [row.establishment_id, row.state]));
+      return (data ?? []).map((row: any) => ({ ...row, status: stateMap.get(row.establishment_id) ?? 'no_subscription' })) as { status: string; monthly_amount: number; started_at: string; plan_id: string; subscription_plans: { name: string } | null }[];
     },
   });
 
-  const active = (subsQuery.data ?? []).filter((s) => s.status === "active");
+  const invoices = useSaaSInvoices();
+  const active = (subsQuery.data ?? []).filter((s) => s.status === "active_paid");
   const mrr = active.reduce((sum, s) => sum + Number(s.monthly_amount || 0), 0);
   const arr = mrr * 12;
 
@@ -30,30 +39,30 @@ export default function AdminSaaSFinance() {
   });
   const planData = Array.from(perPlan, ([name, value]) => ({ name, value }));
 
-  // Revenue per month (12 months) — assumes active subs were paying since started_at
+  // Actual invoice collections by payment month.
   const months: { label: string; receita: number }[] = [];
   const now = new Date();
   for (let i = 11; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-    const total = active
-      .filter((s) => new Date(s.started_at) < end)
-      .reduce((sum, s) => sum + Number(s.monthly_amount || 0), 0);
+    const total = invoiceMonthMetrics(invoices.data ?? [], brazilMonth(d.toISOString()) ?? '').received;
     months.push({ label: d.toLocaleDateString("pt-BR", { month: "short" }), receita: total });
   }
 
   return (
     <div className="space-y-6">
+      <SaaSInvoiceSummary />
+      {subsQuery.isError && <p role="alert" className="text-destructive">Não foi possível carregar as assinaturas.</p>}
       <div className="grid gap-3 sm:grid-cols-3">
         <Card className="bg-card/60 border-border/60">
           <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Receita mensal (MRR)</div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">MRR atual contratado</div>
             <div className="text-2xl font-bold text-accent">{fmtBRL(mrr)}</div>
           </CardContent>
         </Card>
         <Card className="bg-card/60 border-border/60">
           <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Receita anual (ARR)</div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Projeção anual (ARR)</div>
             <div className="text-2xl font-bold text-primary-glow">{fmtBRL(arr)}</div>
           </CardContent>
         </Card>
@@ -68,7 +77,7 @@ export default function AdminSaaSFinance() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2 bg-card/60 border-border/60">
           <CardHeader>
-            <CardTitle className="text-base">Receita mensal (últimos 12 meses)</CardTitle>
+            <CardTitle className="text-base">Recebimentos reais (últimos 12 meses)</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
@@ -88,7 +97,7 @@ export default function AdminSaaSFinance() {
 
         <Card className="bg-card/60 border-border/60">
           <CardHeader>
-            <CardTitle className="text-base">Receita por plano</CardTitle>
+            <CardTitle className="text-base">MRR atual por plano</CardTitle>
           </CardHeader>
           <CardContent>
             {planData.length === 0 ? (
