@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Corrigir conexão Asaas e controle de faturas; comprovar comunicação real, webhook e reconciliação automática, sem gerar cobranças de teste em produção.
+
 - [x] Confirmar dez pares duplicados; proteger inserções no banco, recuperar salvamento por ID estável, impedir reset durante atualização da agenda e proteger importações contra cliques simultâneos; doze testes e verificações reais com rollback passaram, compilação aprovada.
 
 - [x] Corrigir acesso sem pagamento no checkout e na reconciliação; regra canônica aplicada e funções Asaas publicadas.
