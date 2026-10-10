@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.subscription_calendar_state(text,timestamptz,timestamptz,timestamptz,timestamptz,timestamptz,text,date,timestamptz) TO postgres;
