@@ -74,3 +74,11 @@ ASAAS_SYNC_SECRET=<secret> npm run audit:asaas
 O relatório inclui estabelecimento, status local anterior, status corrigido,
 status Asaas, IDs associados, plano, duração, divergência e erro. Os mesmos dados
 ficam disponíveis em `asaas_sync_logs` para auditoria posterior.
+
+## Validação operacional em 10/10/2026
+
+- Conferência real via job: 28 vínculos examinados, 24 sincronizados, 11 estados corrigidos.
+- Webhook deste aplicativo verificado/configurado no Asaas; job horário comprovado ativo.
+- Quatro vínculos sem assinatura encontrada no Asaas registrados como erro, sem criar cobranças nem liberar acesso automaticamente. Precisam de confirmação do responsável sobre cancelamento/exclusão ou vínculo substituto.
+- Notificações reais futuras permanecem monitoradas em `asaas_webhook_logs`; não foi fabricado um pagamento em produção para testar entrega.
+- A interface mostra o erro retornado em vez de anunciar sucesso numa sincronização parcial.

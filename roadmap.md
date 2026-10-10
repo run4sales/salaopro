@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Corrigir conexão Asaas e controle de faturas; comprovar comunicação real, webhook e reconciliação automática, sem gerar cobranças de teste em produção.
+- [x] Corrigir conexão Asaas e controle de faturas; conferência real de 28 vínculos, 24 sincronizados, notificações verificadas, job horário ativo, reenvios recuperáveis e testes aprovados; nenhuma cobrança criada.
+- [ ] Resolver quatro vínculos cuja assinatura não é encontrada no Asaas: requer confirmar com o responsável quais foram canceladas/excluídas e qual assinatura válida deve substituir cada vínculo; não recriar cobranças automaticamente.
 
 - [x] Confirmar dez pares duplicados; proteger inserções no banco, recuperar salvamento por ID estável, impedir reset durante atualização da agenda e proteger importações contra cliques simultâneos; doze testes e verificações reais com rollback passaram, compilação aprovada.
 
