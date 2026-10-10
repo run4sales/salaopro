@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Corrigir indicadores SaaS usando faturas reais, estados efetivos e histórico de recebimentos; conferir setembro com dados disponíveis sem ajustar valores artificialmente.
+
 - [x] Conferir Asaas agora e adicionar dias para vencimento e data real do último pagamento ao painel de empresas e assinaturas; conferência retornou HTTP 200, 13 ciclos pagos e 11 vencidos, com quatro vínculos ausentes; 11 testes passaram e compilação automática aprovada.
 - [ ] Validar visualmente as novas colunas com acesso de superadministrador: a sessão disponível é de funcionário e redireciona para Agenda; alterações das listas aguardam publicação.
 
