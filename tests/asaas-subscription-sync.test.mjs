@@ -4,12 +4,15 @@ import test from 'node:test';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('webhook rejects replay and preserves manual blocks', async () => {
+test('webhook retries failures and reconciles authoritative invoices', async () => {
   const source = await read('supabase/functions/asaas-webhook/index.ts');
   assert.match(source, /provider_event_id: providerEventId/);
   assert.match(source, /logError\?\.code === '23505'/);
-  assert.match(source, /if \(!localSub\.manual_blocked_at\) updates\.status = 'active'/);
-  assert.match(source, /payment\.clientPaymentDate/);
+  assert.match(source, /existing\.processed/);
+  assert.match(source, /claim_asaas_webhook/);
+  assert.match(source, /processing_started_at: null/);
+  assert.match(source, /syncAsaasSubscription\(admin, apiKey, localSub\.establishment_id, 'webhook'\)/);
+  assert.doesNotMatch(source, /updates\.status = 'active'/);
 });
 
 test('reconciliation uses the true latest invoice and preserves manual blocks', async () => {
