@@ -5,6 +5,7 @@ import { Building2, TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle, 
 import { fmtBRL } from "./shared";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid } from "recharts";
 
+import { adminSubscriptionStatus } from "@/lib/adminSubscriptionStatus";
 import SaaSInvoiceSummary from "./SaaSInvoiceSummary";
 import { useSaaSInvoices } from "@/hooks/useSaaSInvoices";
 import { brazilMonth, invoiceMonthMetrics } from "@/lib/saasInvoiceMetrics";
@@ -33,7 +34,7 @@ export default function AdminDashboard() {
       const [{ data: subs, error: subsError }, { data: profiles, error: profilesError }, { data: plans, error: plansError }, { data: states, error: statesError }] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
-          .select("establishment_id, status, monthly_amount, started_at, canceled_at, plan_id, subscription_plans!subscriptions_plan_id_fkey(id, name, slug, monthly_price, display_order)"),
+          .select("establishment_id, status, monthly_amount, started_at, canceled_at, plan_id, trial_ends_at, manual_blocked_at, next_billing_at, current_invoice_due_date, subscription_plans!subscriptions_plan_id_fkey(id, name, slug, monthly_price, display_order)"),
         (supabase as any).from("profiles").select("id, created_at, plan"),
         (supabase as any).from("subscription_plans").select("id, name, slug, monthly_price, display_order").order("display_order"),
         (supabase as any).rpc("get_admin_subscription_states"),
@@ -62,7 +63,7 @@ export default function AdminDashboard() {
         const plan = relationPlan ?? (s.plan_id ? plansById.get(s.plan_id) : undefined);
         subsByEstablishment.set(s.establishment_id, {
           establishment_id: s.establishment_id,
-          status: stateMap.get(s.establishment_id) ?? "no_subscription",
+          status: adminSubscriptionStatus(s, stateMap.get(s.establishment_id) ?? "no_subscription"),
           monthly_amount: Number(s.monthly_amount || plan?.monthly_price || 0),
           started_at: s.started_at,
           canceled_at: s.canceled_at,

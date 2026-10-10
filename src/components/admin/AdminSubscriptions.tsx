@@ -11,6 +11,7 @@ import { useState } from "react";
 import { extractEdgeFunctionError } from "@/lib/edgeFunctionError";
 
 import { billingCountdown, formatBillingDate, subscriptionDeadline } from "@/lib/subscriptionBilling";
+import { adminSubscriptionStatus } from "@/lib/adminSubscriptionStatus";
 import { fetchLastInvoicePayments } from "@/lib/adminInvoicePayments";
 
 type Plan = { id: string; name: string; slug: string; monthly_price: number };
@@ -60,7 +61,7 @@ export default function AdminSubscriptions() {
 
       const { data: subs, error: subsError } = await supabase
         .from("subscriptions")
-        .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, current_invoice_status, current_invoice_due_date, plan_id, subscription_plans!subscriptions_plan_id_fkey(name, monthly_price)")
+        .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, manual_blocked_at, current_invoice_status, current_invoice_due_date, plan_id, subscription_plans!subscriptions_plan_id_fkey(name, monthly_price)")
         .order("started_at", { ascending: false });
       if (subsError) throw subsError;
 
@@ -71,7 +72,7 @@ export default function AdminSubscriptions() {
           last_invoice_payment_at: lastPayments.get(s.establishment_id) ?? null,
           plan: s.subscription_plans,
           profile: undefined,
-          effective_state: stateMap.get(s.establishment_id) ?? s.status,
+          effective_state: adminSubscriptionStatus(s, stateMap.get(s.establishment_id) ?? "no_subscription"),
         });
       });
 
