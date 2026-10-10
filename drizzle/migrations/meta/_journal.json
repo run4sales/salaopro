@@ -64,6 +64,34 @@
       "when": 1791651956795,
       "tag": "0008_asaas_overdue_72_hour_window",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791653630592,
+      "tag": "0009_subscription_invoice_calendar_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791653725038,
+      "tag": "0010_asaas_webhook_provider_event_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791653743041,
+      "tag": "0011_subscription_calendar_validation_grant",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791653778689,
+      "tag": "0012_verify_subscription_calendar_boundaries",
+      "breakpoints": true
     }
   ]
 }

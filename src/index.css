@@ -40,6 +40,9 @@ All colors MUST be HSL.
     --warning: 38 92% 50%;
     --warning-foreground: 220 26% 14%;
     --warning-soft: 45 100% 94%;
+    --billing-upcoming: 48 96% 53%;
+    --billing-due: 25 95% 53%;
+    --billing-foreground: 220 26% 14%;
 
     --danger-soft: 0 84% 95%;
     --primary-soft: 267 84% 96%;
@@ -110,6 +113,9 @@ All colors MUST be HSL.
     --warning: 41 80% 58%;
     --warning-foreground: 240 14% 6%;
     --warning-soft: 41 40% 14%;
+    --billing-upcoming: 48 96% 53%;
+    --billing-due: 25 95% 53%;
+    --billing-foreground: 220 26% 14%;
 
     --danger-soft: 0 50% 16%;
     --primary-soft: 271 50% 16%;

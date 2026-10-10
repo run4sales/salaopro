@@ -323,6 +323,7 @@ export type Database = {
           payload: Json
           processed: boolean
           processing_started_at: string | null
+          provider_event_id: string | null
         }
         Insert: {
           asaas_payment_id?: string | null
@@ -334,6 +335,7 @@ export type Database = {
           payload: Json
           processed?: boolean
           processing_started_at?: string | null
+          provider_event_id?: string | null
         }
         Update: {
           asaas_payment_id?: string | null
@@ -345,6 +347,7 @@ export type Database = {
           payload?: Json
           processed?: boolean
           processing_started_at?: string | null
+          provider_event_id?: string | null
         }
         Relationships: []
       }
@@ -2200,6 +2203,9 @@ export type Database = {
           billing_type: string | null
           canceled_at: string | null
           created_at: string
+          current_invoice_due_date: string | null
+          current_invoice_status: string | null
+          current_invoice_url: string | null
           establishment_id: string
           grace_cycle_key: string | null
           grace_ends_at: string | null
@@ -2228,6 +2234,9 @@ export type Database = {
           billing_type?: string | null
           canceled_at?: string | null
           created_at?: string
+          current_invoice_due_date?: string | null
+          current_invoice_status?: string | null
+          current_invoice_url?: string | null
           establishment_id: string
           grace_cycle_key?: string | null
           grace_ends_at?: string | null
@@ -2256,6 +2265,9 @@ export type Database = {
           billing_type?: string | null
           canceled_at?: string | null
           created_at?: string
+          current_invoice_due_date?: string | null
+          current_invoice_status?: string | null
+          current_invoice_url?: string | null
           establishment_id?: string
           grace_cycle_key?: string | null
           grace_ends_at?: string | null
@@ -2615,6 +2627,20 @@ export type Database = {
       staff_owns_comanda: {
         Args: { p_comanda_id: string; p_establishment_id: string }
         Returns: boolean
+      }
+      subscription_calendar_state: {
+        Args: {
+          p_created: string
+          p_grace: string
+          p_invoice_due: string
+          p_invoice_status: string
+          p_manual: string
+          p_next_billing: string
+          p_now?: string
+          p_status: string
+          p_trial_end: string
+        }
+        Returns: string
       }
       unaccent: { Args: { "": string }; Returns: string }
       update_payable: {

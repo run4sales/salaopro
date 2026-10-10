@@ -44,5 +44,6 @@ test('pending reconciliation preserves trial, delinquency and paid access', asyn
   }
   const updates = source.match(/const updates: Json = \{([\s\S]*?)\n  \};/)[1];
   assert.doesNotMatch(updates, /next_billing_at/);
+  assert.match(updates, /current_invoice_status/);
   assert.match(source, /if \(latestPayment && PAID_STATUSES\.has\(latestPayment.status \?\? ''\)\) \{\s+updates.next_billing_at/);
 });

@@ -21,6 +21,8 @@ type SubRow = {
   started_at: string;
   trial_ends_at: string | null;
   next_billing_at: string | null;
+  current_invoice_status?: string | null;
+  current_invoice_due_date?: string | null;
   profile?: { business_name: string };
   plan_id?: string | null;
   plan?: { name: string; monthly_price?: number };
@@ -33,6 +35,7 @@ export default function AdminSubscriptions() {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const subsQuery = useQuery({
     queryKey: ["admin-subscriptions-full"],
+    refetchInterval: 60_000,
     queryFn: async () => {
       const [{ data: profiles, error: profilesError }, { data: plans, error: plansError }, { data: states, error: statesError }] = await Promise.all([
         supabase
@@ -52,7 +55,7 @@ export default function AdminSubscriptions() {
 
       const { data: subs, error: subsError } = await supabase
         .from("subscriptions")
-        .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, plan_id, subscription_plans!subscriptions_plan_id_fkey(name, monthly_price)")
+        .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, current_invoice_status, current_invoice_due_date, plan_id, subscription_plans!subscriptions_plan_id_fkey(name, monthly_price)")
         .order("started_at", { ascending: false });
       if (subsError) throw subsError;
 
@@ -177,7 +180,8 @@ export default function AdminSubscriptions() {
                   <TableHead>Status</TableHead>
                   <TableHead>Início</TableHead>
                   <TableHead>Fim do trial</TableHead>
-                  <TableHead>Próxima cobrança</TableHead>
+                  <TableHead>Fatura Asaas</TableHead>
+                  <TableHead>Vencimento</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -199,7 +203,8 @@ export default function AdminSubscriptions() {
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(s.started_at)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(s.trial_ends_at)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{fmtDate(s.next_billing_at)}</TableCell>
+                    <TableCell>{({ PENDING: "Pendente", OVERDUE: "Vencida", CONFIRMED: "Paga", RECEIVED: "Paga", RECEIVED_IN_CASH: "Paga" } as Record<string, string>)[s.current_invoice_status ?? ""] ?? "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{fmtDate(s.current_invoice_due_date ? `${s.current_invoice_due_date}T12:00:00Z` : s.next_billing_at)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         size="sm"
@@ -216,7 +221,7 @@ export default function AdminSubscriptions() {
                 })}
                 {all.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                       Nenhuma assinatura registrada ainda.
                     </TableCell>
                   </TableRow>

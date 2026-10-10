@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Alinhar pagamento confirmado, faturas pendentes, barras amarela/laranja/vermelha, bloqueio no terceiro dia e teste gratuito de dez dias; 13 testes passaram e limites de acesso foram verificados no banco; funções publicadas e reconciliação real encontrou 13 ciclos pagos e 11 vencidos.
+- [ ] Confirmar visualmente as barras após publicação: a prévia autenticada permaneceu em “Carregando permissões”; alterações de interface dependem de publicação.
+
 - [x] Corrigir conexão Asaas e controle de faturas; conferência real de 28 vínculos, 24 sincronizados, notificações verificadas, job horário ativo, reenvios recuperáveis e testes aprovados; nenhuma cobrança criada.
 - [ ] Resolver quatro vínculos cuja assinatura não é encontrada no Asaas: requer confirmar com o responsável quais foram canceladas/excluídas e qual assinatura válida deve substituir cada vínculo; não recriar cobranças automaticamente.
 

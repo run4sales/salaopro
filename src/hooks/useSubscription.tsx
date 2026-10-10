@@ -29,6 +29,8 @@ export interface SubscriptionInfo {
   } | null;
   trial_ends_at: string | null;
   next_billing_at: string | null;
+  current_invoice_status?: string | null;
+  current_invoice_due_date?: string | null;
   monthly_amount: number;
   created_at?: string | null;
   last_payment_at?: string | null;
@@ -64,7 +66,7 @@ export function daysBetween(target: string | null | undefined): number | null {
 
 /** Estados em que a loja pode operar normalmente (criar/editar/usar) */
 export function canCreateAppointments(state?: SubscriptionState) {
-  if (!state) return true;
+  if (!state) return false;
   return ["trial_active", "trial_expiring", "active_paid", "payment_pending", "grace_active"].includes(state);
 }
 

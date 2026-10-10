@@ -13,3 +13,5 @@ An INSERT trigger serializes exact appointment identities and rejects existing n
 Appointment block RLS uses an authenticated SECURITY DEFINER ownership predicate; this preserves own-professional isolation without restrictive membership read policies masking employee authorization.
 Asaas invoice state is derived from current provider billing cycles, never delivery order; webhook claims are leased and failed deliveries remain retryable.
 Hourly Asaas reconciliation uses single-use database tickets restricted to service_role, filters linked subscriptions, and verifies the provider webhook without exposing its token.
+
+Subscription notices and access cutoffs use the same Brazil calendar; provider invoice snapshots drive pending invoices independently of access state, so upcoming charges never hide paid access.

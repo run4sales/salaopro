@@ -145,6 +145,8 @@ export async function syncAsaasSubscription(
   );
   const latestPayment = newestPayment(payments);
   const paidPayment = newestPayment(payments.filter((row) => PAID_STATUSES.has(row.status ?? '')));
+  const unpaidPayment = payments.filter((row) => ['PENDING', 'OVERDUE'].includes(row.status ?? ''))
+    .sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''))[0] ?? null;
   trace.push(`Último pagamento: ${latestPayment?.id ?? 'nenhum'} (${latestPayment?.status ?? 'sem status'})`);
 
   for (const payment of payments) {
@@ -183,6 +185,10 @@ export async function syncAsaasSubscription(
     asaas_subscription_id: remoteSubscription.id,
     billing_type: remoteSubscription.billingType ?? latestPayment?.billingType ?? null,
     monthly_amount: Number(remoteSubscription.value ?? subscription.monthly_amount),
+    current_invoice_status: unpaidPayment?.status ?? latestPayment?.status ?? null,
+    current_invoice_due_date: unpaidPayment?.dueDate ?? latestPayment?.dueDate ?? null,
+    current_invoice_url: unpaidPayment?.invoiceUrl ?? unpaidPayment?.bankSlipUrl ?? null,
+    payment_link: unpaidPayment?.invoiceUrl ?? unpaidPayment?.bankSlipUrl ?? null,
   };
   if (!subscription.manual_blocked_at) updates.status = newStatus;
   if (paidPayment) updates.last_payment_at = lastPaymentAt;

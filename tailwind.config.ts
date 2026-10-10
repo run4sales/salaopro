@@ -19,6 +19,9 @@ export default {
 		},
 		extend: {
 			colors: {
+                'billing-upcoming': 'hsl(var(--billing-upcoming))',
+                'billing-due': 'hsl(var(--billing-due))',
+                'billing-foreground': 'hsl(var(--billing-foreground))',
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
