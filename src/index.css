@@ -196,6 +196,9 @@ All colors MUST be HSL.
   --landing-hero-shade: 240 10% 10%;
   --landing-hero-text: 0 0% 100%;
   --landing-hero-muted: 240 6% 86%;
+  --shadow-elegant: 0 0% 0% / 0;
+  --landing-calendar-primary: 212 66% 37%;
+  --landing-calendar-primary-soft: 212 65% 95%;
   color: hsl(var(--foreground));
   background: hsl(var(--background));
 }
@@ -215,6 +218,10 @@ All colors MUST be HSL.
 .landing-agenda-demo .rbc-time-header { display: none; }
 .landing-agenda-demo .rbc-current-time-indicator { display: none; }
 .landing-agenda-demo .rbc-event-content { white-space: normal; }
+.landing-agenda-demo .rbc-event { font-size: 12px; border-radius: 4px; }
+.landing-agenda-demo .landing-event-primary { background: hsl(var(--landing-calendar-primary-soft)); color: hsl(var(--foreground)); border: 1px solid hsl(var(--landing-calendar-primary)); border-left-width: 4px; }
+.landing-agenda-demo .landing-event-secondary { background: hsl(var(--primary) / .10); color: hsl(var(--foreground)); border: 1px solid hsl(var(--primary)); border-left-width: 4px; }
+.landing-agenda-demo .landing-event-block { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); border: 1px solid hsl(var(--border)); border-left: 4px solid hsl(var(--muted-foreground)); }
 .beauty-landing a:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 4px; border-radius: 4px; }
 @media (max-width: 767px) {
   .landing-container { padding-inline: 20px; }

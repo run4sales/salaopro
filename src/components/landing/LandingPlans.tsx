@@ -2,11 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { Check, ArrowRight, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { landingSignupUrl, supportedLandingPlans, type LandingPlan } from '@/lib/landingPlans';
+import { landingSignupUrl, supportedLandingPlans, VERIFIED_PUBLIC_PLANS, type LandingPlan } from '@/lib/landingPlans';
 
 export default function LandingPlans() {
   const plans = useQuery({
-    queryKey: ['public-plans'],
+    queryKey: ['landing-public-plans'],
     staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.from('subscription_plans')
@@ -16,6 +16,7 @@ export default function LandingPlans() {
       return supportedLandingPlans((data ?? []) as LandingPlan[]);
     },
   });
+  const displayedPlans = plans.data?.length ? plans.data : VERIFIED_PUBLIC_PLANS;
 
   return <section id="planos" className="landing-section scroll-mt-24">
     <div className="landing-container">
@@ -24,9 +25,7 @@ export default function LandingPlans() {
         <p className="max-w-sm text-muted-foreground">Teste por 10 dias corridos, sem cartão de crédito. Escolha o plano e conheça o sistema na prática.</p>
       </div>
       {plans.isPending ? <div role="status" className="grid gap-5 md:grid-cols-3">{[1, 2, 3].map(n => <div key={n} className="h-80 animate-pulse rounded-lg bg-muted motion-reduce:animate-none" />)}<span className="sr-only">Carregando planos</span></div>
-        : plans.isError ? <div role="alert" className="flex flex-wrap items-center gap-4 border-y py-8"><p>Não foi possível carregar os planos agora.</p><Button variant="outline" onClick={() => plans.refetch()} disabled={plans.isFetching}><RefreshCw className="mr-2 h-4 w-4" />Tentar novamente</Button></div>
-        : !plans.data?.length ? <p className="border-y py-8 text-muted-foreground">Os planos não estão disponíveis para consulta neste momento.</p>
-        : <div className="grid gap-5 md:grid-cols-3">{plans.data.map(plan => {
+        : <div className="grid gap-5 md:grid-cols-3">{displayedPlans.map(plan => {
           const features = Array.isArray(plan.features) ? plan.features.filter((feature): feature is string => typeof feature === 'string') : [];
           return <article key={plan.id} className="flex flex-col rounded-lg border bg-card p-6 lg:p-8">
             <h3 className="text-xl font-semibold">{plan.name}</h3>
@@ -39,6 +38,7 @@ export default function LandingPlans() {
           </article>;
         })}</div>}
       <p className="mt-5 text-sm text-muted-foreground">Depois do teste, contrate um plano para continuar usando a Beauty Core. A cobrança e a assinatura ficam disponíveis na sua conta.</p>
+      {!plans.isPending && !plans.data?.length && <p className="mt-2 text-xs text-muted-foreground">Valores oficiais conferidos em 10/10/2026. Confirme as condições na contratação.{plans.isError && <Button variant="link" size="sm" onClick={() => plans.refetch()} disabled={plans.isFetching}><RefreshCw className="mr-1 h-3 w-3" />Atualizar consulta</Button>}</p>}
     </div>
   </section>;
 }
