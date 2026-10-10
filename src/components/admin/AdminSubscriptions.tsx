@@ -10,6 +10,9 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { extractEdgeFunctionError } from "@/lib/edgeFunctionError";
 
+import { billingCountdown, formatBillingDate, subscriptionDeadline } from "@/lib/subscriptionBilling";
+import { fetchLastInvoicePayments } from "@/lib/adminInvoicePayments";
+
 type Plan = { id: string; name: string; slug: string; monthly_price: number };
 type Profile = { id: string; business_name: string; created_at: string; plan?: string | null };
 type RawSub = SubRow & { subscription_plans?: { name: string; monthly_price?: number } | null };
@@ -21,6 +24,7 @@ type SubRow = {
   started_at: string;
   trial_ends_at: string | null;
   next_billing_at: string | null;
+  last_invoice_payment_at?: string | null;
   current_invoice_status?: string | null;
   current_invoice_due_date?: string | null;
   profile?: { business_name: string };
@@ -37,13 +41,14 @@ export default function AdminSubscriptions() {
     queryKey: ["admin-subscriptions-full"],
     refetchInterval: 60_000,
     queryFn: async () => {
-      const [{ data: profiles, error: profilesError }, { data: plans, error: plansError }, { data: states, error: statesError }] = await Promise.all([
+      const [{ data: profiles, error: profilesError }, { data: plans, error: plansError }, { data: states, error: statesError }, lastPayments] = await Promise.all([
         supabase
           .from("profiles")
           .select("id, business_name, created_at, plan")
           .order("created_at", { ascending: false }),
         supabase.from("subscription_plans").select("id, name, slug, monthly_price"),
         (supabase as any).rpc("get_admin_subscription_states"),
+        fetchLastInvoicePayments(),
       ]);
       if (profilesError) throw profilesError;
       if (plansError) throw plansError;
@@ -63,6 +68,7 @@ export default function AdminSubscriptions() {
       ((subs ?? []) as RawSub[]).forEach((s) => {
         subsMap.set(s.establishment_id, {
           ...s,
+          last_invoice_payment_at: lastPayments.get(s.establishment_id) ?? null,
           plan: s.subscription_plans,
           profile: undefined,
           effective_state: stateMap.get(s.establishment_id) ?? s.status,
@@ -182,11 +188,14 @@ export default function AdminSubscriptions() {
                   <TableHead>Fim do trial</TableHead>
                   <TableHead>Fatura Asaas</TableHead>
                   <TableHead>Vencimento</TableHead>
+                  <TableHead>Dias para vencer</TableHead>
+                  <TableHead>Última fatura paga em</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {all.map((s) => {
+                  const deadline = subscriptionDeadline(s);
                   const state = s.effective_state ?? s.status;
                   return (
                   <TableRow key={s.id}>
@@ -204,7 +213,9 @@ export default function AdminSubscriptions() {
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(s.started_at)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(s.trial_ends_at)}</TableCell>
                     <TableCell>{({ PENDING: "Pendente", OVERDUE: "Vencida", CONFIRMED: "Paga", RECEIVED: "Paga", RECEIVED_IN_CASH: "Paga" } as Record<string, string>)[s.current_invoice_status ?? ""] ?? "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{fmtDate(s.current_invoice_due_date ? `${s.current_invoice_due_date}T12:00:00Z` : s.next_billing_at)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{formatBillingDate(deadline)}</TableCell>
+                    <TableCell className="whitespace-nowrap text-xs">{billingCountdown(deadline)}</TableCell>
+                    <TableCell className="whitespace-nowrap text-xs">{formatBillingDate(s.last_invoice_payment_at)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         size="sm"
@@ -221,7 +232,7 @@ export default function AdminSubscriptions() {
                 })}
                 {all.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                       Nenhuma assinatura registrada ainda.
                     </TableCell>
                   </TableRow>

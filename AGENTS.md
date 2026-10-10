@@ -15,3 +15,4 @@ Asaas invoice state is derived from current provider billing cycles, never deliv
 Hourly Asaas reconciliation uses single-use database tickets restricted to service_role, filters linked subscriptions, and verifies the provider webhook without exposing its token.
 
 Subscription notices and access cutoffs use the same Brazil calendar; provider invoice snapshots drive pending invoices independently of access state, so upcoming charges never hide paid access.
+Administrative last-invoice payment dates come from dated paid subscription_payments records, never subscription edit timestamps; this prevents invented payment dates and keeps both admin lists consistent.
