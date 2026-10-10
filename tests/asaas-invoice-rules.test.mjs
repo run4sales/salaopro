@@ -21,3 +21,13 @@ test('upcoming first invoice is available and empty history is safe', () => {
   assert.equal(newestInvoice([{ id: 'first', dueDate: '2026-10-11' }], '2026-10-10')?.id, 'first');
   assert.equal(newestInvoice([], '2026-10-10'), null);
 });
+
+test('payment before due date releases the first cycle', () => {
+  assert.equal(newestInvoice([{ id: 'early', dueDate: '2026-10-12', status: 'CONFIRMED' }], '2026-10-10')?.status, 'CONFIRMED');
+});
+
+test('future paid invoice is recognized without concealing unpaid current invoice', () => {
+  const early = { id: 'early', dueDate: '2026-11-01', status: 'RECEIVED' };
+  assert.equal(newestInvoice([{ id: 'old', dueDate: '2026-10-01', status: 'RECEIVED' }, early], '2026-10-10')?.id, 'early');
+  assert.equal(newestInvoice([{ id: 'current', dueDate: '2026-10-01', status: 'OVERDUE' }, early], '2026-10-10')?.id, 'current');
+});
