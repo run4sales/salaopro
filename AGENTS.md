@@ -16,3 +16,4 @@ Hourly Asaas reconciliation uses single-use database tickets restricted to servi
 
 Subscription notices and access cutoffs use the same Brazil calendar; provider invoice snapshots drive pending invoices independently of access state, so upcoming charges never hide paid access.
 Administrative last-invoice payment dates come from dated paid subscription_payments records, never subscription edit timestamps; this prevents invented payment dates and keeps both admin lists consistent.
+SaaS cash charts aggregate paid subscription_payments by Brazil payment month; overdue totals use unpaid due dates and current MRR uses canonical access states, never reconstructed historical subscription prices.

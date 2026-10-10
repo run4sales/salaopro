@@ -5,6 +5,10 @@ import { Building2, TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle, 
 import { fmtBRL } from "./shared";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid } from "recharts";
 
+import SaaSInvoiceSummary from "./SaaSInvoiceSummary";
+import { useSaaSInvoices } from "@/hooks/useSaaSInvoices";
+import { brazilMonth, invoiceMonthMetrics } from "@/lib/saasInvoiceMetrics";
+
 type Sub = {
   establishment_id: string;
   status: string;
@@ -24,14 +28,18 @@ type Plan = { id: string; name: string; slug: string; monthly_price: number; dis
 export default function AdminDashboard() {
   const metrics = useQuery({
     queryKey: ["admin-metrics-with-potential"],
+    refetchInterval: 60_000,
     queryFn: async () => {
-      const [{ data: subs, error: subsError }, { data: profiles, error: profilesError }, { data: plans, error: plansError }] = await Promise.all([
+      const [{ data: subs, error: subsError }, { data: profiles, error: profilesError }, { data: plans, error: plansError }, { data: states, error: statesError }] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
           .select("establishment_id, status, monthly_amount, started_at, canceled_at, plan_id, subscription_plans!subscriptions_plan_id_fkey(id, name, slug, monthly_price, display_order)"),
         (supabase as any).from("profiles").select("id, created_at, plan"),
         (supabase as any).from("subscription_plans").select("id, name, slug, monthly_price, display_order").order("display_order"),
+        (supabase as any).rpc("get_admin_subscription_states"),
       ]);
+      if (statesError) throw statesError;
+      const stateMap = new Map<string, string>((states ?? []).map((row: any) => [row.establishment_id, row.state]));
       if (subsError) throw subsError;
       if (profilesError) throw profilesError;
       if (plansError) throw plansError;
@@ -54,7 +62,7 @@ export default function AdminDashboard() {
         const plan = relationPlan ?? (s.plan_id ? plansById.get(s.plan_id) : undefined);
         subsByEstablishment.set(s.establishment_id, {
           establishment_id: s.establishment_id,
-          status: s.status,
+          status: stateMap.get(s.establishment_id) ?? "no_subscription",
           monthly_amount: Number(s.monthly_amount || plan?.monthly_price || 0),
           started_at: s.started_at,
           canceled_at: s.canceled_at,
@@ -77,7 +85,7 @@ export default function AdminDashboard() {
         }
         return {
           establishment_id: p.id,
-          status: "trial",
+          status: "no_subscription",
           monthly_amount: Number(chosenPlan?.monthly_price || 0),
           started_at: p.created_at,
           canceled_at: null,
@@ -90,13 +98,14 @@ export default function AdminDashboard() {
     },
   });
 
+  const invoices = useSaaSInvoices();
   const list = metrics.data?.list ?? [];
   const profiles = metrics.data?.profiles ?? [];
   const plans = metrics.data?.plans ?? [];
-  const active = list.filter((s) => s.status === "active");
-  const trial = list.filter((s) => s.status === "trial");
+  const active = list.filter((s) => s.status === "active_paid");
+  const trial = list.filter((s) => ["trial_active", "trial_expiring"].includes(s.status));
   const canceled = list.filter((s) => s.status === "canceled");
-  const potentialStatuses = new Set(["trial", "active"]);
+  const potentialStatuses = new Set(["trial_active", "trial_expiring", "active_paid"]);
   const potentialList = list.filter((s) => potentialStatuses.has(s.status));
   const mrr = active.reduce((sum, s) => sum + Number(s.monthly_amount || 0), 0);
   const potentialMrr = potentialList.reduce((sum, s) => sum + Number(s.monthly_amount || s.plan?.monthly_price || 0), 0);
@@ -111,17 +120,10 @@ export default function AdminDashboard() {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-      const eligible = list.filter((s) => {
-        const started = new Date(s.started_at);
-        const canceledAt = s.canceled_at ? new Date(s.canceled_at) : null;
-        return started < end && (!canceledAt || canceledAt >= d);
-      });
-      const monthMrr = eligible
-        .filter((s) => s.status === "active")
-        .reduce((sum, s) => sum + Number(s.monthly_amount || 0), 0);
-      const monthPotential = eligible
-        .filter((s) => potentialStatuses.has(s.status))
-        .reduce((sum, s) => sum + Number(s.monthly_amount || s.plan?.monthly_price || 0), 0);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const totals = invoiceMonthMetrics(invoices.data ?? [], monthKey);
+      const monthMrr = totals.received;
+      const monthPotential = totals.overdue;
       months.push({
         label: d.toLocaleDateString("pt-BR", { month: "short" }),
         mrr: monthMrr,
@@ -153,17 +155,6 @@ export default function AdminDashboard() {
     return months;
   })();
 
-  // Insights
-  const currMrr = mrrEvolution[mrrEvolution.length - 1]?.mrr ?? 0;
-  const prevMrr = mrrEvolution[mrrEvolution.length - 2]?.mrr ?? 0;
-  const mrrDelta = prevMrr > 0 ? ((currMrr - prevMrr) / prevMrr) * 100 : 0;
-  const churnRate = active.length + canceled.length > 0
-    ? (canceled.length / (active.length + canceled.length)) * 100
-    : 0;
-  const trialConversion = trial.length + active.length > 0
-    ? (active.length / (trial.length + active.length)) * 100
-    : 0;
-
   const planCounts = (() => {
     const counts = new Map<string, { planId: string | null; name: string; price: number; total: number; active: number; trial: number }>();
     plans.forEach((plan) => {
@@ -180,27 +171,28 @@ export default function AdminDashboard() {
         trial: 0,
       };
       current.total += 1;
-      if (sub.status === "active") current.active += 1;
-      if (sub.status === "trial") current.trial += 1;
+      if (sub.status === "active_paid") current.active += 1;
+      if (["trial_active", "trial_expiring"].includes(sub.status)) current.trial += 1;
       counts.set(key, current);
     });
     return Array.from(counts.values()).filter((item) => item.total > 0);
   })();
 
   const kpis = [
-    { label: "MRR", value: fmtBRL(mrr), icon: DollarSign, tone: "text-accent" },
+    { label: "MRR atual contratado", value: fmtBRL(mrr), icon: DollarSign, tone: "text-accent" },
     { label: "Potencial de MRR", value: fmtBRL(potentialMrr), icon: Target, tone: "text-success" },
-    { label: "ARR", value: fmtBRL(arr), icon: TrendingUp, tone: "text-primary-glow" },
+    { label: "Projeção anual (ARR)", value: fmtBRL(arr), icon: TrendingUp, tone: "text-primary-glow" },
     { label: "Ticket médio (ARPU)", value: fmtBRL(arpu), icon: TrendingUp, tone: "text-accent" },
     { label: "Empresas ativas", value: active.length, icon: Building2, tone: "text-success" },
     { label: "Em teste", value: trial.length, icon: Sparkles, tone: "text-accent" },
     { label: "Canceladas", value: canceled.length, icon: TrendingDown, tone: "text-destructive" },
     { label: "Total cadastradas", value: totalCompanies, icon: Users, tone: "text-primary-glow" },
-    { label: "Churn rate", value: `${churnRate.toFixed(1)}%`, icon: AlertTriangle, tone: churnRate > 5 ? "text-destructive" : "text-muted-foreground" },
   ];
 
   return (
     <div className="space-y-6">
+      <SaaSInvoiceSummary />
+      {metrics.isError && <p role="alert" className="text-destructive">Não foi possível carregar os indicadores de assinaturas.</p>}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k) => (
           <Card key={k.label} className="bg-card/60 border-border/60">
@@ -213,34 +205,6 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         ))}
-      </div>
-
-      {/* Insights */}
-      <div className="grid gap-3 md:grid-cols-3">
-        <Card className="bg-card/60 border-border/60">
-          <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Variação do MRR</div>
-            <div className={`text-lg font-semibold ${mrrDelta >= 0 ? "text-success" : "text-destructive"}`}>
-              {mrrDelta >= 0 ? "+" : ""}{mrrDelta.toFixed(1)}% vs mês anterior
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/60 border-border/60">
-          <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Conversão Trial → Pago</div>
-            <div className="text-lg font-semibold text-primary-glow">{trialConversion.toFixed(1)}%</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/60 border-border/60">
-          <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Alerta</div>
-            <div className="text-sm text-muted-foreground">
-              {churnRate > 10 ? "⚠️ Churn elevado este período" :
-               trial.length > active.length ? "💡 Foque em converter trials" :
-               "✓ Indicadores saudáveis"}
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <Card className="bg-card/60 border-border/60">
@@ -280,7 +244,7 @@ export default function AdminDashboard() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="bg-card/60 border-border/60">
           <CardHeader>
-            <CardTitle className="text-base">Evolução do MRR</CardTitle>
+            <CardTitle className="text-base">Recebimentos reais (últimos 6 meses)</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={240}>
@@ -292,8 +256,8 @@ export default function AdminDashboard() {
                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                   formatter={(v: number) => fmtBRL(v)}
                 />
-                <Line type="monotone" dataKey="mrr" name="MRR" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--accent))", r: 4 }} />
-                <Line type="monotone" dataKey="potential" name="Potencial" stroke="hsl(var(--success))" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                <Line type="monotone" dataKey="mrr" name="Recebido" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--accent))", r: 4 }} />
+                <Line type="monotone" dataKey="potential" name="Vencido em aberto" stroke="hsl(var(--success))" strokeWidth={2} strokeDasharray="5 5" dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
