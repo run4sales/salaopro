@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Redesenhar a página pública: diagnóstico e plano primeiro; depois implementar comunicação verificada, demonstração do produto, planos corretos e navegação, sem alterar assinatura ou cadastro.
+- [ ] Validar a nova página em computador e celular, incluindo links, planos e abertura do cadastro, sem criar contas reais.
+
 - [x] Corrigir indicadores SaaS usando faturas reais, estados efetivos e histórico de recebimentos; remover histórico reconstruído, churn e conversão sem evidência; testes de datas passaram.
 - [ ] Conciliar diferença de setembro: registros disponíveis têm 19 pagamentos recebidos de R$ 1.008,10 e seis faturas vencidas de R$ 459,40; usuário informou 22/R$ 1.097,80 e oito/R$ 439,20; depende de relatório Asaas ou confirmação dos vínculos ausentes, sem inventar ajustes.
 
