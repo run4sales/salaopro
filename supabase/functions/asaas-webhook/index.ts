@@ -1,14 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { PAYMENT_EVENTS } from '../_shared/asaas-client.ts';
+import { syncAsaasSubscription } from '../_shared/asaas-sync.ts';
 
 const MAX_BODY_BYTES = 256 * 1024;
-const SUPPORTED_EVENTS = new Set([
-  'PAYMENT_CONFIRMED',
-  'PAYMENT_RECEIVED',
-  'PAYMENT_OVERDUE',
-  'PAYMENT_REFUNDED',
-  'PAYMENT_DELETED',
-]);
+const SUPPORTED_EVENTS = new Set(PAYMENT_EVENTS);
 
 function json(payload: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -66,6 +62,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Payload too large' }, 413);
     }
     const payload = JSON.parse(rawBody);
+    if (!payload || typeof payload !== 'object') return json({ error: 'Invalid webhook payload' }, 400);
     const event: string = payload.event;
     const payment = payload.payment ?? {};
     const subscriptionId: string | undefined = typeof payment.subscription === 'string'
@@ -90,11 +87,18 @@ Deno.serve(async (req) => {
       asaas_payment_id: paymentId ?? null,
       asaas_subscription_id: subscriptionId ?? null,
       provider_event_id: providerEventId,
-      payload,
+      payload: { event, id: providerEventId, payment: { id: paymentId, subscription: subscriptionId, customer: customerId, status: payment.status, dueDate: payment.dueDate } },
     }).select('id').single();
-    if (logError?.code === '23505') return json({ ok: true, duplicate: true });
-    if (logError) throw logError;
-    logId = log.id;
+    if (logError?.code === '23505') {
+      const { data: existing, error: existingError } = await admin.from('asaas_webhook_logs')
+        .select('processed').eq('provider_event_id', providerEventId).single();
+      if (existingError) throw existingError;
+      if (existing.processed) return json({ ok: true, duplicate: true });
+    } else if (logError) throw logError;
+    const { data: claimed, error: claimError } = await admin.rpc('claim_asaas_webhook', { p_event_id: providerEventId });
+    if (claimError) throw claimError;
+    if (!claimed) return json({ error: 'Event processing in progress; retry later' }, 503);
+    logId = claimed;
 
     // Locate the local subscription. Some Asaas payment events omit the
     // subscription field, so the customer is a necessary fallback.
@@ -156,86 +160,15 @@ Deno.serve(async (req) => {
     }
 
     if (localSub && paymentId) {
-      // Upsert payment record
-      const { error: paymentError } = await admin.from('subscription_payments').upsert({
-        establishment_id: establishmentId,
-        subscription_id: localSubId,
-        asaas_payment_id: paymentId,
-        asaas_subscription_id: subscriptionId,
-        value: Number(payment.value ?? 0),
-        net_value: payment.netValue ? Number(payment.netValue) : null,
-        status: payment.status ?? event,
-        billing_type: payment.billingType ?? null,
-        due_date: payment.dueDate ?? null,
-        payment_date: payment.paymentDate ? new Date(payment.paymentDate).toISOString() : null,
-        invoice_url: payment.invoiceUrl ?? null,
-        bank_slip_url: payment.bankSlipUrl ?? null,
-        raw: payment,
-      }, { onConflict: 'asaas_payment_id' });
-      if (paymentError) throw paymentError;
-
-      // Update subscription state based on event
-      const updates: Record<string, unknown> = {};
-      switch (event) {
-        case 'PAYMENT_CONFIRMED':
-        case 'PAYMENT_RECEIVED': {
-          if (!localSub.manual_blocked_at) updates.status = 'active';
-          updates.last_payment_at = payment.paymentDate
-            ?? payment.clientPaymentDate
-            ?? payment.confirmedDate
-            ?? new Date().toISOString();
-          updates.canceled_at = null;
-          const base = payment.dueDate
-            ? new Date(`${payment.dueDate}T12:00:00.000Z`)
-            : new Date();
-          const billingDay = base.getUTCDate();
-          base.setUTCDate(1);
-          base.setUTCMonth(base.getUTCMonth() + 1);
-          const lastDayOfBillingMonth = new Date(Date.UTC(
-            base.getUTCFullYear(),
-            base.getUTCMonth() + 1,
-            0,
-          )).getUTCDate();
-          base.setUTCDate(Math.min(billingDay, lastDayOfBillingMonth));
-          updates.next_billing_at = base.toISOString();
-          // Payment-related restrictions are removed. A manual admin block is
-          // intentionally preserved and can only be removed by an admin.
-          updates.grace_started_at = null;
-          updates.grace_ends_at = null;
-          updates.grace_cycle_key = null;
-
-          // Apply pending plan change (downgrade scheduled for next cycle)
-          if (localSub.pending_plan_id) {
-            const { data: pp, error: planError } = await admin.from('subscription_plans')
-              .select('id, monthly_price').eq('id', localSub.pending_plan_id).maybeSingle();
-            if (planError) throw planError;
-            if (pp) {
-              updates.plan_id = pp.id;
-              updates.monthly_amount = pp.monthly_price;
-              updates.pending_plan_id = null;
-              updates.pending_plan_effective_at = null;
-            }
-          }
-          break;
-        }
-        case 'PAYMENT_OVERDUE':
-          if (!localSub.manual_blocked_at) updates.status = 'past_due';
-          break;
-        case 'PAYMENT_REFUNDED':
-        case 'PAYMENT_DELETED':
-          if (!localSub.manual_blocked_at) updates.status = 'canceled';
-          break;
-      }
-      if (Object.keys(updates).length > 0) {
-        const { error: updateError } = await admin.from('subscriptions').update(updates)
-          .eq('id', localSubId);
-        if (updateError) throw updateError;
-      }
-
+      const apiKey = Deno.env.get('ASAAS_API_KEY');
+      if (!apiKey) throw new Error('ASAAS_API_KEY não configurada');
+      // Notifications can arrive late: read authoritative invoices instead of
+      // trusting the delivery order or applying a stale status from the payload.
+      await syncAsaasSubscription(admin, apiKey, localSub.establishment_id, 'webhook');
     }
 
     const { error: processedError } = await admin.from('asaas_webhook_logs')
-      .update({ processed: true, error: null }).eq('id', logId);
+      .update({ processed: true, error: null, processing_started_at: null }).eq('id', logId);
     if (processedError) throw processedError;
 
     return json({ ok: true });
@@ -244,6 +177,7 @@ Deno.serve(async (req) => {
     if (logId) {
       await admin.from('asaas_webhook_logs').update({
         processed: false,
+        processing_started_at: null,
         error: (e as Error).message,
       }).eq('id', logId);
     }

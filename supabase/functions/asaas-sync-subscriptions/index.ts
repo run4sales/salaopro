@@ -1,6 +1,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { syncAsaasSubscription } from '../_shared/asaas-sync.ts';
+import { asaasRequest, ensureAsaasWebhook } from '../_shared/asaas-client.ts';
+import { z } from 'npm:zod@3';
 
 function json(payload: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -21,16 +23,23 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get('ASAAS_API_KEY');
     if (!apiKey) throw new Error('ASAAS_API_KEY não configurada');
     const admin = createClient(supabaseUrl, serviceKey);
-    const body = await req.json().catch(() => ({})) as {
-      establishment_id?: string;
-      limit?: number;
-      mode?: 'manual' | 'audit';
-    };
+    const parsed = z.object({
+      establishment_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(100).optional(),
+      mode: z.enum(['manual', 'audit', 'diagnostic', 'setup']).optional(), audit_ticket: z.string().uuid().optional(),
+    }).safeParse(await req.json().catch(() => null));
+    if (!parsed.success) return json({ error: 'Solicitação inválida.' }, 400);
+    const body = parsed.data;
 
     let userId: string | null = null;
     const schedulerSecret = Deno.env.get('ASAAS_SYNC_SECRET');
     const receivedSecret = req.headers.get('x-asaas-sync-secret');
-    const scheduled = Boolean(schedulerSecret && receivedSecret === schedulerSecret);
+    let scheduled = Boolean(schedulerSecret && receivedSecret === schedulerSecret);
+    if (body.audit_ticket) {
+      const { data: accepted, error: ticketError } = await admin.rpc('consume_asaas_audit_ticket', { p_ticket: body.audit_ticket });
+      if (ticketError) throw ticketError;
+      if (!accepted) return json({ error: 'Unauthorized' }, 401);
+      scheduled = true;
+    }
     if (!scheduled) {
       const authHeader = req.headers.get('Authorization');
       if (!authHeader?.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401);
@@ -45,9 +54,29 @@ Deno.serve(async (req) => {
       if (!role) return json({ error: 'Forbidden' }, 403);
     }
 
+    const webhookUrl = `${supabaseUrl}/functions/v1/asaas-webhook`;
+    if (body.mode === 'diagnostic') {
+      await asaasRequest(apiKey, '/webhooks?limit=1');
+      return json({ ok: true, connected: true });
+    }
+    // Scheduled backstop also detects and repairs an interrupted delivery queue.
+    if (scheduled || body.mode === 'setup') {
+      try {
+        await ensureAsaasWebhook(apiKey, webhookUrl);
+        const { error: hookLogError } = await admin.from('asaas_sync_logs').insert({
+          source: 'audit', details: { webhook_verified: true }, duration_ms: Date.now() - started,
+        });
+        if (hookLogError) throw hookLogError;
+      } catch (error) {
+        const { error: hookLogError } = await admin.from('asaas_sync_logs').insert({ source: 'audit', error: (error as Error).message, details: { webhook_verified: false } });
+        if (hookLogError) throw hookLogError;
+        // Continue reconciling invoices even when the provider denies webhook management.
+      }
+    }
     const source = scheduled || body.mode === 'audit' ? 'audit' : 'manual';
-    const limit = Math.min(Math.max(Number(body.limit ?? 500), 1), 2_000);
+    const limit = body.limit ?? 100;
     let query = admin.from('subscriptions').select('establishment_id').order('updated_at').limit(limit);
+    if (!body.establishment_id) query = query.not('asaas_subscription_id', 'is', null);
     if (body.establishment_id) query = query.eq('establishment_id', body.establishment_id);
     const { data: subscriptions, error: queryError } = await query;
     if (queryError) throw queryError;

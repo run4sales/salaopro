@@ -8,6 +8,7 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
+import { extractEdgeFunctionError } from "@/lib/edgeFunctionError";
 
 type Plan = { id: string; name: string; slug: string; monthly_price: number };
 type Profile = { id: string; business_name: string; created_at: string; plan?: string | null };
@@ -110,7 +111,8 @@ export default function AdminSubscriptions() {
       const { data, error } = await supabase.functions.invoke("asaas-sync-subscriptions", {
         body: { establishment_id: establishmentId, mode: "manual" },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractEdgeFunctionError(error));
+      if (!data?.ok) throw new Error(data?.results?.[0]?.error ?? "A sincronização não foi concluída.");
       const result = (data as { results?: Array<{ status?: string; payment_status?: string }> })?.results?.[0];
       toast.success(
         `Asaas sincronizado: ${result?.payment_status ?? "sem cobrança"} · ${result?.status ?? "sem alteração"}`,
@@ -122,7 +124,7 @@ export default function AdminSubscriptions() {
       ]);
     } catch (error) {
       console.error("asaas manual sync error", error);
-      toast.error("Não foi possível sincronizar esta assinatura com o Asaas.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível sincronizar esta assinatura com o Asaas.");
     } finally {
       setSyncingId(null);
     }
