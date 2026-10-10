@@ -14,6 +14,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE, EFFECTIVE_STATUS_OPTIONS, logAdminAction } from "./shared";
 
 
+import { billingCountdown, formatBillingDate, subscriptionDeadline } from "@/lib/subscriptionBilling";
+import { fetchLastInvoicePayments } from "@/lib/adminInvoicePayments";
+
 type Row = {
   id: string;
   business_name: string;
@@ -30,6 +33,9 @@ type Row = {
     monthly_amount: number;
     next_billing_at: string | null;
     trial_ends_at?: string | null;
+    current_invoice_status?: string | null;
+    current_invoice_due_date?: string | null;
+    last_invoice_payment_at?: string | null;
     asaas_subscription_id: string | null;
     inferred?: boolean;
     effective_state?: string;
@@ -55,6 +61,7 @@ export default function AdminCompanies() {
 
   const profilesQuery = useQuery({
     queryKey: ["admin-companies"],
+    refetchInterval: 60_000,
     queryFn: async () => {
       const { data: profiles, error } = await (supabase as any)
         .from("profiles")
@@ -62,16 +69,19 @@ export default function AdminCompanies() {
         .order("created_at", { ascending: false });
       if (error) throw error;
 
-      const [{ data: subs }, { data: fetchedPlans }, { data: states, error: statesError }] = await Promise.all([
+      const [{ data: subs, error: subsError }, { data: fetchedPlans, error: plansError }, { data: states, error: statesError }, lastPayments] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
-          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, trial_ends_at, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
+          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, trial_ends_at, current_invoice_status, current_invoice_due_date, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
         (supabase as any)
           .from("subscription_plans")
           .select("id, name, slug, monthly_price")
           .eq("active", true),
         (supabase as any).rpc("get_admin_subscription_states"),
+        fetchLastInvoicePayments(),
       ]);
+      if (subsError) throw subsError;
+      if (plansError) throw plansError;
       if (statesError) throw statesError;
       const stateMap = new Map<string, string>((states ?? []).map((row: any) => [row.establishment_id, row.state]));
       const subsMap = new Map<string, any>();
@@ -83,6 +93,9 @@ export default function AdminCompanies() {
           monthly_amount: Number(s.monthly_amount || 0),
           next_billing_at: s.next_billing_at,
           trial_ends_at: s.trial_ends_at,
+          current_invoice_status: s.current_invoice_status,
+          current_invoice_due_date: s.current_invoice_due_date,
+          last_invoice_payment_at: lastPayments.get(s.establishment_id) ?? null,
           asaas_subscription_id: s.asaas_subscription_id,
           effective_state: stateMap.get(s.establishment_id) ?? s.status,
           plan: s.subscription_plans ? { name: s.subscription_plans.name } : undefined,
@@ -374,11 +387,15 @@ export default function AdminCompanies() {
                   <TableHead>Status</TableHead>
                   <TableHead>Cadastro</TableHead>
                   <TableHead>Último acesso</TableHead>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Dias para vencer</TableHead>
+                  <TableHead>Última fatura paga em</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map((r) => {
+                  const deadline = subscriptionDeadline(r.subscription);
                   const rawStatus = r.subscription?.status ?? "trial";
                   const status = r.subscription?.effective_state ?? "no_subscription";
                   return (
@@ -402,6 +419,9 @@ export default function AdminCompanies() {
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{fmtDate(r.created_at)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{fmtDate(r.last_access_at)}</TableCell>
+                      <TableCell className="whitespace-nowrap text-xs">{formatBillingDate(deadline)}{r.subscription?.status === "trial" && <div className="text-muted-foreground">Fim do teste</div>}</TableCell>
+                      <TableCell className="whitespace-nowrap text-xs">{billingCountdown(deadline)}</TableCell>
+                      <TableCell className="whitespace-nowrap text-xs">{formatBillingDate(r.subscription?.last_invoice_payment_at)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1 flex-wrap">
                           <Button
@@ -431,7 +451,7 @@ export default function AdminCompanies() {
                 })}
                 {rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                       Nenhuma empresa encontrada com esses filtros.
                     </TableCell>
                   </TableRow>
