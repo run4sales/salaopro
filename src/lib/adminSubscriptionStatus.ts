@@ -1,4 +1,4 @@
-import { billingDaysLeft } from './subscriptionBilling';
+import { billingDaysLeft } from './subscriptionBilling.ts';
 
 type AdministrativeSubscription = {
   status: string;
@@ -21,9 +21,9 @@ export function adminSubscriptionStatus(
     const days = billingDaysLeft(subscription.manual_blocked_at, now);
     blockedDays = days === null ? null : -days;
   } else if (state === 'trial_expired') {
-    const trialEnd = subscription.trial_ends_at ?? (subscription.created_at
-      ? new Date(new Date(subscription.created_at).getTime() + 10 * 86400000).toISOString()
-      : null);
+    const created = subscription.created_at ? Date.parse(subscription.created_at) : NaN;
+    const trialEnd = subscription.trial_ends_at ?? (Number.isFinite(created)
+      ? new Date(created + 10 * 86400000).toISOString() : null);
     const days = billingDaysLeft(trialEnd, now);
     blockedDays = days === null ? null : -days;
   } else if (state === 'overdue' || state === 'blocked') {
