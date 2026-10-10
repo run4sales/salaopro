@@ -73,7 +73,7 @@ export default function AdminCompanies() {
       const [{ data: subs, error: subsError }, { data: fetchedPlans, error: plansError }, { data: states, error: statesError }, lastPayments] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
-          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, trial_ends_at, manual_blocked_at, current_invoice_status, current_invoice_due_date, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
+          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, trial_ends_at, created_at, manual_blocked_at, current_invoice_status, current_invoice_due_date, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
         (supabase as any)
           .from("subscription_plans")
           .select("id, name, slug, monthly_price")

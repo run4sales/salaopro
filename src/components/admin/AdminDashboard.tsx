@@ -34,7 +34,7 @@ export default function AdminDashboard() {
       const [{ data: subs, error: subsError }, { data: profiles, error: profilesError }, { data: plans, error: plansError }, { data: states, error: statesError }] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
-          .select("establishment_id, status, monthly_amount, started_at, canceled_at, plan_id, trial_ends_at, manual_blocked_at, next_billing_at, current_invoice_due_date, subscription_plans!subscriptions_plan_id_fkey(id, name, slug, monthly_price, display_order)"),
+          .select("establishment_id, status, monthly_amount, started_at, canceled_at, plan_id, trial_ends_at, created_at, manual_blocked_at, next_billing_at, current_invoice_due_date, subscription_plans!subscriptions_plan_id_fkey(id, name, slug, monthly_price, display_order)"),
         (supabase as any).from("profiles").select("id, created_at, plan"),
         (supabase as any).from("subscription_plans").select("id, name, slug, monthly_price, display_order").order("display_order"),
         (supabase as any).rpc("get_admin_subscription_states"),
