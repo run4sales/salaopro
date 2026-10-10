@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Conferir Asaas agora e adicionar dias para vencimento e data real do último pagamento ao painel de empresas e assinaturas.
+
 - [x] Alinhar pagamento confirmado, faturas pendentes, barras amarela/laranja/vermelha, bloqueio no terceiro dia e teste gratuito de dez dias; 13 testes passaram e limites de acesso foram verificados no banco; funções publicadas e reconciliação real encontrou 13 ciclos pagos e 11 vencidos.
 - [ ] Confirmar visualmente as barras após publicação: a prévia autenticada permaneceu em “Carregando permissões”; alterações de interface dependem de publicação.
 
