@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
-const ASAAS_BASE = 'https://api.asaas.com/v3';
+const ASAAS_BASE = Deno.env.get('ASAAS_BASE_URL') ?? 'https://api.asaas.com/v3';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -60,10 +60,11 @@ Deno.serve(async (req) => {
 
     // DOWNGRADE — agenda para o próximo ciclo
     if (!isUpgrade) {
-      await admin.from('subscriptions').update({
+      const { error: scheduleError } = await admin.from('subscriptions').update({
         pending_plan_id: newPlan.id,
         pending_plan_effective_at: sub.next_billing_at,
       }).eq('establishment_id', profile.id);
+      if (scheduleError) throw scheduleError;
 
       return new Response(JSON.stringify({
         ok: true,
@@ -84,9 +85,11 @@ Deno.serve(async (req) => {
     }
 
     if (sub.asaas_subscription_id) {
-      await fetch(`${ASAAS_BASE}/subscriptions/${sub.asaas_subscription_id}`, {
+      const canceled = await fetch(`${ASAAS_BASE}/subscriptions/${sub.asaas_subscription_id}`, {
         method: 'DELETE', headers,
-      }).catch(() => {});
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!canceled.ok && canceled.status !== 404) throw new Error(`Asaas HTTP ${canceled.status}: cancelamento anterior não confirmado.`);
     }
 
     const nextDue = new Date();
@@ -107,20 +110,27 @@ Deno.serve(async (req) => {
     const subJson = await subRes.json();
     if (!subRes.ok) throw new Error(`Asaas subscription: ${JSON.stringify(subJson)}`);
 
+    const { error: associationError } = await admin.from('subscriptions').update({
+      asaas_subscription_id: subJson.id, plan_id: newPlan.id,
+      monthly_amount: newPlan.monthly_price,
+    }).eq('id', sub.id);
+    if (associationError) throw associationError;
+
     const paysRes = await fetch(`${ASAAS_BASE}/subscriptions/${subJson.id}/payments?limit=1`, { headers });
     const paysJson = await paysRes.json();
+    if (!paysRes.ok) throw new Error(`Asaas HTTP ${paysRes.status}: consulta da fatura não concluída.`);
     const firstPayment = paysJson?.data?.[0];
     const paymentLink = firstPayment?.invoiceUrl ?? null;
 
-    await admin.from('subscriptions').update({
+    const { error: updateError } = await admin.from('subscriptions').update({
       plan_id: newPlan.id,
       monthly_amount: newPlan.monthly_price,
       asaas_subscription_id: subJson.id,
       payment_link: paymentLink,
       pending_plan_id: null,
       pending_plan_effective_at: null,
-      next_billing_at: subJson.nextDueDate ? new Date(subJson.nextDueDate).toISOString() : null,
     }).eq('establishment_id', profile.id);
+    if (updateError) throw updateError;
 
     return new Response(JSON.stringify({
       ok: true,

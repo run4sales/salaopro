@@ -186,6 +186,9 @@ export async function syncAsaasSubscription(
   };
   if (!subscription.manual_blocked_at) updates.status = newStatus;
   if (paidPayment) updates.last_payment_at = lastPaymentAt;
+  if (latestPayment?.status === 'OVERDUE' && latestPayment.dueDate) {
+    updates.next_billing_at = new Date(`${latestPayment.dueDate}T12:00:00.000Z`).toISOString();
+  }
   if (latestPayment && PAID_STATUSES.has(latestPayment.status ?? '')) {
     updates.next_billing_at = remoteSubscription.nextDueDate
       ? new Date(`${remoteSubscription.nextDueDate}T12:00:00.000Z`).toISOString()
@@ -195,6 +198,16 @@ export async function syncAsaasSubscription(
     updates.grace_started_at = null;
     updates.grace_ends_at = null;
     updates.grace_cycle_key = null;
+    if (subscription.pending_plan_id) {
+      const { data: pendingPlan, error: planError } = await admin.from('subscription_plans')
+        .select('id, monthly_price').eq('id', subscription.pending_plan_id).maybeSingle();
+      if (planError) throw planError;
+      if (pendingPlan && Number(pendingPlan.monthly_price) === Number(latestPayment.value)) {
+        updates.plan_id = pendingPlan.id;
+        updates.pending_plan_id = null;
+        updates.pending_plan_effective_at = null;
+      }
+    }
   }
   const { error: updateError } = await admin.from('subscriptions').update(updates).eq('id', subscription.id);
   if (updateError) throw updateError;
