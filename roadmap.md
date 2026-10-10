@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Classificar no painel administrativo como cancelados os bloqueados ou expirados há mais de dez dias; manter acesso canônico e cobranças Asaas intactos; validar limite e consistência das listas e indicadores.
+
 - [x] Redesenhar a página pública com comunicação verificada, demonstrações ilustrativas, perguntas, suporte real e teste de dez dias; sem alterar assinatura ou cadastro.
 - [x] Validar em computador e celular: menu, módulos, perguntas, destinos de links e cadastro com os três planos; quatro testes passaram, sem erros de execução ou rolagem horizontal.
 - [ ] Automatizar preços públicos sem snapshot: consulta anônima dos planos é bloqueada pelas permissões existentes; nesta tarefa visual, preservar permissões e exibir valores oficiais conferidos em 10/10/2026 com aviso explícito.
