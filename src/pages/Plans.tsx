@@ -18,6 +18,7 @@ const fmtDate = (d: string | null | undefined) =>
 
 const PAYMENT_STATUS: Record<string, { label: string; tone: string }> = {
   CONFIRMED: { label: "Pago", tone: "bg-success/15 text-success border-success/30" },
+  RECEIVED_IN_CASH: { label: "Pago", tone: "bg-success/15 text-success border-success/30" },
   RECEIVED: { label: "Pago", tone: "bg-success/15 text-success border-success/30" },
   PENDING: { label: "Pendente", tone: "bg-warning/15 text-warning border-warning/30" },
   OVERDUE: { label: "Vencido", tone: "bg-destructive/15 text-destructive border-destructive/30" },
@@ -52,6 +53,7 @@ export default function Plans() {
   const subQuery = useQuery({
     queryKey: ["subscription-overview", establishmentId],
     enabled: !!establishmentId,
+    refetchInterval: 60_000,
     queryFn: async () => {
       const { data: sub } = await (supabase as any)
         .from("subscriptions").select("*").eq("establishment_id", establishmentId).maybeSingle();
@@ -90,6 +92,7 @@ export default function Plans() {
   const invoicesQuery = useQuery({
     queryKey: ["subscription-invoices", establishmentId],
     enabled: !!establishmentId,
+    refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("subscription_payments")
@@ -106,6 +109,7 @@ export default function Plans() {
 
   // Define se a loja precisa de ação de pagamento/assinatura no plano atual
   const needsPaymentAction = !!sub && (
+    ["PENDING", "OVERDUE"].includes(sub?.current_invoice_status ?? "") ||
     !sub.asaas_subscription_id ||
     ["past_due", "overdue", "trial", "canceled"].includes(String(sub.status ?? "")) ||
     !!sub.manual_blocked_at === false && (
@@ -113,7 +117,7 @@ export default function Plans() {
       (sub.status === "trial" && sub.trial_ends_at && new Date(sub.trial_ends_at) < new Date())
     )
   );
-  const hasPendingInvoice = !!sub?.payment_link && sub?.status !== "active";
+  const hasPendingInvoice = !!sub?.payment_link && ["PENDING", "OVERDUE"].includes(sub?.current_invoice_status ?? "");
 
   function payCurrentPlan() {
     if (hasPendingInvoice && sub?.payment_link) {
@@ -334,7 +338,7 @@ export default function Plans() {
                 {(invoicesQuery.data ?? []).map((inv: any) => {
                   const st = PAYMENT_STATUS[inv.status] ?? { label: inv.status, tone: "border-border text-muted-foreground" };
                   const url = inv.invoice_url || inv.bank_slip_url;
-                  const isPaid = inv.status === "CONFIRMED" || inv.status === "RECEIVED";
+                  const isPaid = ["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH"].includes(inv.status);
                   return (
                     <TableRow key={inv.id}>
                       <TableCell>{fmtDate(inv.due_date)}</TableCell>
