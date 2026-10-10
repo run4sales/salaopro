@@ -213,6 +213,8 @@ All colors MUST be HSL.
 .landing-hero-secondary:hover { background: hsl(var(--landing-hero-text) / .12); color: hsl(var(--landing-hero-text)); }
 .landing-agenda-demo .rbc-calendar { height: 430px !important; }
 .landing-agenda-demo .rbc-toolbar { gap: 8px; font-size: 12px; }
+.landing-agenda-demo .rbc-btn-group { display: inline-flex; max-width: 100%; }
+.landing-agenda-demo .rbc-btn-group button { min-width: 0; }
 .landing-agenda-demo .rbc-toolbar button { padding: 4px 7px; }
 .landing-agenda-demo .rbc-toolbar-label { flex-basis: 100%; order: -1; }
 .landing-agenda-demo .rbc-time-header { display: none; }
