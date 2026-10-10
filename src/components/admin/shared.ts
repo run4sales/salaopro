@@ -43,7 +43,7 @@ export const fmtBRL = (v: number) =>
 
 export const EFFECTIVE_STATUS_OPTIONS = [
   "trial_active", "trial_expiring", "trial_expired", "active_paid",
-  "payment_pending", "overdue", "grace_active", "blocked", "blocked_manual", "no_subscription",
+  "payment_pending", "overdue", "grace_active", "blocked", "blocked_manual", "canceled", "no_subscription",
 ].map((value) => ({ value, label: STATUS_LABEL[value] }));
 
 export const fmtDate = (v: string | null | undefined) =>

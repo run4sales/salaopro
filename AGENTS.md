@@ -19,3 +19,4 @@ Administrative last-invoice payment dates come from dated paid subscription_paym
 SaaS cash charts aggregate paid subscription_payments by Brazil payment month; overdue totals use unpaid due dates and current MRR uses canonical access states, never reconstructed historical subscription prices.
 Public landing plans prefer active subscription_plans with a separate cache key and a dated verified public snapshot when RLS prevents anonymous reads; expose only signup-supported slugs and refresh the snapshot when plans change, avoiding permission changes for presentation work.
 Public landing styling is scoped and demonstrations contain labeled sample data with no database writes; this preserves the app theme and client privacy.
+Administrative cancellation classification uses one reporting-only helper with canonical access states and dated block/expiry evidence; this keeps lists and counts consistent without changing access or provider billing.
