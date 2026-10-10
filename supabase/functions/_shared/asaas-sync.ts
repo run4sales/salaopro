@@ -1,6 +1,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { asaasRequest, AsaasError } from './asaas-client.ts';
+import { newestInvoice } from './asaas-invoice-rules.ts';
 
-const ASAAS_BASE = Deno.env.get('ASAAS_BASE_URL') ?? 'https://api.asaas.com/v3';
 const PAID_STATUSES = new Set(['CONFIRMED', 'RECEIVED', 'RECEIVED_IN_CASH']);
 const CANCELED_STATUSES = new Set(['REFUNDED', 'DELETED', 'CANCELED']);
 
@@ -36,6 +37,7 @@ type AsaasPayment = Json & {
   netValue?: number;
   billingType?: string;
   dueDate?: string;
+  dateCreated?: string;
   paymentDate?: string;
   clientPaymentDate?: string;
   confirmedDate?: string;
@@ -57,24 +59,8 @@ export type SyncResult = {
   trace: string[];
 };
 
-function asaasHeaders(apiKey: string) {
-  return { access_token: apiKey, 'Content-Type': 'application/json', 'User-Agent': 'BeautyCore/1.0' };
-}
-
 async function asaasGet<T>(path: string, apiKey: string): Promise<T> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
-  try {
-    const response = await fetch(`${ASAAS_BASE}${path}`, {
-      headers: asaasHeaders(apiKey),
-      signal: controller.signal,
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(`Asaas ${response.status} em ${path}: ${JSON.stringify(payload)}`);
-    return payload as T;
-  } finally {
-    clearTimeout(timeout);
-  }
+  return asaasRequest<T>(apiKey, path);
 }
 
 async function asaasList<T>(path: string, apiKey: string): Promise<T[]> {
@@ -94,11 +80,7 @@ async function asaasList<T>(path: string, apiKey: string): Promise<T[]> {
 }
 
 function newestPayment(payments: AsaasPayment[]) {
-  return [...payments].sort((a, b) => {
-    const aDate = a.paymentDate ?? a.clientPaymentDate ?? a.confirmedDate ?? a.dueDate ?? '';
-    const bDate = b.paymentDate ?? b.clientPaymentDate ?? b.confirmedDate ?? b.dueDate ?? '';
-    return bDate.localeCompare(aDate);
-  })[0] ?? null;
+  return newestInvoice(payments);
 }
 
 function chooseSubscription(rows: AsaasSubscription[], storedId: string | null, establishmentId: string) {
@@ -129,7 +111,7 @@ export async function syncAsaasSubscription(
   let customer: AsaasCustomer | null = null;
   if (subscription.asaas_customer_id) {
     customer = await asaasGet<AsaasCustomer>(`/customers/${subscription.asaas_customer_id}`, apiKey)
-      .catch(() => null);
+      .catch((error) => { if (error instanceof AsaasError && error.status === 404) return null; throw error; });
     if (customer?.externalReference && customer.externalReference !== establishmentId) {
       trace.push(`Customer armazenado ${customer.id} pertence a ${customer.externalReference}; buscando associação correta`);
       customer = null;
@@ -179,7 +161,7 @@ export async function syncAsaasSubscription(
       payment_date: payment.paymentDate ?? payment.clientPaymentDate ?? payment.confirmedDate ?? null,
       invoice_url: payment.invoiceUrl ?? null,
       bank_slip_url: payment.bankSlipUrl ?? null,
-      raw: payment,
+      raw: { id: payment.id, status: payment.status, dueDate: payment.dueDate },
     }, { onConflict: 'asaas_payment_id' });
     if (error) throw error;
   }
@@ -204,6 +186,9 @@ export async function syncAsaasSubscription(
   };
   if (!subscription.manual_blocked_at) updates.status = newStatus;
   if (paidPayment) updates.last_payment_at = lastPaymentAt;
+  if (latestPayment?.status === 'OVERDUE' && latestPayment.dueDate) {
+    updates.next_billing_at = new Date(`${latestPayment.dueDate}T12:00:00.000Z`).toISOString();
+  }
   if (latestPayment && PAID_STATUSES.has(latestPayment.status ?? '')) {
     updates.next_billing_at = remoteSubscription.nextDueDate
       ? new Date(`${remoteSubscription.nextDueDate}T12:00:00.000Z`).toISOString()
@@ -213,6 +198,16 @@ export async function syncAsaasSubscription(
     updates.grace_started_at = null;
     updates.grace_ends_at = null;
     updates.grace_cycle_key = null;
+    if (subscription.pending_plan_id) {
+      const { data: pendingPlan, error: planError } = await admin.from('subscription_plans')
+        .select('id, monthly_price').eq('id', subscription.pending_plan_id).maybeSingle();
+      if (planError) throw planError;
+      if (pendingPlan && Number(pendingPlan.monthly_price) === Number(latestPayment.value)) {
+        updates.plan_id = pendingPlan.id;
+        updates.pending_plan_id = null;
+        updates.pending_plan_effective_at = null;
+      }
+    }
   }
   const { error: updateError } = await admin.from('subscriptions').update(updates).eq('id', subscription.id);
   if (updateError) throw updateError;
@@ -247,7 +242,7 @@ export async function syncAsaasSubscription(
     plan_id: subscription.plan_id,
     changed: result.changed,
     duration_ms: result.duration_ms,
-    details: { trace, subscription: remoteSubscription, latest_payment: latestPayment, manual_block_preserved: Boolean(subscription.manual_blocked_at) },
+    details: { trace, manual_block_preserved: Boolean(subscription.manual_blocked_at) },
   });
   if (logError) throw logError;
   return result;

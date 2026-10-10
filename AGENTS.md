@@ -11,3 +11,5 @@ Cancelamentos de agendamento são soft-state em `appointments.status`, usam `can
 Appointment writes use single-flight, a stable per-form request UUID, and recovery by that UUID; form initialization survives catalog refetches and conflict checks exclude partial saves to prevent retry duplicates.
 An INSERT trigger serializes exact appointment identities and rejects existing non-canceled matches; this protects every writer without deleting history or blocking different-client conflict overrides.
 Appointment block RLS uses an authenticated SECURITY DEFINER ownership predicate; this preserves own-professional isolation without restrictive membership read policies masking employee authorization.
+Asaas invoice state is derived from current provider billing cycles, never delivery order; webhook claims are leased and failed deliveries remain retryable.
+Hourly Asaas reconciliation uses single-use database tickets restricted to service_role, filters linked subscriptions, and verifies the provider webhook without exposing its token.

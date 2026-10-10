@@ -2,7 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { normalizePhone, validateEmail, validatePhone } from '../_shared/contact-validation.ts';
 
-const ASAAS_BASE = 'https://api.asaas.com/v3';
+const ASAAS_BASE = Deno.env.get('ASAAS_BASE_URL') ?? 'https://api.asaas.com/v3';
 
 interface Body {
   plan_id: string;
@@ -194,6 +194,14 @@ Deno.serve(async (req) => {
     console.info('[asaas-create] Subscription criada', {
       establishmentId: profile.id, customerId, subscriptionId: subJson.id,
     });
+
+    // Persist remote identity before fetching the link: a temporary failure
+    // must not leave an untracked recurring charge that a retry duplicates.
+    const { error: associationError } = await admin.from('subscriptions').update({
+      asaas_customer_id: customerId, asaas_subscription_id: subJson.id,
+      plan_id: plan.id, monthly_amount: plan.monthly_price,
+    }).eq('id', sub.id);
+    if (associationError) throw associationError;
 
     // 4) Get first payment link
     const paysRes = await fetch(

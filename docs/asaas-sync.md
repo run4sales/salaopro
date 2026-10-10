@@ -44,14 +44,27 @@ cliente pago como “Teste”.
 
 ## Operação
 
-Configure os secrets da Edge Function:
+As credenciais são armazenadas no Lovable Cloud, nunca em arquivos públicos:
 
 - `ASAAS_API_KEY`
 - `ASAAS_WEBHOOK_TOKEN`
-- `ASAAS_SYNC_SECRET`
+- `ASAAS_SYNC_SECRET` é opcional, somente para auditoria externa.
 
-Crie no Supabase Vault o secret `asaas_sync_secret` com o mesmo valor de
-`ASAAS_SYNC_SECRET`. Para uma auditoria externa, execute:
+A conferência horária usa `asaas_audit_tickets`: autorizações de uso único,
+com validade de dez minutos, criadas pelo banco e consumidas somente pelo serviço.
+Não depende de Vault nem de segredo copiado manualmente. O job
+`asaas-hourly-subscription-audit` executa no minuto 17. Confere somente assinaturas
+associadas ao Asaas e verifica/repara a configuração de notificações deste app
+sem alterar outras notificações da conta. Cada execução registra o resultado
+em `asaas_sync_logs`, incluindo falhas de permissão ou conexão.
+
+O webhook reserva cada evento com uma trava temporária. Eventos concluídos são
+deduplicados; falhas liberam a reserva para reenvio. Para assinaturas do salão,
+o estado é obtido das faturas atuais diretamente no Asaas, não da ordem de chegada
+das notificações. A competência vem do vencimento: pagamento tardio de uma fatura
+antiga e fatura futura pendente não escondem inadimplência do ciclo atual.
+
+Para uma auditoria externa, execute:
 
 ```bash
 SUPABASE_URL=https://<project>.supabase.co \
@@ -61,3 +74,11 @@ ASAAS_SYNC_SECRET=<secret> npm run audit:asaas
 O relatório inclui estabelecimento, status local anterior, status corrigido,
 status Asaas, IDs associados, plano, duração, divergência e erro. Os mesmos dados
 ficam disponíveis em `asaas_sync_logs` para auditoria posterior.
+
+## Validação operacional em 10/10/2026
+
+- Conferência real via job: 28 vínculos examinados, 24 sincronizados, 11 estados corrigidos.
+- Webhook deste aplicativo verificado/configurado no Asaas; job horário comprovado ativo.
+- Quatro vínculos sem assinatura encontrada no Asaas registrados como erro, sem criar cobranças nem liberar acesso automaticamente. Precisam de confirmação do responsável sobre cancelamento/exclusão ou vínculo substituto.
+- Notificações reais futuras permanecem monitoradas em `asaas_webhook_logs`; não foi fabricado um pagamento em produção para testar entrega.
+- A interface mostra o erro retornado em vez de anunciar sucesso numa sincronização parcial.

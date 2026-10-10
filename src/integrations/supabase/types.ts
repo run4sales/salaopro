@@ -228,6 +228,21 @@ export type Database = {
           },
         ]
       }
+      asaas_audit_tickets: {
+        Row: {
+          expires_at: string
+          id: string
+        }
+        Insert: {
+          expires_at?: string
+          id?: string
+        }
+        Update: {
+          expires_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       asaas_sync_logs: {
         Row: {
           asaas_customer_id: string | null
@@ -307,6 +322,7 @@ export type Database = {
           id: string
           payload: Json
           processed: boolean
+          processing_started_at: string | null
         }
         Insert: {
           asaas_payment_id?: string | null
@@ -317,6 +333,7 @@ export type Database = {
           id?: string
           payload: Json
           processed?: boolean
+          processing_started_at?: string | null
         }
         Update: {
           asaas_payment_id?: string | null
@@ -327,6 +344,7 @@ export type Database = {
           id?: string
           payload?: Json
           processed?: boolean
+          processing_started_at?: string | null
         }
         Relationships: []
       }
@@ -2356,6 +2374,11 @@ export type Database = {
         Args: { p_establishment: string; p_professional: string }
         Returns: boolean
       }
+      claim_asaas_webhook: { Args: { p_event_id: string }; Returns: string }
+      consume_asaas_audit_ticket: {
+        Args: { p_ticket: string }
+        Returns: boolean
+      }
       consume_service_benefit: {
         Args: {
           p_appointment_id?: string
@@ -2439,6 +2462,7 @@ export type Database = {
         Returns: string
       }
       delete_payable: { Args: { p_id: string }; Returns: undefined }
+      enqueue_asaas_audit: { Args: { p_url: string }; Returns: undefined }
       financial_recurrence_step: {
         Args: { freq: string; mult?: number }
         Returns: string
