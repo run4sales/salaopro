@@ -45,7 +45,7 @@ export default function AdminSaaSFinance() {
   for (let i = 11; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-    const total = invoiceMonthMetrics(invoices.data ?? [], brazilMonth(d.toISOString()) ?? '').received;
+    const total = invoiceMonthMetrics(invoices.data ?? [], `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`).received;
     months.push({ label: d.toLocaleDateString("pt-BR", { month: "short" }), receita: total });
   }
 

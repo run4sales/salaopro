@@ -120,7 +120,7 @@ export default function AdminDashboard() {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-      const monthKey = brazilMonth(d.toISOString()) ?? '';
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const totals = invoiceMonthMetrics(invoices.data ?? [], monthKey);
       const monthMrr = totals.received;
       const monthPotential = totals.overdue;
