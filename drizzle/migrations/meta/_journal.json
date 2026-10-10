@@ -71,6 +71,13 @@
       "when": 1791653630592,
       "tag": "0009_subscription_invoice_calendar_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791653725038,
+      "tag": "0010_asaas_webhook_provider_event_identity",
+      "breakpoints": true
     }
   ]
 }

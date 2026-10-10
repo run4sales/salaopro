@@ -323,6 +323,7 @@ export type Database = {
           payload: Json
           processed: boolean
           processing_started_at: string | null
+          provider_event_id: string | null
         }
         Insert: {
           asaas_payment_id?: string | null
@@ -334,6 +335,7 @@ export type Database = {
           payload: Json
           processed?: boolean
           processing_started_at?: string | null
+          provider_event_id?: string | null
         }
         Update: {
           asaas_payment_id?: string | null
@@ -345,6 +347,7 @@ export type Database = {
           payload?: Json
           processed?: boolean
           processing_started_at?: string | null
+          provider_event_id?: string | null
         }
         Relationships: []
       }
