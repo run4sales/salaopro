@@ -1,7 +1,8 @@
 # Roadmap
 
-- [ ] Redesenhar a página pública: diagnóstico e plano primeiro; depois implementar comunicação verificada, demonstração do produto, planos corretos e navegação, sem alterar assinatura ou cadastro.
-- [ ] Validar a nova página em computador e celular, incluindo links, planos e abertura do cadastro, sem criar contas reais.
+- [x] Redesenhar a página pública com comunicação verificada, demonstrações ilustrativas, perguntas, suporte real e teste de dez dias; sem alterar assinatura ou cadastro.
+- [x] Validar em computador e celular: menu, módulos, perguntas, destinos de links e cadastro com os três planos; quatro testes passaram, sem erros de execução ou rolagem horizontal.
+- [ ] Automatizar preços públicos sem snapshot: consulta anônima dos planos é bloqueada pelas permissões existentes; nesta tarefa visual, preservar permissões e exibir valores oficiais conferidos em 10/10/2026 com aviso explícito.
 
 - [x] Corrigir indicadores SaaS usando faturas reais, estados efetivos e histórico de recebimentos; remover histórico reconstruído, churn e conversão sem evidência; testes de datas passaram.
 - [ ] Conciliar diferença de setembro: registros disponíveis têm 19 pagamentos recebidos de R$ 1.008,10 e seis faturas vencidas de R$ 459,40; usuário informou 22/R$ 1.097,80 e oito/R$ 439,20; depende de relatório Asaas ou confirmação dos vínculos ausentes, sem inventar ajustes.
