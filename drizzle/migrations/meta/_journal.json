@@ -64,6 +64,13 @@
       "when": 1791651956795,
       "tag": "0008_asaas_overdue_72_hour_window",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791653630592,
+      "tag": "0009_subscription_invoice_calendar_rules",
+      "breakpoints": true
     }
   ]
 }
