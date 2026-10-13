@@ -7,6 +7,7 @@ type AdministrativeSubscription = {
   manual_blocked_at?: string | null;
   next_billing_at?: string | null;
   current_invoice_due_date?: string | null;
+  manual_access_due_date?: string | null;
 };
 
 /** Contracted paying cohort only; billing notices/grace do not change the contract. Never grants access. */
@@ -32,7 +33,7 @@ export function adminSubscriptionStatus(
     const days = billingDaysLeft(trialEnd, now);
     blockedDays = days === null ? null : -days;
   } else if (state === 'overdue' || state === 'blocked') {
-    const days = billingDaysLeft(subscription.current_invoice_due_date ?? subscription.next_billing_at, now);
+    const days = billingDaysLeft(subscription.manual_access_due_date ?? subscription.current_invoice_due_date ?? subscription.next_billing_at, now);
     blockedDays = days === null ? null : -days - 3;
   }
   return blockedDays !== null && blockedDays > 10 ? 'canceled' : state;

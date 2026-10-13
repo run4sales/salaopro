@@ -1,6 +1,8 @@
 # Roadmap
 
-- [ ] Investigar e corrigir reativação, prorrogação de vencimento e pagamento manual que não são respeitados pelo controle de acesso e sincronização Asaas, preservando faturas reais e auditoria.
+- [x] Corrigir reativação, prorrogação e pagamento manual com autorização datada, operação administrativa atômica, auditoria e proteção no banco contra sincronizações concorrentes; faturas reais preservadas, funções Asaas publicadas, 25 testes aprovados e salvamento/leitura real na própria loja verificados sem alterar o vencimento existente.
+- [ ] Conferir recebimento manual válido e concorrência com Asaas em conta de teste isolada: não criar pagamentos fictícios ou alterar cobranças de clientes reais; testes transacionais locais não têm permissão de execução/assunção de papel.
+- [ ] Reaplicar autorizações antigas somente após confirmação do administrador: histórico conferido contém prorrogações que não valiam antes; não migrar silenciosamente nem inventar pagamentos.
 
 - [x] Corrigir exclusão de contratos pagos próximos ao vencimento ou em liberação temporária no MRR, ARR, ARPU, ativos e planos dos dois painéis; regra compartilhada exige contrato ativo e estado canônico permitido, sem incluir teste ou pendência não paga; 13 testes passaram e compilação automática aprovada.
 - [ ] Conferir visualmente os indicadores corrigidos com conta superadministradora: sessão disponível é de funcionário e redireciona de /admin para /agenda; não alterar permissões para testar.

@@ -2102,8 +2102,10 @@ export type Database = {
           establishment_id: string
           id: string
           invoice_url: string | null
+          manual_request_id: string | null
           net_value: number | null
           payment_date: string | null
+          payment_source: string
           pix_qr_code: string | null
           raw: Json | null
           status: string
@@ -2121,8 +2123,10 @@ export type Database = {
           establishment_id: string
           id?: string
           invoice_url?: string | null
+          manual_request_id?: string | null
           net_value?: number | null
           payment_date?: string | null
+          payment_source?: string
           pix_qr_code?: string | null
           raw?: Json | null
           status: string
@@ -2140,8 +2144,10 @@ export type Database = {
           establishment_id?: string
           id?: string
           invoice_url?: string | null
+          manual_request_id?: string | null
           net_value?: number | null
           payment_date?: string | null
+          payment_source?: string
           pix_qr_code?: string | null
           raw?: Json | null
           status?: string
@@ -2212,6 +2218,9 @@ export type Database = {
           grace_started_at: string | null
           id: string
           last_payment_at: string | null
+          manual_access_due_date: string | null
+          manual_access_status: string | null
+          manual_access_updated_at: string | null
           manual_blocked_at: string | null
           manual_blocked_reason: string | null
           monthly_amount: number
@@ -2220,6 +2229,7 @@ export type Database = {
           pending_plan_effective_at: string | null
           pending_plan_id: string | null
           plan_id: string | null
+          provider_next_billing_at: string | null
           started_at: string
           status: string
           trial_ends_at: string | null
@@ -2243,6 +2253,9 @@ export type Database = {
           grace_started_at?: string | null
           id?: string
           last_payment_at?: string | null
+          manual_access_due_date?: string | null
+          manual_access_status?: string | null
+          manual_access_updated_at?: string | null
           manual_blocked_at?: string | null
           manual_blocked_reason?: string | null
           monthly_amount?: number
@@ -2251,6 +2264,7 @@ export type Database = {
           pending_plan_effective_at?: string | null
           pending_plan_id?: string | null
           plan_id?: string | null
+          provider_next_billing_at?: string | null
           started_at?: string
           status?: string
           trial_ends_at?: string | null
@@ -2274,6 +2288,9 @@ export type Database = {
           grace_started_at?: string | null
           id?: string
           last_payment_at?: string | null
+          manual_access_due_date?: string | null
+          manual_access_status?: string | null
+          manual_access_updated_at?: string | null
           manual_blocked_at?: string | null
           manual_blocked_reason?: string | null
           monthly_amount?: number
@@ -2282,6 +2299,7 @@ export type Database = {
           pending_plan_effective_at?: string | null
           pending_plan_id?: string | null
           plan_id?: string | null
+          provider_next_billing_at?: string | null
           started_at?: string
           status?: string
           trial_ends_at?: string | null
@@ -2338,6 +2356,18 @@ export type Database = {
           _source_id?: string
         }
         Returns: string
+      }
+      admin_set_subscription_authorization: {
+        Args: {
+          p_action: string
+          p_amount?: number
+          p_due_date?: string
+          p_establishment: string
+          p_payment_date?: string
+          p_plan_id?: string
+          p_request_id?: string
+        }
+        Returns: Json
       }
       admin_soft_delete_sale: {
         Args: { _reason?: string; _sale_id: string }

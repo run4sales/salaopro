@@ -24,3 +24,11 @@ test('payment dates retain calendar dates and Brazil timestamp boundaries', () =
   assert.equal(formatBillingDate('2026-10-11T02:59:00Z'), '10/10/2026');
   assert.equal(formatBillingDate(null), '—');
 });
+
+test('manual access deadline wins without falsifying the overdue provider invoice', () => {
+  const sub = { status: 'active', manual_access_due_date: '2027-03-31', current_invoice_status: 'OVERDUE', current_invoice_due_date: '2026-08-15', next_billing_at: '2027-03-31' };
+  assert.equal(subscriptionDeadline(sub), '2027-03-31');
+  assert.equal(sub.current_invoice_status, 'OVERDUE');
+  assert.equal(sub.current_invoice_due_date, '2026-08-15');
+  assert.equal(subscriptionDeadline({ ...sub, manual_access_due_date: null }), '2026-08-15');
+});

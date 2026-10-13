@@ -17,6 +17,8 @@ import { fmtBRL, fmtDate, STATUS_LABEL, STATUS_TONE, EFFECTIVE_STATUS_OPTIONS, l
 import { billingCountdown, formatBillingDate, subscriptionDeadline } from "@/lib/subscriptionBilling";
 import { adminSubscriptionStatus } from "@/lib/adminSubscriptionStatus";
 import { fetchLastInvoicePayments } from "@/lib/adminInvoicePayments";
+import { setSubscriptionAuthorization, refreshSubscriptionQueries, type AuthorizationAction } from '@/lib/adminSubscriptionAuthorization';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type Row = {
   id: string;
@@ -33,6 +35,8 @@ type Row = {
     plan_id: string | null;
     monthly_amount: number;
     next_billing_at: string | null;
+    manual_access_due_date?: string | null;
+    manual_access_status?: string | null;
     trial_ends_at?: string | null;
     current_invoice_status?: string | null;
     current_invoice_due_date?: string | null;
@@ -57,6 +61,11 @@ export default function AdminCompanies() {
   const [billingStatus, setBillingStatus] = useState<string>("active");
   const [billingAmount, setBillingAmount] = useState<string>("");
   const [billingNextDate, setBillingNextDate] = useState<string>("");
+  const [billingPaid, setBillingPaid] = useState(false);
+  const [billingPaymentDate, setBillingPaymentDate] = useState('');
+  const [billingRequestId, setBillingRequestId] = useState('');
+  const [savingBilling, setSavingBilling] = useState(false);
+  const [billingPlanId, setBillingPlanId] = useState<string | undefined>();
   const [isSyncingAgendor, setIsSyncingAgendor] = useState(false);
 
 
@@ -73,7 +82,7 @@ export default function AdminCompanies() {
       const [{ data: subs, error: subsError }, { data: fetchedPlans, error: plansError }, { data: states, error: statesError }, lastPayments] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
-          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, trial_ends_at, created_at, manual_blocked_at, current_invoice_status, current_invoice_due_date, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
+          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, manual_access_due_date, manual_access_status, trial_ends_at, created_at, manual_blocked_at, current_invoice_status, current_invoice_due_date, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
         (supabase as any)
           .from("subscription_plans")
           .select("id, name, slug, monthly_price")
@@ -93,6 +102,8 @@ export default function AdminCompanies() {
           plan_id: s.plan_id,
           monthly_amount: Number(s.monthly_amount || 0),
           next_billing_at: s.next_billing_at,
+          manual_access_due_date: s.manual_access_due_date,
+          manual_access_status: s.manual_access_status,
           trial_ends_at: s.trial_ends_at,
           current_invoice_status: s.current_invoice_status,
           current_invoice_due_date: s.current_invoice_due_date,
@@ -169,90 +180,67 @@ export default function AdminCompanies() {
   }, [profilesQuery.data, search, statusFilter, planFilter]);
   async function changeStatus(row: Row, status: string, action: string) {
     if (!row.subscription || row.subscription.inferred) return;
-    const updates: any = { status };
-    if (status === "blocked") {
-      updates.manual_blocked_at = new Date().toISOString();
-      updates.manual_blocked_reason = "Bloqueio manual pelo Super Admin";
-      updates.canceled_at = new Date().toISOString();
+    if (status === 'active') {
+      openBilling(row);
+      setBillingStatus('active');
+      return;
     }
-    if (status === "canceled") updates.canceled_at = new Date().toISOString();
-    if (status !== "blocked") {
-      updates.manual_blocked_at = null;
-      updates.manual_blocked_reason = null;
-    }
-    const { error } = await (supabase as any)
-      .from("subscriptions")
-      .update(updates)
-      .eq("id", row.subscription.id);
-    if (error) {
-      toast.error("Não foi possível atualizar. Tente novamente.");
+    try {
+      await setSubscriptionAuthorization({ establishmentId: row.id, action: status === 'canceled' ? 'cancel' : 'block' });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível atualizar.');
       return;
     }
 
     // Ao bloquear, cancela também no Asaas (se existir assinatura lá)
     if (status === "blocked" && row.subscription.asaas_subscription_id) {
       try {
-        await supabase.functions.invoke("asaas-cancel-subscription", {
+        const { error } = await supabase.functions.invoke("asaas-cancel-subscription", {
           body: { establishment_id: row.id },
         });
+        if (error) throw error;
       } catch (e) {
         console.error("asaas-cancel-subscription invoke error", e);
         toast.warning("Status atualizado, mas a assinatura no Asaas pode não ter sido cancelada.");
       }
     }
 
-    await logAdminAction(user!.id, action, row.id, { new_status: status, business: row.business_name });
     toast.success("Status atualizado");
-    qc.invalidateQueries({ queryKey: ["admin-companies"] });
-    qc.invalidateQueries({ queryKey: ["admin-subs"] });
+    await refreshSubscriptionQueries(qc);
   }
 
   function openBilling(row: Row) {
     if (!row.subscription || row.subscription.inferred) return;
     setBillingTarget(row);
-    setBillingStatus(row.subscription.status || "active");
+    setBillingStatus(row.subscription.manual_access_status || row.subscription.status || "active");
     setBillingAmount(String(row.subscription.monthly_amount || ""));
+    setBillingPaid(false);
+    setBillingPlanId(undefined);
+    setBillingRequestId(crypto.randomUUID());
+    setBillingPaymentDate(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()));
     setBillingNextDate(
-      row.subscription.next_billing_at
+      row.subscription.manual_access_due_date ?? (row.subscription.next_billing_at
         ? new Date(row.subscription.next_billing_at).toISOString().slice(0, 10)
-        : ""
+        : "")
     );
   }
 
   async function saveBilling() {
-    if (!billingTarget?.subscription) return;
-    const updates: any = {
-      status: billingStatus,
-      monthly_amount: Number(billingAmount) || 0,
-    };
-    if (billingNextDate) {
-      updates.next_billing_at = new Date(billingNextDate + "T12:00:00").toISOString();
-    } else {
-      updates.next_billing_at = null;
+    if (!billingTarget?.subscription || savingBilling) return;
+    const actions: Record<string, AuthorizationAction> = { active: billingPaid ? 'paid' : 'grant', trial: 'trial', past_due: 'pending', blocked: 'block', canceled: 'cancel', automatic: 'automatic' };
+    const action = actions[billingStatus];
+    if (!action) return;
+    setSavingBilling(true);
+    try {
+      await setSubscriptionAuthorization({ establishmentId: billingTarget.id, action: billingPlanId && action === 'grant' ? 'plan' : action, dueDate: billingNextDate, amount: Number(billingAmount), paymentDate: billingPaymentDate, requestId: billingRequestId, planId: billingPlanId });
+      toast.success('Autorização atualizada');
+      setBillingTarget(null);
+      await refreshSubscriptionQueries(qc);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível salvar.');
+    } finally {
+      setSavingBilling(false);
     }
-    if (billingStatus === "active") updates.last_payment_at = new Date().toISOString();
-    if (billingStatus === "blocked") {
-      updates.manual_blocked_at = new Date().toISOString();
-      updates.manual_blocked_reason = "Bloqueio manual pela edição de cobrança";
-      updates.canceled_at = new Date().toISOString();
-    } else {
-      updates.manual_blocked_at = null;
-      updates.manual_blocked_reason = null;
-    }
-
-    const { error } = await (supabase as any)
-      .from("subscriptions")
-      .update(updates)
-      .eq("id", billingTarget.subscription.id);
-    if (error) {
-      toast.error("Não foi possível salvar a cobrança.");
-      return;
-    }
-    await logAdminAction(user!.id, "manual_billing_update", billingTarget.id, updates);
-    toast.success("Cobrança atualizada");
-    setBillingTarget(null);
-    qc.invalidateQueries({ queryKey: ["admin-companies"] });
-    qc.invalidateQueries({ queryKey: ["admin-subs"] });
   }
 
 
@@ -275,7 +263,7 @@ export default function AdminCompanies() {
         toast.success(`Agendor: ${synced} empresas sincronizadas${skipped ? ` e ${skipped} ignoradas` : ""}.`);
       }
 
-      await logAdminAction(user!.id, "agendor_sync_existing_companies_clicked", undefined, {
+      if (user) await logAdminAction(user.id, "agendor_sync_existing_companies_clicked", undefined, {
         synced,
         failed,
         skipped,
@@ -293,8 +281,15 @@ export default function AdminCompanies() {
     if (!editTarget?.subscription || !editPlan) return;
     const plan = plansQuery.data?.find((p) => p.id === editPlan);
     if (!plan) return;
-    const { error } = editTarget.subscription.inferred
-      ? await (supabase as any)
+    if (!editTarget.subscription.inferred) {
+      openBilling(editTarget);
+      setBillingStatus('active');
+      setBillingPlanId(plan.id);
+      setBillingAmount(String(plan.monthly_price));
+      setEditTarget(null);
+      return;
+    }
+    const { error } = await (supabase as any)
           .from("subscriptions")
           .insert({
             establishment_id: editTarget.id,
@@ -303,21 +298,12 @@ export default function AdminCompanies() {
             status: "trial",
             trial_ends_at: new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString(),
             next_billing_at: null,
-          })
-      : await (supabase as any)
-          .from("subscriptions")
-          .update({
-            plan_id: plan.id,
-            monthly_amount: plan.monthly_price,
-            status: "active",
-            next_billing_at: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
-          })
-          .eq("id", editTarget.subscription.id);
+          });
     if (error) {
       toast.error("Não foi possível alterar o plano.");
       return;
     }
-    await logAdminAction(user!.id, "change_plan", editTarget.id, {
+    if (user) await logAdminAction(user.id, "change_plan", editTarget.id, {
       new_plan: plan.name,
       monthly: plan.monthly_price,
       created_subscription: Boolean(editTarget.subscription.inferred),
@@ -420,7 +406,7 @@ export default function AdminCompanies() {
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{fmtDate(r.created_at)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{fmtDate(r.last_access_at)}</TableCell>
-                      <TableCell className="whitespace-nowrap text-xs">{formatBillingDate(deadline)}{r.subscription?.status === "trial" && <div className="text-muted-foreground">Fim do teste</div>}</TableCell>
+                      <TableCell className="whitespace-nowrap text-xs">{formatBillingDate(deadline)}{r.subscription?.manual_access_due_date ? <div className="text-muted-foreground">Autorização manual</div> : r.subscription?.status === "trial" && <div className="text-muted-foreground">Fim do teste</div>}</TableCell>
                       <TableCell className="whitespace-nowrap text-xs">{billingCountdown(deadline)}</TableCell>
                       <TableCell className="whitespace-nowrap text-xs">{formatBillingDate(r.subscription?.last_invoice_payment_at)}</TableCell>
                       <TableCell className="text-right">
@@ -488,7 +474,7 @@ export default function AdminCompanies() {
       </Dialog>
 
 
-      <Dialog open={!!billingTarget} onOpenChange={(o) => !o && setBillingTarget(null)}>
+      <Dialog open={!!billingTarget} onOpenChange={(o) => !o && !savingBilling && setBillingTarget(null)}>
         <DialogContent className="bg-card border-border">
           <DialogHeader>
             <DialogTitle>Editar cobrança — {billingTarget?.business_name}</DialogTitle>
@@ -503,14 +489,15 @@ export default function AdminCompanies() {
                 <SelectContent>
                   <SelectItem value="trial">Em teste</SelectItem>
                   <SelectItem value="past_due">Pendente</SelectItem>
-                  <SelectItem value="active">Ativo (pago)</SelectItem>
+                  <SelectItem value="active">Ativo — autorização manual</SelectItem>
+                  <SelectItem value="automatic">Retornar ao controle Asaas</SelectItem>
                   <SelectItem value="blocked">Bloqueado</SelectItem>
                   <SelectItem value="canceled">Cancelado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Valor mensal (R$)</Label>
+              <Label className="text-xs text-muted-foreground">{billingPaid ? 'Valor recebido (R$)' : 'Valor mensal (R$)'}</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -520,18 +507,23 @@ export default function AdminCompanies() {
               />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Data da próxima fatura</Label>
+              <Label className="text-xs text-muted-foreground">Vencimento autorizado para acesso</Label>
               <Input
                 type="date"
+                aria-label="Vencimento autorizado para acesso"
                 value={billingNextDate}
                 onChange={(e) => setBillingNextDate(e.target.value)}
                 className="bg-background border-border"
               />
             </div>
+            {billingStatus === 'active' && <div className="space-y-3">
+              <div className="flex items-center gap-2"><Checkbox id="manual-paid" checked={billingPaid} onCheckedChange={v => setBillingPaid(v === true)} /><Label htmlFor="manual-paid">Registrar pagamento recebido</Label></div>
+              {billingPaid && <div><Label htmlFor="manual-payment-date">Data do pagamento</Label><Input id="manual-payment-date" type="date" value={billingPaymentDate} onChange={e => setBillingPaymentDate(e.target.value)} /></div>}
+            </div>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBillingTarget(null)}>Cancelar</Button>
-            <Button onClick={saveBilling}>Salvar</Button>
+            <Button variant="outline" disabled={savingBilling} onClick={() => setBillingTarget(null)}>Cancelar</Button>
+            <Button onClick={saveBilling} disabled={savingBilling}>{savingBilling ? 'Salvando...' : 'Salvar'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

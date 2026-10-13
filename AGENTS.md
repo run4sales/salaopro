@@ -7,6 +7,7 @@ Campos de telefone e WhatsApp na ficha de cliente usam `formatBrazilianPhone` du
 Falhas conhecidas da autenticação administrativa são convertidas em erros de validação específicos nas funções de usuários; isso evita apresentar rejeições corrigíveis como indisponibilidade interna.
 O contexto de acesso é resolvido em paralelo, ignora respostas antigas e expõe erro com nova tentativa; isso impede loading infinito após login de colaborador.
 Subscription access uses canonical get_subscription_state; unpaid checkout and reconciliation preserve access status and deadlines, and unknown states fail closed so creating invoices cannot unlock a salon.
+Manual subscription decisions use a super-admin-only transactional RPC and separate dated access authorization; a database trigger protects concurrent provider writes, while real provider invoices remain untouched and manual receipts use idempotent official payment records.
 Cancelamentos de agendamento são soft-state em `appointments.status`, usam `canceled` como valor canônico e mantêm snapshots financeiros para histórico e relatórios.
 Appointment writes use single-flight, a stable per-form request UUID, and recovery by that UUID; form initialization survives catalog refetches and conflict checks exclude partial saves to prevent retry duplicates.
 An INSERT trigger serializes exact appointment identities and rejects existing non-canceled matches; this protects every writer without deleting history or blocking different-client conflict overrides.

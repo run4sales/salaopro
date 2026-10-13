@@ -16,6 +16,7 @@ type LocalSubscription = {
   asaas_subscription_id: string | null;
   pending_plan_id: string | null;
   manual_blocked_at: string | null;
+  manual_access_due_date: string | null;
 };
 
 type AsaasCustomer = Json & { id: string; externalReference?: string };
@@ -102,7 +103,7 @@ export async function syncAsaasSubscription(
   const started = Date.now();
   const trace = [`[${source}] Buscando assinatura do estabelecimento ${establishmentId}`];
   const { data: local, error: localError } = await admin.from('subscriptions').select(
-    'id, establishment_id, status, plan_id, monthly_amount, asaas_customer_id, asaas_subscription_id, pending_plan_id, manual_blocked_at',
+    'id, establishment_id, status, plan_id, monthly_amount, asaas_customer_id, asaas_subscription_id, pending_plan_id, manual_blocked_at, manual_access_due_date',
   ).eq('establishment_id', establishmentId).maybeSingle();
   if (localError) throw localError;
   if (!local) throw new Error(`Assinatura local não encontrada para ${establishmentId}`);
@@ -176,7 +177,7 @@ export async function syncAsaasSubscription(
     : PAID_STATUSES.has(remoteStatus)
     ? 'active'
     : subscription.status;
-  const newStatus = subscription.manual_blocked_at ? subscription.status : derivedStatus;
+  const newStatus = subscription.manual_blocked_at || subscription.manual_access_due_date ? subscription.status : derivedStatus;
   const lastPaymentAt = paidPayment
     ? paidPayment.paymentDate ?? paidPayment.clientPaymentDate ?? paidPayment.confirmedDate ?? new Date().toISOString()
     : null;
@@ -215,11 +216,14 @@ export async function syncAsaasSubscription(
       }
     }
   }
-  const { error: updateError } = await admin.from('subscriptions').update(updates).eq('id', subscription.id);
+  // The database trigger protects concurrent manual edits made after this read as well.
+  const { data: saved, error: updateError } = await admin.from('subscriptions').update(updates).eq('id', subscription.id).select('status, manual_access_due_date').single();
   if (updateError) throw updateError;
-  trace.push(`Status atualizado: ${subscription.status} -> ${newStatus}`);
+  const savedStatus = saved.status as string;
+  trace.push(`Status atualizado: ${subscription.status} -> ${savedStatus}`);
+  if (saved.manual_access_due_date) trace.push('Autorização manual preservada; faturas Asaas atualizadas sem substituir o prazo de acesso.');
   if (subscription.manual_blocked_at) trace.push('Bloqueio manual preservado; cobrança registrada sem liberar acesso.');
-  if (latestPayment && PAID_STATUSES.has(latestPayment.status ?? '')) trace.push('Trial encerrado. Conta liberada.');
+  if (latestPayment && PAID_STATUSES.has(latestPayment.status ?? '') && !subscription.manual_blocked_at && !saved.manual_access_due_date) trace.push('Trial encerrado. Conta liberada.');
 
   const result: SyncResult = {
     establishment_id: establishmentId,
@@ -228,8 +232,8 @@ export async function syncAsaasSubscription(
     payment_id: latestPayment?.id ?? null,
     payment_status: latestPayment?.status ?? null,
     previous_status: subscription.status,
-    status: newStatus,
-    changed: subscription.status !== newStatus
+    status: savedStatus,
+    changed: subscription.status !== savedStatus
       || subscription.asaas_customer_id !== customer.id
       || subscription.asaas_subscription_id !== remoteSubscription.id,
     plan_id: subscription.plan_id,
@@ -243,12 +247,12 @@ export async function syncAsaasSubscription(
     asaas_subscription_id: remoteSubscription.id,
     asaas_payment_id: latestPayment?.id ?? null,
     previous_status: subscription.status,
-    new_status: newStatus,
+    new_status: savedStatus,
     payment_status: latestPayment?.status ?? null,
     plan_id: subscription.plan_id,
     changed: result.changed,
     duration_ms: result.duration_ms,
-    details: { trace, manual_block_preserved: Boolean(subscription.manual_blocked_at) },
+    details: { trace, manual_block_preserved: Boolean(subscription.manual_blocked_at), manual_access_preserved: Boolean(saved.manual_access_due_date) },
   });
   if (logError) throw logError;
   return result;

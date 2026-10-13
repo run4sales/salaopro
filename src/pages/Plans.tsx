@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Check, Crown, ArrowUpRight, Loader2, ExternalLink, CreditCard } from "lucide-react";
+import { formatBillingDate, subscriptionDeadline } from '@/lib/subscriptionBilling';
 
 const fmtBRL = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -215,8 +216,8 @@ export default function Plans() {
             warn={clientLimit != null && (clientCount ?? 0) >= clientLimit}
           />
           <Metric
-            label={sub?.status === "trial" ? "Fim do teste" : "Próxima cobrança"}
-            value={fmtDate(sub?.status === "trial" ? sub?.trial_ends_at : sub?.next_billing_at)}
+            label={sub?.manual_access_due_date ? "Prazo autorizado" : sub?.status === "trial" ? "Fim do teste" : "Próxima cobrança"}
+            value={formatBillingDate(subscriptionDeadline(sub))}
           />
           {pendingPlan && (
             <div className="sm:col-span-2 lg:col-span-4 rounded-md border border-warning/30 bg-warning/10 text-sm p-3">
@@ -344,7 +345,7 @@ export default function Plans() {
                       <TableCell>{fmtDate(inv.due_date)}</TableCell>
                       <TableCell><Badge variant="outline" className={st.tone}>{st.label}</Badge></TableCell>
                       <TableCell>{fmtBRL(Number(inv.value ?? 0))}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{inv.billing_type ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{inv.payment_source === 'manual' ? 'Pagamento manual' : inv.billing_type ?? "—"}</TableCell>
                       <TableCell className="text-right">
                         {url && (
                           <Button size="sm" variant={isPaid ? "outline" : "default"} asChild>
