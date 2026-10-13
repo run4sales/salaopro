@@ -36,6 +36,7 @@ type Row = {
     monthly_amount: number;
     next_billing_at: string | null;
     manual_access_due_date?: string | null;
+    manual_access_status?: string | null;
     trial_ends_at?: string | null;
     current_invoice_status?: string | null;
     current_invoice_due_date?: string | null;
@@ -81,7 +82,7 @@ export default function AdminCompanies() {
       const [{ data: subs, error: subsError }, { data: fetchedPlans, error: plansError }, { data: states, error: statesError }, lastPayments] = await Promise.all([
         (supabase as any)
           .from("subscriptions")
-          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, manual_access_due_date, trial_ends_at, created_at, manual_blocked_at, current_invoice_status, current_invoice_due_date, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
+          .select("id, establishment_id, status, plan_id, monthly_amount, next_billing_at, manual_access_due_date, manual_access_status, trial_ends_at, created_at, manual_blocked_at, current_invoice_status, current_invoice_due_date, asaas_subscription_id, subscription_plans!subscriptions_plan_id_fkey(name)"),
         (supabase as any)
           .from("subscription_plans")
           .select("id, name, slug, monthly_price")
@@ -102,6 +103,7 @@ export default function AdminCompanies() {
           monthly_amount: Number(s.monthly_amount || 0),
           next_billing_at: s.next_billing_at,
           manual_access_due_date: s.manual_access_due_date,
+          manual_access_status: s.manual_access_status,
           trial_ends_at: s.trial_ends_at,
           current_invoice_status: s.current_invoice_status,
           current_invoice_due_date: s.current_invoice_due_date,
@@ -210,7 +212,7 @@ export default function AdminCompanies() {
   function openBilling(row: Row) {
     if (!row.subscription || row.subscription.inferred) return;
     setBillingTarget(row);
-    setBillingStatus(row.subscription.status || "active");
+    setBillingStatus(row.subscription.manual_access_status || row.subscription.status || "active");
     setBillingAmount(String(row.subscription.monthly_amount || ""));
     setBillingPaid(false);
     setBillingPlanId(undefined);
@@ -261,7 +263,7 @@ export default function AdminCompanies() {
         toast.success(`Agendor: ${synced} empresas sincronizadas${skipped ? ` e ${skipped} ignoradas` : ""}.`);
       }
 
-      await logAdminAction(user!.id, "agendor_sync_existing_companies_clicked", undefined, {
+      if (user) await logAdminAction(user.id, "agendor_sync_existing_companies_clicked", undefined, {
         synced,
         failed,
         skipped,
