@@ -9,6 +9,11 @@ type AdministrativeSubscription = {
   current_invoice_due_date?: string | null;
 };
 
+/** Contracted paying cohort only; billing notices/grace do not change the contract. Never grants access. */
+export function isAdminPaidSubscription(rawStatus: string | null, state: string): boolean {
+  return rawStatus === 'active' && ['active_paid', 'payment_pending', 'grace_active'].includes(state);
+}
+
 /** Reporting only: never use this classification to grant access or cancel billing. */
 export function adminSubscriptionStatus(
   subscription: AdministrativeSubscription,

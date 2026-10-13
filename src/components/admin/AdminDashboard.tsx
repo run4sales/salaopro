@@ -5,7 +5,7 @@ import { Building2, TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle, 
 import { fmtBRL } from "./shared";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid } from "recharts";
 
-import { adminSubscriptionStatus } from "@/lib/adminSubscriptionStatus";
+import { adminSubscriptionStatus, isAdminPaidSubscription } from "@/lib/adminSubscriptionStatus";
 import SaaSInvoiceSummary from "./SaaSInvoiceSummary";
 import { useSaaSInvoices } from "@/hooks/useSaaSInvoices";
 import { brazilMonth, invoiceMonthMetrics } from "@/lib/saasInvoiceMetrics";
@@ -13,6 +13,7 @@ import { brazilMonth, invoiceMonthMetrics } from "@/lib/saasInvoiceMetrics";
 type Sub = {
   establishment_id: string;
   status: string;
+  rawStatus: string | null;
   monthly_amount: number;
   started_at: string;
   canceled_at: string | null;
@@ -64,6 +65,7 @@ export default function AdminDashboard() {
         subsByEstablishment.set(s.establishment_id, {
           establishment_id: s.establishment_id,
           status: adminSubscriptionStatus(s, stateMap.get(s.establishment_id) ?? "no_subscription"),
+          rawStatus: s.status,
           monthly_amount: Number(s.monthly_amount || plan?.monthly_price || 0),
           started_at: s.started_at,
           canceled_at: s.canceled_at,
@@ -87,6 +89,7 @@ export default function AdminDashboard() {
         return {
           establishment_id: p.id,
           status: "no_subscription",
+          rawStatus: null,
           monthly_amount: Number(chosenPlan?.monthly_price || 0),
           started_at: p.created_at,
           canceled_at: null,
@@ -103,11 +106,10 @@ export default function AdminDashboard() {
   const list = metrics.data?.list ?? [];
   const profiles = metrics.data?.profiles ?? [];
   const plans = metrics.data?.plans ?? [];
-  const active = list.filter((s) => s.status === "active_paid");
+  const active = list.filter((s) => isAdminPaidSubscription(s.rawStatus, s.status));
   const trial = list.filter((s) => ["trial_active", "trial_expiring"].includes(s.status));
   const canceled = list.filter((s) => s.status === "canceled");
-  const potentialStatuses = new Set(["trial_active", "trial_expiring", "active_paid"]);
-  const potentialList = list.filter((s) => potentialStatuses.has(s.status));
+  const potentialList = list.filter((s) => ["trial_active", "trial_expiring"].includes(s.status) || isAdminPaidSubscription(s.rawStatus, s.status));
   const mrr = active.reduce((sum, s) => sum + Number(s.monthly_amount || 0), 0);
   const potentialMrr = potentialList.reduce((sum, s) => sum + Number(s.monthly_amount || s.plan?.monthly_price || 0), 0);
   const arr = mrr * 12;
@@ -172,7 +174,7 @@ export default function AdminDashboard() {
         trial: 0,
       };
       current.total += 1;
-      if (sub.status === "active_paid") current.active += 1;
+      if (isAdminPaidSubscription(sub.rawStatus, sub.status)) current.active += 1;
       if (["trial_active", "trial_expiring"].includes(sub.status)) current.trial += 1;
       counts.set(key, current);
     });

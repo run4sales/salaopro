@@ -1,8 +1,25 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { adminSubscriptionStatus } from '../src/lib/adminSubscriptionStatus.ts';
+import { adminSubscriptionStatus, isAdminPaidSubscription } from '../src/lib/adminSubscriptionStatus.ts';
 
 const now = new Date('2026-10-21T15:00:00Z');
+test('paid contracts remain counted through notices and temporary grace', () => {
+  for (const state of ['active_paid', 'payment_pending', 'grace_active']) {
+    assert.equal(isAdminPaidSubscription('active', state), true);
+  }
+});
+test('unpaid contracts and trials never become paid metrics through grace or notices', () => {
+  for (const raw of ['trial', 'pending', 'past_due', 'blocked', 'canceled', null]) {
+    for (const state of ['active_paid', 'payment_pending', 'grace_active']) {
+      assert.equal(isAdminPaidSubscription(raw, state), false);
+    }
+  }
+});
+test('blocked, expired, canceled and unknown access states stay outside paid metrics', () => {
+  for (const state of ['blocked', 'blocked_manual', 'trial_expired', 'canceled', 'no_subscription', 'unknown']) {
+    assert.equal(isAdminPaidSubscription('active', state), false);
+  }
+});
 test('expired trial remains expired at ten days and canceled after ten days', () => {
   assert.equal(adminSubscriptionStatus({ status: 'trial', trial_ends_at: '2026-10-11T03:00:00Z' }, 'trial_expired', now), 'trial_expired');
   assert.equal(adminSubscriptionStatus({ status: 'trial', trial_ends_at: '2026-10-10T03:00:00Z' }, 'trial_expired', now), 'canceled');

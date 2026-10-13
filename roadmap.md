@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Corrigir exclusão de contratos pagos próximos ao vencimento ou em liberação temporária no MRR, ARR, ARPU, ativos e planos dos dois painéis; regra compartilhada exige contrato ativo e estado canônico permitido, sem incluir teste ou pendência não paga; 13 testes passaram e compilação automática aprovada.
+- [ ] Conferir visualmente os indicadores corrigidos com conta superadministradora: sessão disponível é de funcionário e redireciona de /admin para /agenda; não alterar permissões para testar.
+
 - [x] Classificar no painel administrativo como cancelados os bloqueados ou expirados há mais de dez dias nas empresas, filtro, assinaturas e indicador; acesso e cobranças Asaas intactos; dez testes passaram e compilação automática aprovada. Registros sem data comprovada não recebem prazo inventado.
 
 - [x] Redesenhar a página pública com comunicação verificada, demonstrações ilustrativas, perguntas, suporte real e teste de dez dias; sem alterar assinatura ou cadastro.
