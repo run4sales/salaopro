@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Corrigir avisos de atraso após liberação manual válida, conferir Black Storm e preservar faturas reais sem mudar autorização ou cobrança.
+- [x] Corrigir avisos de atraso e contagem de bloqueio durante autorização manual válida; Black Storm conferido com prazo de 27/03/2027 e fatura antiga preservada. Dez testes aprovados, painel autenticado de loja autorizada sem avisos conferido visualmente, compilação aprovada; atualização do site publicado ainda depende de publicação.
 
 - [x] Corrigir reativação, prorrogação e pagamento manual com autorização datada, operação administrativa atômica, auditoria e proteção no banco contra sincronizações concorrentes; faturas reais preservadas, funções Asaas publicadas, 25 testes aprovados e salvamento/leitura real na própria loja verificados sem alterar o vencimento existente.
 - [ ] Conferir recebimento manual válido e concorrência com Asaas em conta de teste isolada: não criar pagamentos fictícios ou alterar cobranças de clientes reais; testes transacionais locais não têm permissão de execução/assunção de papel.
