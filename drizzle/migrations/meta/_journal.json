@@ -92,6 +92,13 @@
       "when": 1791653778689,
       "tag": "0012_verify_subscription_calendar_boundaries",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791896966773,
+      "tag": "0013_manual_subscription_authorization",
+      "breakpoints": true
     }
   ]
 }
