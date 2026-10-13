@@ -7,6 +7,7 @@ import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGri
 import SaaSInvoiceSummary from "./SaaSInvoiceSummary";
 import { useSaaSInvoices } from "@/hooks/useSaaSInvoices";
 import { brazilMonth, invoiceMonthMetrics } from "@/lib/saasInvoiceMetrics";
+import { isAdminPaidSubscription } from "@/lib/adminSubscriptionStatus";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--primary-glow))", "hsl(var(--success))"];
 
@@ -22,12 +23,12 @@ export default function AdminSaaSFinance() {
       const { data: states, error: statesError } = await (supabase as any).rpc("get_admin_subscription_states");
       if (statesError) throw statesError;
       const stateMap = new Map<string, string>((states ?? []).map((row: any) => [row.establishment_id, row.state]));
-      return (data ?? []).map((row: any) => ({ ...row, status: stateMap.get(row.establishment_id) ?? 'no_subscription' })) as { status: string; monthly_amount: number; started_at: string; plan_id: string; subscription_plans: { name: string } | null }[];
+      return (data ?? []).map((row: any) => ({ ...row, rawStatus: row.status, status: stateMap.get(row.establishment_id) ?? 'no_subscription' })) as { status: string; rawStatus: string; monthly_amount: number; started_at: string; plan_id: string; subscription_plans: { name: string } | null }[];
     },
   });
 
   const invoices = useSaaSInvoices();
-  const active = (subsQuery.data ?? []).filter((s) => s.status === "active_paid");
+  const active = (subsQuery.data ?? []).filter((s) => isAdminPaidSubscription(s.rawStatus, s.status));
   const mrr = active.reduce((sum, s) => sum + Number(s.monthly_amount || 0), 0);
   const arr = mrr * 12;
 

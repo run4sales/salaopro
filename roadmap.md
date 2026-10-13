@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Corrigir exclusão de contratos pagos próximos ao vencimento ou em liberação temporária no MRR, ARR, ARPU, ativos e planos dos dois painéis; preservar testes, bloqueios e recebimentos reais fora dessa contagem e validar regressões.
+
 - [x] Classificar no painel administrativo como cancelados os bloqueados ou expirados há mais de dez dias nas empresas, filtro, assinaturas e indicador; acesso e cobranças Asaas intactos; dez testes passaram e compilação automática aprovada. Registros sem data comprovada não recebem prazo inventado.
 
 - [x] Redesenhar a página pública com comunicação verificada, demonstrações ilustrativas, perguntas, suporte real e teste de dez dias; sem alterar assinatura ou cadastro.
