@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Investigar e corrigir reativação, prorrogação de vencimento e pagamento manual que não são respeitados pelo controle de acesso e sincronização Asaas, preservando faturas reais e auditoria.
+
 - [x] Corrigir exclusão de contratos pagos próximos ao vencimento ou em liberação temporária no MRR, ARR, ARPU, ativos e planos dos dois painéis; regra compartilhada exige contrato ativo e estado canônico permitido, sem incluir teste ou pendência não paga; 13 testes passaram e compilação automática aprovada.
 - [ ] Conferir visualmente os indicadores corrigidos com conta superadministradora: sessão disponível é de funcionário e redireciona de /admin para /agenda; não alterar permissões para testar.
 
