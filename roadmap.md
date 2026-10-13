@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Corrigir avisos de atraso após liberação manual válida, conferir Black Storm e preservar faturas reais sem mudar autorização ou cobrança.
+
 - [x] Corrigir reativação, prorrogação e pagamento manual com autorização datada, operação administrativa atômica, auditoria e proteção no banco contra sincronizações concorrentes; faturas reais preservadas, funções Asaas publicadas, 25 testes aprovados e salvamento/leitura real na própria loja verificados sem alterar o vencimento existente.
 - [ ] Conferir recebimento manual válido e concorrência com Asaas em conta de teste isolada: não criar pagamentos fictícios ou alterar cobranças de clientes reais; testes transacionais locais não têm permissão de execução/assunção de papel.
 - [ ] Reaplicar autorizações antigas somente após confirmação do administrador: histórico conferido contém prorrogações que não valiam antes; não migrar silenciosamente nem inventar pagamentos.

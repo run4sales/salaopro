@@ -29,6 +29,31 @@ export function subscriptionDeadline(subscription: {
     : subscription.next_billing_at ?? null;
 }
 
+export function hasValidManualAccess(subscription: {
+  manual_access_due_date?: string | null;
+  manual_access_status?: string | null;
+  manual_blocked_at?: string | null;
+} | null | undefined, now = new Date()) {
+  if (!subscription || subscription.manual_blocked_at || !['active', 'trial'].includes(subscription.manual_access_status ?? '')) return false;
+  const days = billingDaysLeft(subscription.manual_access_due_date, now);
+  return days !== null && days >= 0;
+}
+
+/** Customer access warnings never describe a provider debt as an expired manual authorization. */
+export function subscriptionAccessNotice(subscription: Parameters<typeof subscriptionDeadline>[0] & {
+  manual_access_status?: string | null;
+  manual_blocked_at?: string | null;
+}, now = new Date()) {
+  if (hasValidManualAccess(subscription, now)) return null;
+  const notice = billingNotice(subscriptionDeadline(subscription), now);
+  if (!notice || !subscription?.manual_access_due_date) return notice;
+  const days = billingDaysLeft(subscription.manual_access_due_date, now);
+  if (days === null) return null;
+  return { ...notice, message: days < 0
+    ? `Seu prazo autorizado venceu há ${-days} dia(s). Entre em contato para renovar o acesso.`
+    : `Seu prazo autorizado vence ${days === 0 ? 'hoje' : `em ${days} dia(s)`}.` };
+}
+
 export function billingCountdown(due: string | null | undefined, now = new Date()) {
   const days = billingDaysLeft(due, now);
   if (days === null) return 'Sem vencimento informado';
