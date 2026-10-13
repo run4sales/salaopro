@@ -16,6 +16,7 @@ Asaas invoice state is derived from current provider billing cycles, never deliv
 Hourly Asaas reconciliation uses single-use database tickets restricted to service_role, filters linked subscriptions, and verifies the provider webhook without exposing its token.
 
 Subscription notices and access cutoffs use the same Brazil calendar; provider invoice snapshots drive pending invoices independently of access state, so upcoming charges never hide paid access.
+Customer access banners use subscriptionAccessNotice and hasValidManualAccess to suppress provider-debt and grace warnings during a valid manual authorization; invoice history stays truthful and separate.
 Administrative last-invoice payment dates come from dated paid subscription_payments records, never subscription edit timestamps; this prevents invented payment dates and keeps both admin lists consistent.
 SaaS cash charts aggregate paid subscription_payments by Brazil payment month; overdue totals use unpaid due dates. Administrative MRR and paid counts share isAdminPaidSubscription, combining raw active contracts with canonical paid/notice/grace states so notices do not shrink metrics and unpaid grace does not inflate them.
 Public landing plans prefer active subscription_plans with a separate cache key and a dated verified public snapshot when RLS prevents anonymous reads; expose only signup-supported slugs and refresh the snapshot when plans change, avoiding permission changes for presentation work.

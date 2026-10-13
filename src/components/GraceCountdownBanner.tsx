@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
+import { hasValidManualAccess } from "@/lib/subscriptionBilling";
 
 function getHoursLeft(target: string) {
   const diff = new Date(target).getTime() - Date.now();
@@ -16,14 +17,15 @@ export default function GraceCountdownBanner() {
   const { data } = useSubscription();
   const [left, setLeft] = useState<ReturnType<typeof getHoursLeft>>(null);
 
-  const active = data?.state === "grace_active" && data?.grace_ends_at;
+  const active = !hasValidManualAccess(data) && data?.state === "grace_active" && data?.grace_ends_at;
 
   useEffect(() => {
     if (!active || !data?.grace_ends_at) {
       setLeft(null);
       return;
     }
-    const tick = () => setLeft(getHoursLeft(data.grace_ends_at!));
+    const deadline = data.grace_ends_at;
+    const tick = () => setLeft(getHoursLeft(deadline));
     tick();
     const id = setInterval(tick, 60_000);
     return () => clearInterval(id);
