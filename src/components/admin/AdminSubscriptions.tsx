@@ -25,6 +25,7 @@ type SubRow = {
   started_at: string;
   trial_ends_at: string | null;
   next_billing_at: string | null;
+  manual_access_due_date?: string | null;
   last_invoice_payment_at?: string | null;
   current_invoice_status?: string | null;
   current_invoice_due_date?: string | null;
@@ -61,7 +62,7 @@ export default function AdminSubscriptions() {
 
       const { data: subs, error: subsError } = await supabase
         .from("subscriptions")
-        .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, manual_blocked_at, current_invoice_status, current_invoice_due_date, plan_id, subscription_plans!subscriptions_plan_id_fkey(name, monthly_price)")
+        .select("id, establishment_id, status, monthly_amount, started_at, trial_ends_at, next_billing_at, manual_access_due_date, manual_blocked_at, current_invoice_status, current_invoice_due_date, plan_id, subscription_plans!subscriptions_plan_id_fkey(name, monthly_price)")
         .order("started_at", { ascending: false });
       if (subsError) throw subsError;
 
@@ -214,7 +215,7 @@ export default function AdminSubscriptions() {
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(s.started_at)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(s.trial_ends_at)}</TableCell>
                     <TableCell>{({ PENDING: "Pendente", OVERDUE: "Vencida", CONFIRMED: "Paga", RECEIVED: "Paga", RECEIVED_IN_CASH: "Paga" } as Record<string, string>)[s.current_invoice_status ?? ""] ?? "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{formatBillingDate(deadline)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{formatBillingDate(deadline)}{s.manual_access_due_date && <div>Autorização manual</div>}</TableCell>
                     <TableCell className="whitespace-nowrap text-xs">{billingCountdown(deadline)}</TableCell>
                     <TableCell className="whitespace-nowrap text-xs">{formatBillingDate(s.last_invoice_payment_at)}</TableCell>
                     <TableCell className="text-right">

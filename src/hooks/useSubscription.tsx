@@ -29,6 +29,8 @@ export interface SubscriptionInfo {
   } | null;
   trial_ends_at: string | null;
   next_billing_at: string | null;
+  manual_access_due_date?: string | null;
+  manual_access_status?: string | null;
   current_invoice_status?: string | null;
   current_invoice_due_date?: string | null;
   monthly_amount: number;

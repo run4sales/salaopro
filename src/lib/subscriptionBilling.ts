@@ -15,12 +15,14 @@ export function billingNotice(due: string | null | undefined, now = new Date()) 
 
 export function subscriptionDeadline(subscription: {
   status: string;
+  manual_access_due_date?: string | null;
   trial_ends_at?: string | null;
   current_invoice_status?: string | null;
   current_invoice_due_date?: string | null;
   next_billing_at?: string | null;
 } | undefined) {
   if (!subscription) return null;
+  if (subscription.manual_access_due_date) return subscription.manual_access_due_date;
   if (subscription.status === 'trial') return subscription.trial_ends_at ?? null;
   return ['PENDING', 'OVERDUE'].includes(subscription.current_invoice_status ?? '')
     ? subscription.current_invoice_due_date ?? subscription.next_billing_at ?? null
