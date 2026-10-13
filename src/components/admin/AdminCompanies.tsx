@@ -64,6 +64,7 @@ export default function AdminCompanies() {
   const [billingPaymentDate, setBillingPaymentDate] = useState('');
   const [billingRequestId, setBillingRequestId] = useState('');
   const [savingBilling, setSavingBilling] = useState(false);
+  const [billingPlanId, setBillingPlanId] = useState<string | undefined>();
   const [isSyncingAgendor, setIsSyncingAgendor] = useState(false);
 
 
@@ -212,6 +213,7 @@ export default function AdminCompanies() {
     setBillingStatus(row.subscription.status || "active");
     setBillingAmount(String(row.subscription.monthly_amount || ""));
     setBillingPaid(false);
+    setBillingPlanId(undefined);
     setBillingRequestId(crypto.randomUUID());
     setBillingPaymentDate(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()));
     setBillingNextDate(
@@ -228,7 +230,7 @@ export default function AdminCompanies() {
     if (!action) return;
     setSavingBilling(true);
     try {
-      await setSubscriptionAuthorization({ establishmentId: billingTarget.id, action, dueDate: billingNextDate, amount: Number(billingAmount), paymentDate: billingPaymentDate, requestId: billingRequestId });
+      await setSubscriptionAuthorization({ establishmentId: billingTarget.id, action: billingPlanId && action === 'grant' ? 'plan' : action, dueDate: billingNextDate, amount: Number(billingAmount), paymentDate: billingPaymentDate, requestId: billingRequestId, planId: billingPlanId });
       toast.success('Autorização atualizada');
       setBillingTarget(null);
       await refreshSubscriptionQueries(qc);
@@ -280,17 +282,12 @@ export default function AdminCompanies() {
     if (!editTarget.subscription.inferred) {
       openBilling(editTarget);
       setBillingStatus('active');
+      setBillingPlanId(plan.id);
+      setBillingAmount(String(plan.monthly_price));
       setEditTarget(null);
-      toast.info('Defina o vencimento da autorização para renovar o acesso.');
-      try {
-        const { error } = await supabase.from('subscriptions').update({ plan_id: plan.id }).eq('id', editTarget.subscription.id);
-        if (error) throw error;
-        await refreshSubscriptionQueries(qc);
-      } catch { toast.error('Não foi possível alterar o plano.'); }
       return;
     }
-    const { error } = editTarget.subscription.inferred
-      ? await (supabase as any)
+    const { error } = await (supabase as any)
           .from("subscriptions")
           .insert({
             establishment_id: editTarget.id,
@@ -299,16 +296,7 @@ export default function AdminCompanies() {
             status: "trial",
             trial_ends_at: new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString(),
             next_billing_at: null,
-          })
-      : await (supabase as any)
-          .from("subscriptions")
-          .update({
-            plan_id: plan.id,
-            monthly_amount: plan.monthly_price,
-            status: "active",
-            next_billing_at: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
-          })
-          .eq("id", editTarget.subscription.id);
+          });
     if (error) {
       toast.error("Não foi possível alterar o plano.");
       return;
@@ -507,7 +495,7 @@ export default function AdminCompanies() {
               </Select>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Valor mensal (R$)</Label>
+              <Label className="text-xs text-muted-foreground">{billingPaid ? 'Valor recebido (R$)' : 'Valor mensal (R$)'}</Label>
               <Input
                 type="number"
                 step="0.01"
