@@ -19,7 +19,9 @@ test('reconciliation uses the true latest invoice and preserves manual blocks', 
   const source = await read('supabase/functions/_shared/asaas-sync.ts');
   assert.match(source, /const latestPayment = newestPayment\(payments\)/);
   assert.doesNotMatch(source, /const latestPayment = paidPayment \?\?/);
-  assert.match(source, /subscription\.manual_blocked_at \? subscription\.status : derivedStatus/);
+  assert.match(source, /subscription\.manual_blocked_at \|\| subscription\.manual_access_due_date \? subscription\.status : derivedStatus/);
+  assert.match(source, /manual_access_preserved/);
+  assert.match(source, /status: savedStatus/);
   assert.match(source, /manual_block_preserved/);
 });
 
