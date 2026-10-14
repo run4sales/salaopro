@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Permitir navegação mensal e bloqueios próprios de colaboradores, compromissos simultâneos de administradores e exibição de todos os eventos do horário; verificar com testes e agenda autenticada.
 
 - [x] Corrigir avisos de atraso e contagem de bloqueio durante autorização manual válida; Black Storm conferido com prazo de 27/03/2027 e fatura antiga preservada. Dez testes aprovados, painel autenticado de loja autorizada sem avisos conferido visualmente, compilação aprovada; atualização do site publicado ainda depende de publicação.
 
