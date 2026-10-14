@@ -124,6 +124,7 @@ export function AgendaCalendar({
         dayLayoutAlgorithm="no-overlap"
         showAllEvents
         popup
+        eventPropGetter={eventPropGetter}
         onSelectSlot={onSelectSlot}
         onSelectEvent={(e) => onSelectEvent(e as AgendaEvent)}
         onDrillDown={(d) => { onNavigate(d); onViewChange("day"); }}
