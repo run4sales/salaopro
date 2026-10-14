@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { View } from "react-big-calendar";
-import { addDays, endOfDay, endOfMonth, endOfWeek, format, startOfDay, startOfMonth, startOfWeek, subDays } from "date-fns";
+import { addDays, addMonths, addWeeks, endOfDay, endOfMonth, endOfWeek, format, startOfDay, startOfMonth, startOfWeek, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Ban, Plus, CalendarDays, List, Upload, CalendarOff, UserX, LockKeyhole, AlertCircle, RefreshCw } from "lucide-react";
+import { Ban, Plus, CalendarDays, List, Upload, ChevronLeft, ChevronRight, UserX, LockKeyhole, AlertCircle, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { AgendaCalendar, AgendaEvent } from "@/components/agenda/AgendaCalendar";
@@ -483,7 +483,7 @@ export default function StableAgendaContent() {
   };
 
   const handleNew = () => { setSelectedAppt(null); setInitialSlot(null); setFormOpen(true); };
-  const handleNewBlock = () => { setSelectedBlock(null); setInitialSlot(null); setBlockOpen(true); };
+  const handleNewBlock = () => { setSelectedBlock(null); setInitialSlot(calendarDate); setBlockOpen(true); };
   const handleSlot = (slot: any) => { setSelectedAppt(null); setSelectedBlock(null); setInitialSlot(slot.start); setSlotChoiceOpen(true); };
   const handleEventClick = (e: AgendaEvent) => {
     if (e.type === "block") {
@@ -539,6 +539,11 @@ export default function StableAgendaContent() {
     const nextEnd = move(range.end, days);
     setCustomStart(toDateInputValue(nextStart));
     setCustomEnd(toDateInputValue(nextEnd));
+  };
+
+  const navigatePeriod = (direction: number) => {
+    const move = periodMode === "month" ? addMonths : periodMode === "day" ? addDays : addWeeks;
+    setCalendarDate(current => move(current, direction));
   };
 
   if (!establishmentId) return null;
@@ -640,8 +645,11 @@ export default function StableAgendaContent() {
                 <Button type="button" variant="outline" size="sm" onClick={() => navigateCustomRange("next")}>Próximo</Button>
               </div>
             ) : (
-              <div className="flex min-h-10 items-center rounded-md border bg-muted/40 px-3 text-sm">
-                {formatRangeLabel(range.start, range.end)}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" variant="outline" size="icon" aria-label="Período anterior" title="Período anterior" onClick={() => navigatePeriod(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+                <Input type="date" aria-label="Data da agenda" className="w-[145px]" value={toDateInputValue(calendarDate)} onChange={event => setCalendarDate(fromDateInputValue(event.target.value, calendarDate))} />
+                <Button type="button" variant="outline" size="icon" aria-label="Próximo período" title="Próximo período" onClick={() => navigatePeriod(1)}><ChevronRight className="h-4 w-4" /></Button>
+                <span className="basis-full text-sm text-muted-foreground">{formatRangeLabel(range.start, range.end)}</span>
               </div>
             )}
           </div>
@@ -654,11 +662,6 @@ export default function StableAgendaContent() {
 
       {isLoading ? (
         <div className="rounded-md border p-6 bg-card text-sm text-muted-foreground">Carregando agendamentos...</div>
-      ) : agendaData.appts.length === 0 && isEmployee ? (
-        <div className="rounded-md border bg-card p-8 text-center text-sm text-muted-foreground">
-          <CalendarOff className="h-10 w-10 mx-auto mb-3 opacity-60" />
-          Você ainda não possui atendimentos agendados.
-        </div>
       ) : viewMode === "calendar" ? (
         <AgendaCalendar
           events={events}

@@ -121,6 +121,9 @@ export function AgendaCalendar({
         messages={MESSAGES}
         length={agendaLength}
         selectable
+        dayLayoutAlgorithm="no-overlap"
+        showAllEvents
+        popup
         onSelectSlot={onSelectSlot}
         onSelectEvent={(e) => onSelectEvent(e as AgendaEvent)}
         onDrillDown={(d) => { onNavigate(d); onViewChange("day"); }}

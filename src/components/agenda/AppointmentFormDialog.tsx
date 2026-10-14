@@ -292,7 +292,8 @@ export function AppointmentFormDialog({
     const found = findAgendaConflicts(start, end, form.professional_ids, occupied, appointment?.id ?? savedAppointmentId.current);
     const signature = `${form.appointment_date}|${durationMinutes}|${form.professional_ids.join(",")}|${found.map(c => c.id).join(",")}`;
     const hasAbsoluteBlock = found.some(conflict => conflict.type === "block");
-    if (found.length && (hasAbsoluteBlock || !allowConflictOverride || !confirmed || signature !== approvedSignature)) { setApprovedSignature(signature); setConflicts(found); return; }
+    // Managers can create simultaneous appointments; explicit blocks stay absolute.
+    if (found.length && (hasAbsoluteBlock || !allowConflictOverride)) { setApprovedSignature(signature); setConflicts(found); return; }
     setConflicts([]);
 
     setSaving(true);
