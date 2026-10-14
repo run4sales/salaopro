@@ -1,5 +1,6 @@
 Dashboard estratégico reutiliza `fetchRealizedSales` e regras em `src/lib/finance/` e lê o snapshot `appointments.service_amount`; isso impede divergências de faturamento e reprecificação de agendamentos.
 Conflitos da agenda usam intervalos semiabertos por profissional em `src/lib/agendaConflicts.ts`; isso preserva encaixes adjacentes sem ignorar sobreposições reais.
+The active agenda keeps the calendar mounted for empty periods, shares date navigation across list/calendar views, and uses non-overlapping event lanes with scrollable month rows; this keeps future own-professional blocks and simultaneous appointments accessible.
 Proteções críticas da agenda e do faturamento usam gatilhos com travas por profissional/agendamento no banco; isso impede que pedidos simultâneos ou diretos contornem validações da interface.
 Ficha CRM deriva consumo de `sales` não excluídas, visitas de agendamentos finalizados e benefícios das tabelas oficiais de pacotes/assinaturas; isso evita métricas paralelas e histórico fabricado.
 O cadastro de cliente dentro de fluxos operacionais usa a ficha completa em diálogo local e atualiza a busca existente; isso mantém o formulário em andamento sem navegar ou recriar um cadastro simplificado.

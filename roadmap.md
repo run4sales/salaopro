@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Manter calendário disponível em meses vazios, adicionar navegação por data/período, permitir compromissos simultâneos de gestores preservando bloqueios e duplicidade exata, e exibir eventos em faixas separadas e todos os itens do mês; 17 testes aprovados, bloqueio futuro salvo/lido/removido na própria loja e compilação aprovada.
+- [ ] Conferir fluxo completo em sessão de colaborador e salvar dois compromissos simultâneos numa conta de teste: sessão disponível é de gestor e não há clientes/agendamentos de teste autorizados; não criar atendimentos fictícios em clientes reais.
 
 - [x] Corrigir avisos de atraso e contagem de bloqueio durante autorização manual válida; Black Storm conferido com prazo de 27/03/2027 e fatura antiga preservada. Dez testes aprovados, painel autenticado de loja autorizada sem avisos conferido visualmente, compilação aprovada; atualização do site publicado ainda depende de publicação.
 
