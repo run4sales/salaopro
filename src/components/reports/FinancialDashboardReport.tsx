@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { KpiCard, currencyBRL } from "./KpiCard";
-import { averageTicket, CONFIRMED_CASH_STATUSES, countUniqueClients, fetchRealizedSales, sumCashReceived, sumCreditUsed, sumRealizedRevenue, toPeriodRange } from "@/lib/finance/revenue";
+import { averageTicket, CONFIRMED_CASH_STATUSES, countUniqueClients, fetchClientNames, fetchRealizedSales, sumCashReceived, sumCreditUsed, sumRealizedRevenue, toPeriodRange } from "@/lib/finance/revenue";
 
 type SupabaseError = { message?: string; code?: string; details?: string; hint?: string };
 type QueryIssue = { step: string; message: string; code?: string; details?: string; hint?: string };
@@ -149,14 +149,7 @@ export function FinancialDashboardReport({ establishmentId, startDate, endDate }
         }, []);
 
         const clients = await runFinancialStep<NamedRow[]>("Buscando clientes dos agendamentos", issues, async () => {
-          if (clientIds.length === 0) return [];
-          const { data: rows, error: clientsError } = await supabase
-            .from("clients")
-            .select("id, name")
-            .eq("establishment_id", establishmentId)
-            .in("id", clientIds);
-          if (clientsError) throw clientsError;
-          return rows ?? [];
+          return fetchClientNames(establishmentId, clientIds);
         }, []);
 
         const professionals = await runFinancialStep<NamedRow[]>("Buscando profissionais dos agendamentos", issues, async () => {

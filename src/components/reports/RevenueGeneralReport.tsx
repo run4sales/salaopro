@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   averageTicket,
   fetchRealizedSales,
+  fetchClientNames,
   sumCashReceived,
   sumCreditUsed,
   sumRealizedRevenue,
@@ -29,12 +30,12 @@ export function RevenueGeneralReport({ establishmentId, startDate, endDate }: Pr
     queryFn: async () => {
       const sales = await fetchRealizedSales(establishmentId, range);
       const [clientsRes, servicesRes, profsRes, salePros] = await Promise.all([
-        supabase.from("clients").select("id, name").eq("establishment_id", establishmentId),
+        fetchClientNames(establishmentId, sales.map(sale => sale.client_id)),
         supabase.from("services").select("id, name, kind").eq("establishment_id", establishmentId),
         supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId),
         supabase.from("sale_professionals").select("sale_id, professional_id").eq("establishment_id", establishmentId),
       ]);
-      const clients = new Map((clientsRes.data ?? []).map((c: any) => [c.id, c.name]));
+      const clients = new Map(clientsRes.map(c => [c.id, c.name]));
       const services = new Map((servicesRes.data ?? []).map((s: any) => [s.id, s]));
       const profs = new Map((profsRes.data ?? []).map((p: any) => [p.id, p.name]));
 
