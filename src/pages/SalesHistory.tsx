@@ -11,6 +11,7 @@ import { Pencil, Trash2, ShieldAlert } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { EditSaleDialog } from "@/components/sales/EditSaleDialog";
 import { DeleteSaleDialog } from "@/components/sales/DeleteSaleDialog";
+import { fetchClientNames, fetchRealizedSales, toPeriodRange } from "@/lib/finance/revenue";
 
 
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -29,27 +30,22 @@ export default function SalesHistory() {
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["sales-history", establishmentId, startDate, endDate],
     enabled: !!establishmentId && isAdmin,
     queryFn: async () => {
-      const startISO = new Date(`${startDate}T00:00:00`).toISOString();
-      const endISO = new Date(`${endDate}T23:59:59`).toISOString();
-      const [salesRes, clientsRes, servicesRes, profsRes, salePros] = await Promise.all([
-        supabase.from("sales")
-          .select("id, client_id, service_id, professional_id, amount, gross_amount, fee_amount, net_amount, credit_used, sale_date, payment_method, installments, notes")
-          .eq("establishment_id", establishmentId!)
-          .is("deleted_at" as any, null)
-          .gte("sale_date", startISO).lte("sale_date", endISO)
-          .order("sale_date", { ascending: false }),
-        supabase.from("clients").select("id, name").eq("establishment_id", establishmentId!),
-        supabase.from("services").select("id, name").eq("establishment_id", establishmentId!),
-        supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId!),
-        supabase.from("sale_professionals").select("sale_id, professional_id").eq("establishment_id", establishmentId!),
+      if (!establishmentId) throw new Error("Estabelecimento não disponível");
+      const sales = await fetchRealizedSales(establishmentId, toPeriodRange(new Date(`${startDate}T00:00:00`), new Date(`${endDate}T00:00:00`)));
+      const [clientsRes, servicesRes, profsRes, salePros] = await Promise.all([
+        fetchClientNames(establishmentId, sales.map(sale => sale.client_id)),
+        supabase.from("services").select("id, name").eq("establishment_id", establishmentId),
+        supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId),
+        supabase.from("sale_professionals").select("sale_id, professional_id").eq("establishment_id", establishmentId),
       ]);
-      if (salesRes.error) throw salesRes.error;
-      const sales = (salesRes.data ?? []) as any[];
-      const clients = new Map((clientsRes.data ?? []).map((c: any) => [c.id, c.name]));
+      if (servicesRes.error) throw servicesRes.error;
+      if (profsRes.error) throw profsRes.error;
+      if (salePros.error) throw salePros.error;
+      const clients = new Map(clientsRes.map(c => [c.id, c.name]));
       const services = new Map((servicesRes.data ?? []).map((s: any) => [s.id, s.name]));
       const profs = new Map((profsRes.data ?? []).map((p: any) => [p.id, p.name]));
       const proBySale = new Map<string, string[]>();
@@ -130,7 +126,9 @@ export default function SalesHistory() {
         <CardContent>
           {isLoading ? (
             <div className="text-sm text-muted-foreground">Carregando…</div>
-          ) : filtered.length === 0 ? (
+           ) : error ? (
+             <div className="text-sm text-destructive py-8 text-center">Erro ao carregar o histórico. <Button variant="outline" onClick={() => refetch()}>Tentar novamente</Button></div>
+           ) : filtered.length === 0 ? (
             <div className="text-sm text-muted-foreground py-8 text-center">Nenhuma venda no período.</div>
           ) : (
             <div className="rounded-md border overflow-x-auto">

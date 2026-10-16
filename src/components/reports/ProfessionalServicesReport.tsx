@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KpiCard, currencyBRL } from "./KpiCard";
 import { Users, Scissors, DollarSign } from "lucide-react";
-import { round2, toPeriodRange } from "@/lib/finance/revenue";
+import { fetchClientNames, round2, toPeriodRange } from "@/lib/finance/revenue";
 
 interface Props {
   establishmentId: string;
@@ -23,21 +23,21 @@ export function ProfessionalServicesReport({ establishmentId, startDate, endDate
   const { data, isLoading } = useQuery({
     queryKey: ["reports", "by-professional", establishmentId, startISO, endISO],
     queryFn: async () => {
-      const [salesRes, clientsRes, servicesRes, profsRes, salePros] = await Promise.all([
+      const [salesRes, servicesRes, profsRes, salePros] = await Promise.all([
         supabase.from("sales")
           .select("id, client_id, service_id, professional_id, amount, sale_date")
           .eq("establishment_id", establishmentId)
           .gte("sale_date", startISO).lt("sale_date", endISO)
           .is("deleted_at", null)
           .order("sale_date", { ascending: false }),
-        supabase.from("clients").select("id, name").eq("establishment_id", establishmentId),
         supabase.from("services").select("id, name").eq("establishment_id", establishmentId),
         supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId),
         supabase.from("sale_professionals").select("sale_id, professional_id").eq("establishment_id", establishmentId),
       ]);
       if (salesRes.error) throw salesRes.error;
       const sales = salesRes.data ?? [];
-      const clients = new Map((clientsRes.data ?? []).map((c: any) => [c.id, c.name]));
+      const clientsRes = await fetchClientNames(establishmentId, sales.map(sale => sale.client_id));
+      const clients = new Map(clientsRes.map(c => [c.id, c.name]));
       const services = new Map((servicesRes.data ?? []).map((s: any) => [s.id, s.name]));
       const profs = new Map((profsRes.data ?? []).map((p: any) => [p.id, p.name]));
       const proBySale = new Map<string, string[]>();

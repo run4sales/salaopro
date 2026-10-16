@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { KpiCard, currencyBRL } from "./KpiCard";
 import { summarizeCanceledAppointments } from "@/lib/canceledAppointments";
-import { toPeriodRange } from "@/lib/finance/revenue";
+import { fetchClientNames, toPeriodRange } from "@/lib/finance/revenue";
 
 interface Props { establishmentId: string; startDate: Date; endDate: Date }
 type Named = { id: string; name: string };
@@ -36,16 +36,16 @@ export function CanceledAppointmentsReport({ establishmentId, startDate, endDate
       const rows = appointments ?? [];
       const appointmentIds = rows.map((row) => row.id);
       const [clientsResult, professionalsResult, servicesResult, linkedProfessionalsResult, linkedServicesResult] = await Promise.all([
-        supabase.from("clients").select("id, name").eq("establishment_id", establishmentId),
+        fetchClientNames(establishmentId, rows.map(row => row.client_id)),
         supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId),
         supabase.from("services").select("id, name").eq("establishment_id", establishmentId),
         appointmentIds.length ? supabase.from("appointment_professionals").select("appointment_id, professional_id").eq("establishment_id", establishmentId).in("appointment_id", appointmentIds) : Promise.resolve({ data: [], error: null }),
         appointmentIds.length ? supabase.from("appointment_services").select("appointment_id, service_id").eq("establishment_id", establishmentId).in("appointment_id", appointmentIds) : Promise.resolve({ data: [], error: null }),
       ]);
-      const queryError = clientsResult.error || professionalsResult.error || servicesResult.error || linkedProfessionalsResult.error || linkedServicesResult.error;
+      const queryError = professionalsResult.error || servicesResult.error || linkedProfessionalsResult.error || linkedServicesResult.error;
       if (queryError) throw queryError;
 
-      const clients = (clientsResult.data ?? []) as Named[];
+      const clients = clientsResult;
       const professionals = (professionalsResult.data ?? []) as Named[];
       const services = (servicesResult.data ?? []) as Named[];
       const clientNames = new Map(clients.map((item) => [item.id, item.name]));

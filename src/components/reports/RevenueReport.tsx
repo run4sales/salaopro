@@ -8,6 +8,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { EditSaleDialog } from "@/components/sales/EditSaleDialog";
 import { DeleteSaleDialog } from "@/components/sales/DeleteSaleDialog";
+import { fetchClientNames } from "@/lib/finance/revenue";
 
 function currencyBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -43,7 +44,7 @@ export function RevenueReport({ establishmentId, startDate, endDate }: Props) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["reports", "revenue", establishmentId, startISO, endISO],
     queryFn: async () => {
-      const [salesRes, clientsRes, servicesRes] = await Promise.all([
+      const [salesRes, servicesRes] = await Promise.all([
         supabase
           .from("sales")
           .select("id, client_id, service_id, amount, sale_date, payment_method, notes")
@@ -52,16 +53,15 @@ export function RevenueReport({ establishmentId, startDate, endDate }: Props) {
           .gte("sale_date", startISO)
           .lte("sale_date", endISO)
           .order("sale_date", { ascending: false }),
-        supabase.from("clients").select("id, name").eq("establishment_id", establishmentId),
         supabase.from("services").select("id, name").eq("establishment_id", establishmentId),
       ]);
 
       if (salesRes.error) throw salesRes.error;
-      if (clientsRes.error) throw clientsRes.error;
       if (servicesRes.error) throw servicesRes.error;
 
       const sales = (salesRes.data ?? []) as SaleRow[];
-      const clients = new Map((clientsRes.data ?? []).map((c: any) => [c.id, (c as SimpleItem).name]));
+      const clientsRes = await fetchClientNames(establishmentId, sales.map(sale => sale.client_id));
+      const clients = new Map(clientsRes.map(c => [c.id, c.name]));
       const services = new Map((servicesRes.data ?? []).map((s: any) => [s.id, (s as SimpleItem).name]));
 
       const rows = sales.map((s) => ({
