@@ -21,5 +21,6 @@ Customer access banners use subscriptionAccessNotice and hasValidManualAccess to
 Administrative last-invoice payment dates come from dated paid subscription_payments records, never subscription edit timestamps; this prevents invented payment dates and keeps both admin lists consistent.
 SaaS cash charts aggregate paid subscription_payments by Brazil payment month; overdue totals use unpaid due dates. Administrative MRR and paid counts share isAdminPaidSubscription, combining raw active contracts with canonical paid/notice/grace states so notices do not shrink metrics and unpaid grace does not inflate them.
 Public landing plans prefer active subscription_plans with a separate cache key and a dated verified public snapshot when RLS prevents anonymous reads; expose only signup-supported slugs and refresh the snapshot when plans change, avoiding permission changes for presentation work.
-Public landing styling is scoped and demonstrations contain labeled sample data with no database writes; this preserves the app theme and client privacy.
+Landing styles are scoped; labeled demos never write data, preserving theme and privacy.
+Reports resolve referenced client names in tenant-scoped batches to prevent catalog truncation and surface lookup errors.
 Administrative cancellation classification uses one reporting-only helper with canonical access states and dated block/expiry evidence; this keeps lists and counts consistent without changing access or provider billing.

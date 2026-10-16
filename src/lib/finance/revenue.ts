@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { loadClientNames } from "../clientLookup";
 import {
   asNumber,
   buildCommissionEntries,
@@ -10,6 +11,15 @@ import {
 } from "./revenueRules";
 
 export * from "./revenueRules";
+
+export async function fetchClientNames(establishmentId: string, clientIds: (string | null | undefined)[]) {
+  return loadClientNames(clientIds, async (ids) => {
+    const { data, error } = await supabase.from("clients").select("id, name")
+      .eq("establishment_id", establishmentId).in("id", ids);
+    if (error) throw error;
+    return data ?? [];
+  });
+}
 
 const SALE_COLUMNS =
   "id, client_id, service_id, professional_id, appointment_id, amount, gross_amount, net_amount, paid_now, credit_used, fee_amount, payment_method, installments, notes, sale_date";
@@ -101,13 +111,10 @@ export async function fetchCommissionReport(
     fetchSaleProfessionals(saleIds),
     supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId),
     supabase.from("services").select("id, name, kind").eq("establishment_id", establishmentId),
-    clientIds.length
-      ? supabase.from("clients").select("id, name").in("id", clientIds)
-      : Promise.resolve({ data: [], error: null } as const),
+    fetchClientNames(establishmentId, clientIds),
   ]);
   if (professionalsRes.error) throw professionalsRes.error;
   if (servicesRes.error) throw servicesRes.error;
-  if ("error" in clientsRes && clientsRes.error) throw clientsRes.error;
 
   const professionals = new Map(
     ((professionalsRes.data ?? []) as { id: string; name: string | null }[]).map((p) => [p.id, p.name ?? "—"]),
@@ -119,7 +126,7 @@ export async function fetchCommissionReport(
     ]),
   );
   const clients = new Map(
-    ((clientsRes.data ?? []) as { id: string; name: string | null }[]).map((c) => [c.id, c.name ?? "Cliente não informado"]),
+    clientsRes.map((c) => [c.id, c.name ?? "Cliente não informado"]),
   );
   const saleById = new Map(sales.map((sale) => [sale.id, sale]));
 
