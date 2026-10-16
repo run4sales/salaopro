@@ -3,7 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
 
-import { subscriptionAccessNotice } from "@/lib/subscriptionBilling";
+import { manualAuthorizationInEffect, subscriptionAccessNotice } from "@/lib/subscriptionBilling";
 
 export default function SubscriptionBanner() {
   const { data } = useSubscription();
@@ -27,7 +27,7 @@ export default function SubscriptionBanner() {
           {notice.message}
         </span>
         <Button asChild size="sm" variant="secondary" className="shrink-0">
-          <Link to="/planos">{data.manual_access_due_date ? "Ver assinatura" : "Pagar agora"}</Link>
+          <Link to="/planos">{manualAuthorizationInEffect(data) ? "Ver assinatura" : "Pagar agora"}</Link>
         </Button>
       </div>
     </div>

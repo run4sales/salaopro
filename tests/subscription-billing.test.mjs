@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { billingNotice, billingDaysLeft, subscriptionAccessNotice, hasValidManualAccess } from '../src/lib/subscriptionBilling.ts';
+import { billingNotice, billingDaysLeft, subscriptionAccessNotice, hasValidManualAccess, manualAuthorizationInEffect, subscriptionDeadline } from '../src/lib/subscriptionBilling.ts';
 
 test('notice color follows the Brazil calendar boundaries', () => {
   const due = '2026-10-10';
@@ -27,10 +27,26 @@ test('Black Storm manual authorization suppresses old overdue invoice warnings',
 test('valid manual access hides debt notices through the entire authorized day', () => {
   const sub = { status: 'past_due', manual_access_status: 'active', manual_access_due_date: '2026-10-16', current_invoice_status: 'OVERDUE', current_invoice_due_date: '2026-08-15' };
   for (const now of ['2026-10-13T15:00:00Z', '2026-10-17T02:59:59Z']) assert.equal(subscriptionAccessNotice(sub, new Date(now)), null);
+});
+
+test('after the manual date passes, the real Asaas invoice drives the notice again', () => {
+  const sub = { status: 'past_due', manual_access_status: 'active', manual_access_due_date: '2026-10-16', current_invoice_status: 'OVERDUE', current_invoice_due_date: '2026-08-15' };
   const expired = subscriptionAccessNotice(sub, new Date('2026-10-17T03:00:00Z'));
   assert.equal(expired?.tone, 'late');
-  assert.match(expired?.message ?? '', /prazo autorizado venceu/);
-  assert.doesNotMatch(expired?.message ?? '', /fatura/);
+  assert.match(expired?.message ?? '', /fatura/);
+  assert.equal(manualAuthorizationInEffect(sub, new Date('2026-10-17T03:00:00Z')), false);
+});
+
+test('a salon that paid in Asaas after its manual date expired gets no warning', () => {
+  const sub = { status: 'active', state: 'active_paid', manual_access_status: 'active', manual_access_due_date: '2026-10-01', current_invoice_status: 'RECEIVED', next_billing_at: '2026-10-01T15:00:00Z' };
+  assert.equal(subscriptionAccessNotice(sub, new Date('2026-10-16T15:00:00Z')), null);
+  assert.equal(subscriptionDeadline({ ...sub, next_billing_at: '2026-11-16' }, new Date('2026-10-16T15:00:00Z')), '2026-11-16');
+});
+
+test('an Asaas payment supersedes a manual pending state before its date', () => {
+  const sub = { status: 'past_due', manual_access_status: 'past_due', manual_access_due_date: '2026-10-20', current_invoice_status: 'CONFIRMED' };
+  assert.equal(manualAuthorizationInEffect(sub, new Date('2026-10-16T15:00:00Z')), false);
+  assert.equal(manualAuthorizationInEffect({ ...sub, current_invoice_status: 'OVERDUE' }, new Date('2026-10-16T15:00:00Z')), true);
 });
 
 test('automatic invoices still warn and explicit blocks are not valid manual access', () => {

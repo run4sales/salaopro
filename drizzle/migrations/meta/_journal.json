@@ -99,6 +99,13 @@
       "when": 1791896966773,
       "tag": "0013_manual_subscription_authorization",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792185987454,
+      "tag": "0014_manual_access_returns_to_asaas",
+      "breakpoints": true
     }
   ]
 }
