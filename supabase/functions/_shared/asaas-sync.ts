@@ -177,7 +177,8 @@ export async function syncAsaasSubscription(
     : PAID_STATUSES.has(remoteStatus)
     ? 'active'
     : subscription.status;
-  const newStatus = subscription.manual_blocked_at || subscription.manual_access_due_date ? subscription.status : derivedStatus;
+  // The database trigger keeps a still-valid manual authorization and releases an expired one to the provider state.
+  const newStatus = subscription.manual_blocked_at ? subscription.status : derivedStatus;
   const lastPaymentAt = paidPayment
     ? paidPayment.paymentDate ?? paidPayment.clientPaymentDate ?? paidPayment.confirmedDate ?? new Date().toISOString()
     : null;
@@ -222,6 +223,7 @@ export async function syncAsaasSubscription(
   const savedStatus = saved.status as string;
   trace.push(`Status atualizado: ${subscription.status} -> ${savedStatus}`);
   if (saved.manual_access_due_date) trace.push('Autorização manual preservada; faturas Asaas atualizadas sem substituir o prazo de acesso.');
+  else if (subscription.manual_access_due_date) trace.push('Autorização manual encerrada; o acesso voltou a seguir as faturas do Asaas.');
   if (subscription.manual_blocked_at) trace.push('Bloqueio manual preservado; cobrança registrada sem liberar acesso.');
   if (latestPayment && PAID_STATUSES.has(latestPayment.status ?? '') && !subscription.manual_blocked_at && !saved.manual_access_due_date) trace.push('Trial encerrado. Conta liberada.');
 
