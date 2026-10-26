@@ -2618,6 +2618,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      recalculate_client_stats: {
+        Args: { p_client_id: string }
+        Returns: undefined
+      }
       recalculate_sale_commissions: {
         Args: { _establishment_id?: string }
         Returns: {
