@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { PAYMENT_EVENTS } from '../_shared/asaas-client.ts';
-import { syncAsaasSubscription } from '../_shared/asaas-sync.ts';
+import { RemoteSubscriptionMissingError, syncAsaasSubscription } from '../_shared/asaas-sync.ts';
 
 const MAX_BODY_BYTES = 256 * 1024;
 const SUPPORTED_EVENTS = new Set(PAYMENT_EVENTS);
