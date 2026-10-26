@@ -24,3 +24,4 @@ Public landing plans prefer active subscription_plans with a separate cache key 
 Landing styles are scoped; labeled demos never write data, preserving theme and privacy.
 Reports resolve referenced client names in tenant-scoped batches to prevent catalog truncation and surface lookup errors.
 Administrative cancellation classification uses one reporting-only helper with canonical access states and dated block/expiry evidence; this keeps lists and counts consistent without changing access or provider billing.
+- Client visit_count/last_service_date/total_spent are recomputed by recalculate_client_stats triggers on sales and appointments (billed or past completed appointments plus one walk-in visit per Brazil sale day); never increment them in app code, so cancellations and deletions cannot drift CRM metrics.
