@@ -120,17 +120,21 @@ const Clients = () => {
     queryFn: async () => {
       if (!profile?.id) return [];
 
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('establishment_id', profile.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('Clients fetch error:', error);
-        throw error;
-      }
-      return data;
+      // Paginate: the API returns at most 1000 rows per request, which hid older clients.
+      return fetchAllPages(async (from, to) => {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('establishment_id', profile.id)
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: true })
+          .range(from, to);
+        if (error) {
+          console.error('Clients fetch error:', error);
+          throw error;
+        }
+        return data ?? [];
+      });
     },
     enabled: !!profile?.id,
   });
