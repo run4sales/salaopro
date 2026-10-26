@@ -96,7 +96,7 @@ export function ClientProfileDialog({ client, open, onOpenChange, onEdit }: Prop
               {[
                 [CircleDollarSign, "Consumo realizado", money(realized)],
                 [WalletCards, "Ticket médio", money(completed.length ? realized / completed.length : 0)],
-                [History, "Atendimentos", String(completed.length)],
+                [History, "Atendimentos", String((client as { visit_count?: number | null }).visit_count ?? completed.length)],
                 [CalendarClock, "Próximo horário", nextAppointment ? when(nextAppointment.appointment_date) : "Nenhum"],
                 [Clock3, "Faltas / cancelamentos", `${missed.length} / ${cancelled.length}`],
               ].map(([Icon, label, value]: any) => (
