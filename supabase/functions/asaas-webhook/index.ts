@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { PAYMENT_EVENTS } from '../_shared/asaas-client.ts';
-import { syncAsaasSubscription } from '../_shared/asaas-sync.ts';
+import { RemoteSubscriptionMissingError, syncAsaasSubscription } from '../_shared/asaas-sync.ts';
 
 const MAX_BODY_BYTES = 256 * 1024;
 const SUPPORTED_EVENTS = new Set(PAYMENT_EVENTS);
@@ -164,7 +164,17 @@ Deno.serve(async (req) => {
       if (!apiKey) throw new Error('ASAAS_API_KEY não configurada');
       // Notifications can arrive late: read authoritative invoices instead of
       // trusting the delivery order or applying a stale status from the payload.
-      await syncAsaasSubscription(admin, apiKey, localSub.establishment_id, 'webhook');
+      try {
+        await syncAsaasSubscription(admin, apiKey, localSub.establishment_id, 'webhook');
+      } catch (syncError) {
+        if (!(syncError instanceof RemoteSubscriptionMissingError)) throw syncError;
+        // Permanent condition (subscription removed in Asaas): acknowledge so the
+        // provider stops retrying, and keep the reason in the log for review.
+        console.warn('asaas-webhook: no remote subscription', syncError.message);
+        await admin.from('asaas_webhook_logs')
+          .update({ processed: true, error: syncError.message, processing_started_at: null }).eq('id', logId);
+        return json({ ok: true, skipped: 'remote_subscription_missing' });
+      }
     }
 
     const { error: processedError } = await admin.from('asaas_webhook_logs')

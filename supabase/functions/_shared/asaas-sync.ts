@@ -84,6 +84,9 @@ function newestPayment(payments: AsaasPayment[]) {
   return newestInvoice(payments);
 }
 
+/** The customer has no linked Asaas subscription (e.g. it was deleted remotely). Retrying cannot fix it. */
+export class RemoteSubscriptionMissingError extends Error {}
+
 function chooseSubscription(rows: AsaasSubscription[], storedId: string | null, establishmentId: string) {
   const associated = rows.filter((row) => !row.externalReference || row.externalReference === establishmentId);
   return associated.find((row) => row.id === storedId)
@@ -137,7 +140,7 @@ export async function syncAsaasSubscription(
     apiKey,
   );
   const remoteSubscription = chooseSubscription(subscriptions, subscription.asaas_subscription_id, establishmentId);
-  if (!remoteSubscription) throw new Error(`Subscription Asaas não encontrada para customer ${customer.id}`);
+  if (!remoteSubscription) throw new RemoteSubscriptionMissingError(`Subscription Asaas não encontrada para customer ${customer.id}`);
   trace.push(`Subscription encontrada: ${remoteSubscription.id} (${remoteSubscription.status ?? 'sem status'})`);
 
   const payments = await asaasList<AsaasPayment>(
