@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Restaurar porcentagem de comissão no cadastro e na edição de usuários, preservar configurações existentes e verificar salvamento/leitura.
+- [x] Restaurar porcentagem de comissão no cadastro e na edição de usuários; funções de gravação publicadas, 25 testes aprovados, campos conferidos em sessão autenticada e edição salva/reaberta preservando o valor existente. Não alterar comissões reais para testar; interface pública aguarda publicação.
 - [x] Corrigir nomes ausentes no histórico e relatórios com busca de clientes vinculados em lotes; 14 testes aprovados, histórico autenticado com 109 vendas e nenhum nome ausente, compilação aprovada; registros preservados e site público depende de publicação.
 - [x] Manter calendário disponível em meses vazios, adicionar navegação por data/período, permitir compromissos simultâneos de gestores preservando bloqueios e duplicidade exata, e exibir eventos em faixas separadas e todos os itens do mês; 17 testes aprovados, bloqueio futuro salvo/lido/removido na própria loja e compilação aprovada.
 - [ ] Conferir fluxo completo em sessão de colaborador e salvar dois compromissos simultâneos numa conta de teste: sessão disponível é de gestor e não há clientes/agendamentos de teste autorizados; não criar atendimentos fictícios em clientes reais.
