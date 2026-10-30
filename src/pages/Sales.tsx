@@ -478,16 +478,37 @@ export default function Sales() {
             </div>
           </div>
 
-          {/* Services catalog */}
+          {/* Services / Products catalog */}
           <div className="rounded-xl border bg-card p-3">
-            <div className="flex items-center justify-between mb-3">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Serviços</Label>
+            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+              <div className="flex rounded-md border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setCatalogTab("service")}
+                  className={cn(
+                    "px-3 h-9 text-xs font-semibold transition",
+                    catalogTab === "service" ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"
+                  )}
+                >
+                  Serviços ({catalogCounts.service})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCatalogTab("product")}
+                  className={cn(
+                    "px-3 h-9 text-xs font-semibold transition border-l",
+                    catalogTab === "product" ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"
+                  )}
+                >
+                  Produtos ({catalogCounts.product})
+                </button>
+              </div>
               <div className="relative w-60">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar serviço..."
+                  placeholder={catalogTab === "product" ? "Buscar produto..." : "Buscar serviço..."}
                   className="pl-8 h-9"
                 />
               </div>
@@ -495,14 +516,18 @@ export default function Sales() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {filteredServices.map((s) => {
                 const inCart = cart.find(i => i.service.id === s.id);
+                const isProduct = s.kind === "product";
+                const soldOut = isProduct && s.stock_quantity <= 0;
                 return (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => addToCart(s)}
+                    disabled={soldOut}
                     className={cn(
                       "group relative text-left rounded-lg border bg-card p-3 hover:border-primary hover:shadow-sm transition-all duration-200",
-                      inCart && "border-primary bg-primary/5"
+                      inCart && "border-primary bg-primary/5",
+                      soldOut && "opacity-50 cursor-not-allowed hover:border-border hover:shadow-none"
                     )}
                   >
                     {inCart && (
@@ -511,6 +536,11 @@ export default function Sales() {
                       </Badge>
                     )}
                     <div className="font-medium text-sm leading-tight line-clamp-2 min-h-[2.5rem]">{s.name}</div>
+                    {isProduct && (
+                      <div className={cn("mt-1 text-xs", soldOut ? "text-destructive font-medium" : "text-muted-foreground")}>
+                        {soldOut ? "Sem estoque" : `Estoque: ${s.stock_quantity}`}
+                      </div>
+                    )}
                     <div className="mt-2 flex items-center justify-between">
                       <span className="font-bold text-primary">R$ {s.price.toFixed(2)}</span>
                       <Plus className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
@@ -520,7 +550,7 @@ export default function Sales() {
               })}
               {filteredServices.length === 0 && (
                 <div className="col-span-full text-center py-8 text-sm text-muted-foreground">
-                  Nenhum serviço encontrado
+                  {catalogTab === "product" ? "Nenhum produto encontrado" : "Nenhum serviço encontrado"}
                 </div>
               )}
             </div>
