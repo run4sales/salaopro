@@ -2,6 +2,7 @@ Dashboard estratégico reutiliza `fetchRealizedSales` e regras em `src/lib/finan
 Conflitos da agenda usam intervalos semiabertos por profissional em `src/lib/agendaConflicts.ts`; isso preserva encaixes adjacentes sem ignorar sobreposições reais.
 The active agenda keeps the calendar mounted for empty periods, shares date navigation across list/calendar views, and uses non-overlapping event lanes with scrollable month rows; this keeps future own-professional blocks and simultaneous appointments accessible.
 Proteções críticas da agenda e do faturamento usam gatilhos com travas por profissional/agendamento no banco; isso impede que pedidos simultâneos ou diretos contornem validações da interface.
+Staff commission percentage input is validated by the shared staff-commission module and stored as the canonical custom_percentage configuration; omitted or untouched edit values preserve the existing commission mode and daily settings.
 Ficha CRM deriva consumo de `sales` não excluídas, visitas de agendamentos finalizados e benefícios das tabelas oficiais de pacotes/assinaturas; isso evita métricas paralelas e histórico fabricado.
 O cadastro de cliente dentro de fluxos operacionais usa a ficha completa em diálogo local e atualiza a busca existente; isso mantém o formulário em andamento sem navegar ou recriar um cadastro simplificado.
 Campos de telefone e WhatsApp na ficha de cliente usam `formatBrazilianPhone` durante a digitação e `validatePhone` antes de salvar; isso preserva o DDD informado sem inventar dados e mantém o armazenamento normalizado.

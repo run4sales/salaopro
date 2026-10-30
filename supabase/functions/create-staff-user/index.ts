@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, isAllowedBrowserOrigin } from "../_shared/cors.ts";
 import { validateEmail } from "../_shared/contact-validation.ts";
+import { staffCommissionPatch } from "../_shared/staff-commission.ts";
 
 const MAX_BODY_BYTES = 16 * 1024;
 const ALLOWED_ROLES = new Set(["admin", "employee"]);
@@ -61,6 +62,12 @@ Deno.serve(async (req) => {
     if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) throw new Error("Payload muito grande");
     const body = JSON.parse(rawBody);
     const { establishment_id, email, password, name, role, service_ids = [], calendar_color } = body ?? {};
+    let commissionConfig: ReturnType<typeof staffCommissionPatch>;
+    try {
+      commissionConfig = staffCommissionPatch(body?.commission_percentage);
+    } catch (error) {
+      throw new RequestError("INVALID_COMMISSION", error instanceof Error ? error.message : "Comissão inválida.");
+    }
 
     if (!establishment_id || !email || !password || !name || !role) throw new RequestError("INVALID_INPUT", "Preencha todos os campos obrigatórios.");
     if (!ALLOWED_ROLES.has(String(role))) throw new RequestError("INVALID_ROLE", "Perfil inválido.");
@@ -109,7 +116,7 @@ Deno.serve(async (req) => {
 
     const { data: professional, error: profErr } = await adminClient
       .from("professionals")
-      .insert({ establishment_id, name: String(name).trim(), active: true, ...(normalizedColor ? { calendar_color: normalizedColor } : {}) })
+      .insert({ establishment_id, name: String(name).trim(), active: true, ...commissionConfig, ...(normalizedColor ? { calendar_color: normalizedColor } : {}) })
       .select("id")
       .single();
     if (profErr) {

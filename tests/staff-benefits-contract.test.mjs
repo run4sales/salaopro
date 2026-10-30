@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('staff password validation is consistently six characters', () => {
-  for (const path of ['src/pages/Users.tsx','src/components/users/EditUserDialog.tsx','supabase/functions/create-staff-user/index.ts','supabase/functions/update-staff-user/index.ts']) {
+  for (const path of ['src/pages/StaffUsers.tsx','src/components/users/EditUserDialog.tsx','supabase/functions/create-staff-user/index.ts','supabase/functions/update-staff-user/index.ts']) {
     const source = read(path);
     assert.match(source, /length < 6|minLength=\{6\}/, path);
     assert.doesNotMatch(source, /12 caracteres|length < 12|minLength=\{12\}/, path);

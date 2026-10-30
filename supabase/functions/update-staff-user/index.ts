@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, isAllowedBrowserOrigin } from "../_shared/cors.ts";
 import { validateEmail } from "../_shared/contact-validation.ts";
+import { staffCommissionPatch } from "../_shared/staff-commission.ts";
 
 const MAX_BODY_BYTES = 16 * 1024;
 const ALLOWED_ROLES = new Set(["admin", "employee"]);
@@ -38,6 +39,7 @@ Deno.serve(async (req) => {
     if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) throw new Error("Payload muito grande");
     const body = JSON.parse(rawBody);
     const { establishment_id, membership_id, email, password, name, role, calendar_color, service_ids } = body ?? {};
+    const commissionConfig = staffCommissionPatch(body?.commission_percentage);
 
     if (!establishment_id || !membership_id) throw new Error("Dados obrigatórios ausentes");
     if (role !== undefined && !ALLOWED_ROLES.has(String(role))) throw new Error("Perfil inválido");
@@ -102,8 +104,8 @@ Deno.serve(async (req) => {
       if (rErr) throw rErr;
     }
 
-    if ((name || normalizedColor) && membership.professional_id) {
-      const professionalUpdates: Record<string, unknown> = {};
+    if ((name || normalizedColor || Object.keys(commissionConfig).length) && membership.professional_id) {
+      const professionalUpdates: Record<string, unknown> = { ...commissionConfig };
       if (name && String(name).trim()) professionalUpdates.name = String(name).trim();
       if (normalizedColor) professionalUpdates.calendar_color = normalizedColor;
       const { error: pErr } = await adminClient
