@@ -97,12 +97,14 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
           password: password || undefined,
           role,
           calendar_color: calendarColor,
+          service_ids: selectedServices,
         },
       });
       if (error) throw error;
       toast({ title: "Usuário atualizado" });
       qc.invalidateQueries({ queryKey: ["establishment-users"] });
       qc.invalidateQueries({ queryKey: ["professionals-manage"] });
+      qc.invalidateQueries({ queryKey: ["service_professionals"] });
       onOpenChange(false);
     } catch (e: any) {
       const msg = await extractEdgeFunctionError(e);
@@ -160,6 +162,30 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
               </SelectContent>
             </Select>
           </div>
+
+          {user?.professional_id && (
+            <div>
+              <Label>Serviços que este profissional executa</Label>
+              <div className="grid sm:grid-cols-2 gap-2 mt-2 max-h-48 overflow-y-auto">
+                {(servicesQuery.data ?? []).map((s: any) => (
+                  <label key={s.id} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={selectedServices.includes(s.id)}
+                      onCheckedChange={(v) =>
+                        setSelectedServices((prev) =>
+                          v ? [...prev, s.id] : prev.filter((x) => x !== s.id)
+                        )
+                      }
+                    />
+                    {s.name}
+                  </label>
+                ))}
+                {!servicesQuery.isLoading && !(servicesQuery.data ?? []).length && (
+                  <p className="text-sm text-muted-foreground">Nenhum serviço ativo cadastrado.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
