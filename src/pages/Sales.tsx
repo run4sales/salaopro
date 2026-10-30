@@ -452,7 +452,7 @@ export default function Sales() {
               <ShoppingCart className="h-5 w-5 text-primary" />
               PDV — Nova venda
             </h1>
-            <p className="text-xs text-muted-foreground">Selecione serviços, profissionais e finalize em poucos cliques</p>
+            <p className="text-xs text-muted-foreground">Selecione serviços ou produtos, profissionais e finalize em poucos cliques</p>
           </div>
           {cart.length > 0 && (
             <Button variant="ghost" size="sm" onClick={resetSale} className="text-muted-foreground">
@@ -619,7 +619,12 @@ export default function Sales() {
               {cart.map((item) => (
                 <div key={item.service.id} className="flex items-center gap-2 rounded-lg border bg-background px-2 py-2">
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{item.service.name}</div>
+                    <div className="font-medium text-sm truncate flex items-center gap-1.5">
+                      {item.service.name}
+                      {item.service.kind === "product" && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">Produto</Badge>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">R$ {item.service.price.toFixed(2)} cada</div>
                   </div>
                   <div className="flex items-center gap-1">
