@@ -43,3 +43,6 @@
 - [x] Cobrir formatos válidos e inválidos com testes.
 - [x] Investigar duplicação e impedir envios simultâneos e novas inserções após falhas parciais, preservando registros históricos.
 - [x] Validar regressões de cancelamento e gravação: oito testes passaram; agenda abriu sem erros e compilação aprovada.
+
+- [x] Auditoria equipe/PDV: cadastro de funcionário no backend já tem rollback completo e trigger ignora staff; PDV ganhou abas Serviços/Produtos com estoque e bloqueio acima do estoque; edição de usuário agora altera serviços vinculados (função update-staff-user republicada); tela de equipe unificada em StaffUsers.tsx; Users.tsx duplicado removido.
+- [ ] Conferir visualmente PDV e equipe com sessão autenticada e publicar para o site público.
