@@ -613,7 +613,7 @@ export default function Sales() {
             <div className="p-3 space-y-2 max-h-72 overflow-y-auto">
               {cart.length === 0 && (
                 <div className="text-center py-8 text-sm text-muted-foreground">
-                  Toque em um serviço para adicionar
+                  Toque em um serviço ou produto para adicionar
                 </div>
               )}
               {cart.map((item) => (

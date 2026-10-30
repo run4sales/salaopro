@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     const rawBody = await req.text();
     if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) throw new Error("Payload muito grande");
     const body = JSON.parse(rawBody);
-    const { establishment_id, membership_id, email, password, name, role, calendar_color } = body ?? {};
+    const { establishment_id, membership_id, email, password, name, role, calendar_color, service_ids } = body ?? {};
 
     if (!establishment_id || !membership_id) throw new Error("Dados obrigatórios ausentes");
     if (role !== undefined && !ALLOWED_ROLES.has(String(role))) throw new Error("Perfil inválido");
@@ -46,6 +46,9 @@ Deno.serve(async (req) => {
     if (emailValidation && !emailValidation.valid) throw new Error(emailValidation.message);
     const normalizedColor = calendar_color ? String(calendar_color).trim().toUpperCase() : undefined;
     if (normalizedColor && !HEX_COLOR.test(normalizedColor)) throw new Error("Cor da agenda inválida");
+    if (service_ids !== undefined && (!Array.isArray(service_ids) || service_ids.length > 200 || service_ids.some((id) => typeof id !== "string"))) {
+      throw new Error("Serviços inválidos");
+    }
 
     const { data: ownerProfile } = await adminClient
       .from("profiles")
