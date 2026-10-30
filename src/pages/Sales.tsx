@@ -45,6 +45,8 @@ interface SimpleService {
   name: string;
   price: number;
   commission_solo: number;
+  kind: "service" | "product";
+  stock_quantity: number;
 }
 interface SimpleProfessional {
   id: string;
@@ -97,6 +99,7 @@ export default function Sales() {
 
   // PDV state
   const [search, setSearch] = useState("");
+  const [catalogTab, setCatalogTab] = useState<"service" | "product">("service");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [clientId, setClientId] = useState<string>("");
   const [professionalEntries, setProfessionalEntries] = useState<ProfessionalEntry[]>([]);
@@ -119,7 +122,7 @@ export default function Sales() {
       if (!profile?.id) return [];
       const { data } = await supabase
         .from("services")
-        .select("id, name, price, commission_solo")
+        .select("id, name, price, commission_solo, kind, stock_quantity")
         .eq("establishment_id", profile.id)
         .eq("active", true)
         .order("name");
@@ -128,6 +131,8 @@ export default function Sales() {
         name: s.name,
         price: Number(s.price),
         commission_solo: Number(s.commission_solo ?? 0),
+        kind: s.kind === "product" ? "product" : "service",
+        stock_quantity: Number(s.stock_quantity ?? 0),
       }));
     },
     enabled: !!profile?.id,
@@ -191,9 +196,18 @@ export default function Sales() {
 
   const filteredServices = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return services ?? [];
-    return (services ?? []).filter((s) => s.name.toLowerCase().includes(q));
-  }, [services, search]);
+    return (services ?? []).filter((s) =>
+      s.kind === catalogTab && (!q || s.name.toLowerCase().includes(q))
+    );
+  }, [services, search, catalogTab]);
+
+  const catalogCounts = useMemo(() => {
+    const list = services ?? [];
+    return {
+      service: list.filter((s) => s.kind === "service").length,
+      product: list.filter((s) => s.kind === "product").length,
+    };
+  }, [services]);
 
   const subtotal = useMemo(
     () => cart.reduce((s, item) => s + (item.customPrice ?? item.service.price) * item.qty, 0),
@@ -248,9 +262,17 @@ export default function Sales() {
   }, [clientId]);
 
   const addToCart = (svc: SimpleService) => {
+    if (svc.kind === "product" && svc.stock_quantity <= 0) {
+      toast.error(`"${svc.name}" está sem estoque.`);
+      return;
+    }
     setCart((prev) => {
       const exist = prev.find((i) => i.service.id === svc.id);
       if (exist) {
+        if (svc.kind === "product" && exist.qty + 1 > svc.stock_quantity) {
+          toast.error(`Estoque de "${svc.name}": ${svc.stock_quantity} unidade(s).`);
+          return prev;
+        }
         return prev.map((i) => i.service.id === svc.id ? { ...i, qty: i.qty + 1 } : i);
       }
       return [...prev, { service: svc, qty: 1 }];
@@ -260,7 +282,15 @@ export default function Sales() {
   const changeQty = (id: string, delta: number) => {
     setCart((prev) =>
       prev
-        .map((i) => i.service.id === id ? { ...i, qty: i.qty + delta } : i)
+        .map((i) => {
+          if (i.service.id !== id) return i;
+          const next = i.qty + delta;
+          if (delta > 0 && i.service.kind === "product" && next > i.service.stock_quantity) {
+            toast.error(`Estoque de "${i.service.name}": ${i.service.stock_quantity} unidade(s).`);
+            return i;
+          }
+          return { ...i, qty: next };
+        })
         .filter((i) => i.qty > 0)
     );
   };
@@ -308,8 +338,13 @@ export default function Sales() {
   const onFinalize = async () => {
     if (!profile?.id) return;
     if (!clientId) { toast.error("Selecione o cliente."); return; }
-    if (cart.length === 0) { toast.error("Adicione ao menos um serviço."); return; }
+    if (cart.length === 0) { toast.error("Adicione ao menos um serviço ou produto."); return; }
     if (professionalEntries.length === 0) { toast.error("Selecione ao menos um profissional."); return; }
+    const outOfStock = cart.find((i) => i.service.kind === "product" && i.qty > i.service.stock_quantity);
+    if (outOfStock) {
+      toast.error(`Estoque insuficiente de "${outOfStock.service.name}" (disponível: ${outOfStock.service.stock_quantity}).`);
+      return;
+    }
     if (remainingToPay > 0 && isCard && !cardMachineId) { toast.error("Selecione a maquininha."); return; }
     if (appliedCredit > availableCredit) { toast.error("Crédito insuficiente."); return; }
 
@@ -417,7 +452,7 @@ export default function Sales() {
               <ShoppingCart className="h-5 w-5 text-primary" />
               PDV — Nova venda
             </h1>
-            <p className="text-xs text-muted-foreground">Selecione serviços, profissionais e finalize em poucos cliques</p>
+            <p className="text-xs text-muted-foreground">Selecione serviços ou produtos, profissionais e finalize em poucos cliques</p>
           </div>
           {cart.length > 0 && (
             <Button variant="ghost" size="sm" onClick={resetSale} className="text-muted-foreground">
@@ -443,16 +478,37 @@ export default function Sales() {
             </div>
           </div>
 
-          {/* Services catalog */}
+          {/* Services / Products catalog */}
           <div className="rounded-xl border bg-card p-3">
-            <div className="flex items-center justify-between mb-3">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Serviços</Label>
+            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+              <div className="flex rounded-md border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setCatalogTab("service")}
+                  className={cn(
+                    "px-3 h-9 text-xs font-semibold transition",
+                    catalogTab === "service" ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"
+                  )}
+                >
+                  Serviços ({catalogCounts.service})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCatalogTab("product")}
+                  className={cn(
+                    "px-3 h-9 text-xs font-semibold transition border-l",
+                    catalogTab === "product" ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"
+                  )}
+                >
+                  Produtos ({catalogCounts.product})
+                </button>
+              </div>
               <div className="relative w-60">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar serviço..."
+                  placeholder={catalogTab === "product" ? "Buscar produto..." : "Buscar serviço..."}
                   className="pl-8 h-9"
                 />
               </div>
@@ -460,14 +516,18 @@ export default function Sales() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {filteredServices.map((s) => {
                 const inCart = cart.find(i => i.service.id === s.id);
+                const isProduct = s.kind === "product";
+                const soldOut = isProduct && s.stock_quantity <= 0;
                 return (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => addToCart(s)}
+                    disabled={soldOut}
                     className={cn(
                       "group relative text-left rounded-lg border bg-card p-3 hover:border-primary hover:shadow-sm transition-all duration-200",
-                      inCart && "border-primary bg-primary/5"
+                      inCart && "border-primary bg-primary/5",
+                      soldOut && "opacity-50 cursor-not-allowed hover:border-border hover:shadow-none"
                     )}
                   >
                     {inCart && (
@@ -476,6 +536,11 @@ export default function Sales() {
                       </Badge>
                     )}
                     <div className="font-medium text-sm leading-tight line-clamp-2 min-h-[2.5rem]">{s.name}</div>
+                    {isProduct && (
+                      <div className={cn("mt-1 text-xs", soldOut ? "text-destructive font-medium" : "text-muted-foreground")}>
+                        {soldOut ? "Sem estoque" : `Estoque: ${s.stock_quantity}`}
+                      </div>
+                    )}
                     <div className="mt-2 flex items-center justify-between">
                       <span className="font-bold text-primary">R$ {s.price.toFixed(2)}</span>
                       <Plus className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
@@ -485,7 +550,7 @@ export default function Sales() {
               })}
               {filteredServices.length === 0 && (
                 <div className="col-span-full text-center py-8 text-sm text-muted-foreground">
-                  Nenhum serviço encontrado
+                  {catalogTab === "product" ? "Nenhum produto encontrado" : "Nenhum serviço encontrado"}
                 </div>
               )}
             </div>
@@ -548,13 +613,18 @@ export default function Sales() {
             <div className="p-3 space-y-2 max-h-72 overflow-y-auto">
               {cart.length === 0 && (
                 <div className="text-center py-8 text-sm text-muted-foreground">
-                  Toque em um serviço para adicionar
+                  Toque em um serviço ou produto para adicionar
                 </div>
               )}
               {cart.map((item) => (
                 <div key={item.service.id} className="flex items-center gap-2 rounded-lg border bg-background px-2 py-2">
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{item.service.name}</div>
+                    <div className="font-medium text-sm truncate flex items-center gap-1.5">
+                      {item.service.name}
+                      {item.service.kind === "product" && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">Produto</Badge>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">R$ {item.service.price.toFixed(2)} cada</div>
                   </div>
                   <div className="flex items-center gap-1">

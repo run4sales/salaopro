@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { AlertCircle, ArrowUpRight, Pencil } from "lucide-react";
@@ -18,7 +20,7 @@ import { EditUserDialog } from "@/components/users/EditUserDialog";
 import { checkEmailDomain, validateEmail } from "@/lib/contactValidation";
 import { ProfessionalColorPicker } from "@/components/users/ProfessionalColorPicker";
 
-export default function Users() {
+export default function StaffUsers() {
   const { profile, establishmentRole } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -26,21 +28,18 @@ export default function Users() {
   const subscription = useSubscription();
   const establishmentId = profile?.id;
 
-  const [email, setEmail] = useState("");
-
+  // Cadastro unificado da equipe
   const [name, setName] = useState("");
+  const [withAccess, setWithAccess] = useState(true);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "employee">("employee");
-  const [userCalendarColor, setUserCalendarColor] = useState<string>("");
+  const [onAgenda, setOnAgenda] = useState(true);
+  const [calendarColor, setCalendarColor] = useState<string>("");
+  const [commission, setCommission] = useState("40");
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [emailError, setEmailError] = useState("");
-
-  // Profissional sem usuário do sistema
-  const [profName, setProfName] = useState("");
-  const [profCommission, setProfCommission] = useState("40");
-  const [profCalendarColor, setProfCalendarColor] = useState<string>("");
-  const [savingProf, setSavingProf] = useState(false);
 
   const [editProf, setEditProf] = useState<any | null>(null);
   const [editUser, setEditUser] = useState<any | null>(null);
@@ -58,18 +57,7 @@ export default function Users() {
         .eq("establishment_id", establishmentId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-
-      const profIds = (data ?? []).map((u: any) => u.professional_id).filter(Boolean);
-      const { data: profs } = await supabase
-        .from("professionals")
-        .select("id, name, active, calendar_color")
-        .in("id", profIds.length ? profIds : ["00000000-0000-0000-0000-000000000000"]);
-
-      const profMap = new Map((profs ?? []).map((p: any) => [p.id, p]));
-      return (data ?? []).map((u: any) => ({
-        ...u,
-        professional: u.professional_id ? profMap.get(u.professional_id) : null,
-      }));
+      return data ?? [];
     },
   });
 
@@ -81,6 +69,7 @@ export default function Users() {
         .from("services")
         .select("id, name")
         .eq("establishment_id", establishmentId)
+        .eq("kind", "service")
         .eq("active", true)
         .order("name");
       if (error) throw error;
@@ -103,76 +92,103 @@ export default function Users() {
   });
 
   const maxUsers = subscription.data?.plan?.max_users ?? null;
-  const activeUserCount = (usersQuery.data ?? []).filter((u: any) => u.active).length;
+  const users = usersQuery.data ?? [];
+  const professionalsList = professionalsQuery.data ?? [];
+  const services = servicesQuery.data ?? [];
+  const activeUserCount = users.filter((u: any) => u.active).length;
   const reachedUserLimit = maxUsers != null && activeUserCount >= maxUsers;
 
-  const onCreate = async () => {
-    if (!establishmentId || !email.trim() || !name.trim()) return;
-    const emailValidation = validateEmail(email, { required: true });
-    if (!emailValidation.valid) { setEmailError(emailValidation.message ?? "E-mail inválido."); return; }
-    if (reachedUserLimit) {
-      toast({
-        title: "Limite de usuários atingido",
-        description: `Seu plano permite até ${maxUsers} usuário${maxUsers! > 1 ? "s" : ""}. Faça upgrade para adicionar mais.`,
-        variant: "destructive",
-      });
-      return;
-    }
-    if (password.trim().length < 6) {
-      toast({
-        title: "Senha inválida",
-        description: "A senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const resetForm = () => {
+    setName("");
+    setEmail("");
+    setEmailError("");
+    setPassword("");
+    setRole("employee");
+    setWithAccess(true);
+    setOnAgenda(true);
+    setCalendarColor("");
+    setCommission("40");
+    setSelectedServices([]);
+  };
 
+  const invalidateTeam = () => {
+    qc.invalidateQueries({ queryKey: ["establishment-users"] });
+    qc.invalidateQueries({ queryKey: ["professionals-manage"] });
+    qc.invalidateQueries({ queryKey: ["professionals"] });
+    qc.invalidateQueries({ queryKey: ["agenda-professionals"] });
+    qc.invalidateQueries({ queryKey: ["service_professionals"] });
+  };
+
+  const onCreate = async () => {
+    if (!establishmentId || !name.trim()) return;
+
+    if (withAccess) {
+      const emailValidation = validateEmail(email, { required: true });
+      if (!emailValidation.valid) { setEmailError(emailValidation.message ?? "E-mail inválido."); return; }
+      if (reachedUserLimit) {
+        toast({
+          title: "Limite de usuários atingido",
+          description: `Seu plano permite até ${maxUsers} usuário${maxUsers! > 1 ? "s" : ""}. Faça upgrade para adicionar mais.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      if (password.trim().length < 6) {
+        toast({ title: "Senha inválida", description: "A senha deve ter pelo menos 6 caracteres.", variant: "destructive" });
+        return;
+      }
+    }
 
     setSaving(true);
     try {
-      const domainValidation = await checkEmailDomain(email);
-      if (!domainValidation.valid) { setEmailError(domainValidation.message ?? "E-mail inválido."); return; }
-      const { error } = await supabase.functions.invoke("create-staff-user", {
-        body: {
+      if (withAccess) {
+        const domainValidation = await checkEmailDomain(email);
+        if (!domainValidation.valid) { setEmailError(domainValidation.message ?? "E-mail inválido."); return; }
+        const { error } = await supabase.functions.invoke("create-staff-user", {
+          body: {
+            establishment_id: establishmentId,
+            email: email.trim().toLowerCase(),
+            password: password.trim(),
+            name: name.trim(),
+            role,
+            service_ids: onAgenda ? selectedServices : [],
+            calendar_color: onAgenda && calendarColor ? calendarColor : undefined,
+          },
+        });
+        if (error) throw error;
+        toast({ title: "Pessoa cadastrada", description: `${name.trim()} já pode acessar o sistema.` });
+      } else {
+        const { data: prof, error } = await supabase.from("professionals").insert({
           establishment_id: establishmentId,
-          email: email.trim().toLowerCase(),
-          password: password.trim(),
           name: name.trim(),
-          role,
-          service_ids: selectedServices,
-          calendar_color: userCalendarColor || undefined,
-        },
-      });
-      if (error) throw error;
-
-
-      toast({ title: "Usuário vinculado" });
-      setEmail("");
-      setEmailError("");
-      setName("");
-      setPassword("");
-      setRole("employee");
-      setSelectedServices([]);
-      setUserCalendarColor("");
-      qc.invalidateQueries({ queryKey: ["establishment-users"] });
+          active: true,
+          commission_percentage: Number(commission) || 0,
+          ...(calendarColor ? { calendar_color: calendarColor } : {}),
+        } as any).select("id").single();
+        if (error) throw error;
+        if (onAgenda && selectedServices.length && prof?.id) {
+          const { error: spErr } = await supabase.from("service_professionals").insert(
+            selectedServices.map((service_id) => ({ establishment_id: establishmentId, service_id, professional_id: prof.id })) as any
+          );
+          if (spErr) throw spErr;
+        }
+        toast({ title: "Profissional cadastrado", description: `${name.trim()} aparece na agenda, sem acesso ao sistema.` });
+      }
+      resetForm();
+      invalidateTeam();
     } catch (e: any) {
       const msg = await extractEdgeFunctionError(e);
       if (/Limite de .* usu/i.test(msg)) {
-        toast({
-          title: "Limite de usuários atingido",
-          description: "Faça upgrade do seu plano para adicionar mais usuários.",
-          variant: "destructive",
-        });
+        toast({ title: "Limite de usuários atingido", description: "Faça upgrade do seu plano para adicionar mais usuários.", variant: "destructive" });
       } else {
-        toast({ title: "Erro ao cadastrar funcionário", description: msg, variant: "destructive" });
+        toast({ title: "Erro ao cadastrar", description: msg, variant: "destructive" });
       }
-
     } finally {
       setSaving(false);
     }
   };
 
-  const toggleActive = async (id: string, active: boolean) => {
+  const toggleUserActive = async (id: string, active: boolean) => {
     const { error } = await (supabase as any)
       .from("establishment_users")
       .update({ active: !active })
@@ -181,61 +197,39 @@ export default function Users() {
     qc.invalidateQueries({ queryKey: ["establishment-users"] });
   };
 
-  const remove = async (id: string) => {
+  const removeUser = async (id: string) => {
     const { error } = await (supabase as any).from("establishment_users").delete().eq("id", id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    qc.invalidateQueries({ queryKey: ["establishment-users"] });
-  };
-
-  const onCreateProfessional = async () => {
-    if (!establishmentId || !profName.trim()) return;
-    setSavingProf(true);
-    const { error } = await supabase.from("professionals").insert({
-      establishment_id: establishmentId,
-      name: profName.trim(),
-      active: true,
-      commission_percentage: Number(profCommission) || 0,
-      ...(profCalendarColor ? { calendar_color: profCalendarColor } : {}),
-    } as any);
-    setSavingProf(false);
-    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    setProfName("");
-    setProfCommission("40");
-    setProfCalendarColor("");
-    toast({ title: "Profissional cadastrado" });
-    qc.invalidateQueries({ queryKey: ["professionals-manage"] });
-    qc.invalidateQueries({ queryKey: ["professionals"] });
-    qc.invalidateQueries({ queryKey: ["agenda-professionals"] });
+    invalidateTeam();
   };
 
   const toggleProfessional = async (id: string, active: boolean) => {
     const { error } = await supabase.from("professionals").update({ active: !active }).eq("id", id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    qc.invalidateQueries({ queryKey: ["professionals-manage"] });
-    qc.invalidateQueries({ queryKey: ["professionals"] });
-    qc.invalidateQueries({ queryKey: ["agenda-professionals"] });
+    invalidateTeam();
   };
 
   const removeProfessional = async (id: string) => {
-    const linkedUser = (usersQuery.data ?? []).find((u: any) => u.professional_id === id);
+    const linkedUser = users.find((u: any) => u.professional_id === id);
     if (linkedUser) {
       return toast({
         title: "Profissional vinculado a um usuário",
-        description: "Remova primeiro o usuário do sistema vinculado a este profissional.",
+        description: "Remova primeiro o acesso ao sistema vinculado a este profissional.",
         variant: "destructive",
       });
     }
     if (!confirm("Excluir este profissional? Esta ação não pode ser desfeita.")) return;
     const { error } = await supabase.from("professionals").delete().eq("id", id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    qc.invalidateQueries({ queryKey: ["professionals-manage"] });
-    qc.invalidateQueries({ queryKey: ["professionals"] });
-    qc.invalidateQueries({ queryKey: ["agenda-professionals"] });
+    invalidateTeam();
   };
 
-  const services = servicesQuery.data ?? [];
-  const users = usersQuery.data ?? [];
-  const professionalsList = professionalsQuery.data ?? [];
+  // Lista unificada: cada profissional uma vez, com o acesso vinculado (se houver)
+  const teamRows = professionalsList.map((p: any) => ({
+    professional: p,
+    user: users.find((u: any) => u.professional_id === p.id) ?? null,
+  }));
+  const usersWithoutProfessional = users.filter((u: any) => !u.professional_id);
 
   return (
     <div className="space-y-6">
@@ -256,198 +250,219 @@ export default function Users() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Profissionais</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Adicionar pessoa à equipe</span>
+            {maxUsers != null && (
+              <span className="text-xs font-normal text-muted-foreground">
+                {activeUserCount} / {maxUsers} acessos
+              </span>
+            )}
+          </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Cadastre profissionais que atendem no salão. Eles aparecem na agenda, nos serviços e nos relatórios
-            mesmo sem possuir acesso ao sistema. Para dar acesso ao painel, cadastre um usuário abaixo.
+            Cadastre quem trabalha no salão em um único lugar: defina se a pessoa acessa o sistema,
+            se atende na agenda e quais serviços ela executa.
           </p>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-[1fr_180px_auto] gap-3 items-end">
+        <CardContent className="space-y-5">
+          <div className="grid md:grid-cols-2 gap-3">
             <div>
-              <Label>Nome do profissional</Label>
-              <Input value={profName} onChange={(e) => setProfName(e.target.value)} placeholder="Ex: Maria Silva" />
+              <Label>Nome completo</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Maria Silva" />
             </div>
-            <div>
-              <Label>Comissão (%)</Label>
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={profCommission}
-                onChange={(e) => setProfCommission(e.target.value)}
-              />
-            </div>
-            <Button onClick={onCreateProfessional} disabled={savingProf || !profName.trim()}>
-              {savingProf ? "Salvando..." : "Adicionar"}
-            </Button>
           </div>
-          <ProfessionalColorPicker value={profCalendarColor} onChange={setProfCalendarColor} />
 
-          <div className="space-y-2">
-            {professionalsList.map((p: any) => {
-              const linkedUser = users.find((u: any) => u.professional_id === p.id);
-              return (
-                <div key={p.id} className="border rounded p-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="rounded-lg border p-3 space-y-3">
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium">Dar acesso ao sistema</span>
+              <Switch checked={withAccess} onCheckedChange={setWithAccess} />
+            </label>
+            {withAccess && (
+              <div className="grid md:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <Label>Email de acesso</Label>
+                  <Input
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
+                    placeholder="maria@exemplo.com"
+                    type="email"
+                    aria-invalid={!!emailError}
+                  />
+                  {emailError && <p className="mt-1 text-sm text-destructive">{emailError}</p>}
+                </div>
+                <div>
+                  <Label>Senha</Label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="6+ caracteres, letras e números"
+                    minLength={6}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">Evite senhas comuns ou fáceis de adivinhar.</p>
+                </div>
+                <div>
+                  <Label>Perfil de acesso</Label>
+                  <Select value={role} onValueChange={(v: any) => setRole(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employee">Funcionário</SelectItem>
+                      <SelectItem value="admin">Administrador</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Funcionário vê apenas a própria agenda e atendimentos. Administrador gerencia o salão.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border p-3 space-y-3">
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium">Atende na agenda (executa serviços)</span>
+              <Switch checked={onAgenda} onCheckedChange={setOnAgenda} />
+            </label>
+            {onAgenda && (
+              <div className="space-y-3 pt-1">
+                <div className="grid md:grid-cols-2 gap-3">
                   <div>
-                    <div className="flex items-center gap-2 font-medium">
-                      <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: p.calendar_color }} />
-                      {p.name}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {p.active ? "Ativo" : "Inativo"} • Comissão {Number(p.commission_percentage ?? 0)}% •{" "}
-                      {linkedUser ? "Com acesso ao sistema" : "Sem acesso ao sistema"}
-                    </div>
+                    <Label>Comissão padrão (%)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={commission}
+                      onChange={(e) => setCommission(e.target.value)}
+                      disabled={withAccess}
+                    />
+                    {withAccess && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        A comissão pode ser ajustada depois, em Editar.
+                      </p>
+                    )}
                   </div>
-                  <div className="flex gap-2">
+                  <div>
+                    <Label className="mb-2 block">Cor na agenda</Label>
+                    <ProfessionalColorPicker value={calendarColor} onChange={setCalendarColor} />
+                  </div>
+                </div>
+                <div>
+                  <Label>Serviços que executa</Label>
+                  <div className="grid sm:grid-cols-2 gap-2 mt-2 max-h-48 overflow-y-auto">
+                    {services.map((s: any) => (
+                      <label key={s.id} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={selectedServices.includes(s.id)}
+                          onCheckedChange={(v) =>
+                            setSelectedServices((prev) =>
+                              v ? [...prev, s.id] : prev.filter((x) => x !== s.id)
+                            )
+                          }
+                        />
+                        {s.name}
+                      </label>
+                    ))}
+                    {!services.length && (
+                      <p className="text-sm text-muted-foreground">Nenhum serviço ativo cadastrado.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Button onClick={onCreate} disabled={saving || !name.trim()}>
+            {saving ? "Salvando..." : "Cadastrar"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Equipe</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Todas as pessoas do salão: com ou sem acesso ao sistema.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {teamRows.map(({ professional: p, user: u }: any) => (
+            <div key={p.id} className="border rounded p-3 flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <div className="flex items-center gap-2 font-medium">
+                  <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: p.calendar_color }} />
+                  {p.name}
+                </div>
+                <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap mt-1">
+                  {u ? (
+                    <>
+                      <Badge variant="secondary">{u.role === "admin" ? "Administrador" : "Funcionário"}</Badge>
+                      <span>{u.email ?? "Email não disponível"}</span>
+                      <span>•</span>
+                      <span>{u.active ? "Acesso ativo" : "Acesso bloqueado"}</span>
+                    </>
+                  ) : (
+                    <Badge variant="outline">Sem acesso ao sistema</Badge>
+                  )}
+                  <span>•</span>
+                  <span>{p.active ? "Na agenda" : "Fora da agenda"}</span>
+                  <span>•</span>
+                  <span>Comissão {Number(p.commission_percentage ?? 0)}%</span>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {u ? (
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => setEditUser({ ...u, professional: p })}>
+                      <Pencil className="h-4 w-4 mr-1" /> Editar
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => toggleUserActive(u.id, u.active)}>
+                      {u.active ? "Bloquear acesso" : "Desbloquear acesso"}
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => removeUser(u.id)}>
+                      Remover acesso
+                    </Button>
+                  </>
+                ) : (
+                  <>
                     <Button variant="outline" size="sm" onClick={() => setEditProf(p)}>
                       <Pencil className="h-4 w-4 mr-1" /> Editar
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => toggleProfessional(p.id, p.active)}>
                       {p.active ? "Inativar" : "Ativar"}
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => removeProfessional(p.id)}
-                      disabled={!!linkedUser}
-                      title={linkedUser ? "Remova primeiro o usuário vinculado" : ""}
-                    >
+                    <Button variant="destructive" size="sm" onClick={() => removeProfessional(p.id)}>
                       Excluir
                     </Button>
-                  </div>
-                </div>
-              );
-            })}
-            {!professionalsList.length && (
-              <div className="text-sm text-muted-foreground">Nenhum profissional cadastrado.</div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Usuários</span>
-            {maxUsers != null && (
-              <span className="text-xs font-normal text-muted-foreground">
-                {activeUserCount} / {maxUsers}
-              </span>
-            )}
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent className="grid md:grid-cols-2 gap-3">
-          <div>
-            <Label>Email do usuário</Label>
-            <Input
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
-              placeholder="usuario@exemplo.com"
-              type="email"
-              aria-invalid={!!emailError}
-            />
-            {emailError && <p className="mt-1 text-sm text-destructive">{emailError}</p>}
-          </div>
-
-          <div>
-            <Label>Nome profissional</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome" />
-          </div>
-
-          <div>
-            <Label>Senha do usuário</Label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="6+ caracteres, letras e números"
-              minLength={6}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">Evite senhas comuns ou fáceis de adivinhar.</p>
-          </div>
-
-          <div>
-            <Label>Perfil</Label>
-            <Select value={role} onValueChange={(v: any) => setRole(v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="employee">Funcionário</SelectItem>
-                <SelectItem value="admin">Administrador</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="md:col-span-2">
-            <ProfessionalColorPicker value={userCalendarColor} onChange={setUserCalendarColor} />
-          </div>
-
-          <div className="md:col-span-2">
-            <Label>Serviços vinculados</Label>
-            <div className="grid sm:grid-cols-2 gap-2 mt-2">
-              {services.map((s: any) => (
-                <label key={s.id} className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={selectedServices.includes(s.id)}
-                    onCheckedChange={(v) =>
-                      setSelectedServices((prev) =>
-                        v ? [...prev, s.id] : prev.filter((x) => x !== s.id)
-                      )
-                    }
-                  />
-                  {s.name}
-                </label>
-              ))}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          ))}
 
-          <div className="md:col-span-2">
-            <Button onClick={onCreate} disabled={saving}>
-              {saving ? "Salvando..." : "Criar usuário"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Usuários cadastrados</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {users.map((u: any) => (
-            <div key={u.id} className="border rounded p-3 flex items-center justify-between gap-3">
+          {usersWithoutProfessional.map((u: any) => (
+            <div key={u.id} className="border rounded p-3 flex items-center justify-between gap-3 flex-wrap">
               <div>
-                <div className="flex items-center gap-2 font-medium">
-                  {u.professional?.calendar_color && <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: u.professional.calendar_color }} />}
-                  {u.professional?.name ?? "Sem profissional"}
-                </div>
+                <div className="font-medium">{u.email ?? "Usuário sem profissional"}</div>
                 <div className="text-sm text-muted-foreground">
-                  {u.email ? `Email: ${u.email} • ` : "Email não disponível • "}
-                  Perfil: {u.role === "admin" ? "Administrador" : "Funcionário"} •{" "}
-                  {u.active ? "Ativo" : "Bloqueado"}
+                  {u.role === "admin" ? "Administrador" : "Funcionário"} • {u.active ? "Acesso ativo" : "Acesso bloqueado"}
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setEditUser(u)}>
-                  <Pencil className="h-4 w-4 mr-1" /> Editar
+                <Button variant="outline" size="sm" onClick={() => toggleUserActive(u.id, u.active)}>
+                  {u.active ? "Bloquear acesso" : "Desbloquear acesso"}
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => toggleActive(u.id, u.active)}>
-                  {u.active ? "Bloquear" : "Desbloquear"}
-                </Button>
-                <Button variant="destructive" size="sm" onClick={() => remove(u.id)}>
-                  Excluir
+                <Button variant="destructive" size="sm" onClick={() => removeUser(u.id)}>
+                  Remover acesso
                 </Button>
               </div>
             </div>
           ))}
 
-          {!users.length && (
-            <div className="text-sm text-muted-foreground">Nenhum usuário cadastrado.</div>
+          {!teamRows.length && !usersWithoutProfessional.length && (
+            <div className="text-sm text-muted-foreground">Ninguém cadastrado na equipe ainda.</div>
           )}
         </CardContent>
       </Card>

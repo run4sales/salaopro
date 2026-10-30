@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     const rawBody = await req.text();
     if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) throw new Error("Payload muito grande");
     const body = JSON.parse(rawBody);
-    const { establishment_id, membership_id, email, password, name, role, calendar_color } = body ?? {};
+    const { establishment_id, membership_id, email, password, name, role, calendar_color, service_ids } = body ?? {};
 
     if (!establishment_id || !membership_id) throw new Error("Dados obrigatórios ausentes");
     if (role !== undefined && !ALLOWED_ROLES.has(String(role))) throw new Error("Perfil inválido");
@@ -46,6 +46,9 @@ Deno.serve(async (req) => {
     if (emailValidation && !emailValidation.valid) throw new Error(emailValidation.message);
     const normalizedColor = calendar_color ? String(calendar_color).trim().toUpperCase() : undefined;
     if (normalizedColor && !HEX_COLOR.test(normalizedColor)) throw new Error("Cor da agenda inválida");
+    if (service_ids !== undefined && (!Array.isArray(service_ids) || service_ids.length > 200 || service_ids.some((id) => typeof id !== "string"))) {
+      throw new Error("Serviços inválidos");
+    }
 
     const { data: ownerProfile } = await adminClient
       .from("profiles")
@@ -109,6 +112,32 @@ Deno.serve(async (req) => {
         .eq("id", membership.professional_id)
         .eq("establishment_id", establishment_id);
       if (pErr) throw pErr;
+    }
+
+    if (service_ids !== undefined && membership.professional_id) {
+      const uniqueIds = [...new Set(service_ids as string[])];
+      if (uniqueIds.length) {
+        const { data: allowedServices, error: servicesError } = await adminClient
+          .from("services")
+          .select("id")
+          .eq("establishment_id", establishment_id)
+          .in("id", uniqueIds);
+        if (servicesError || (allowedServices?.length ?? 0) !== uniqueIds.length) {
+          throw new Error("Um ou mais serviços selecionados são inválidos");
+        }
+      }
+      const { error: delErr } = await adminClient
+        .from("service_professionals")
+        .delete()
+        .eq("establishment_id", establishment_id)
+        .eq("professional_id", membership.professional_id);
+      if (delErr) throw delErr;
+      if (uniqueIds.length) {
+        const { error: insErr } = await adminClient.from("service_professionals").insert(
+          uniqueIds.map((service_id) => ({ establishment_id, service_id, professional_id: membership.professional_id })),
+        );
+        if (insErr) throw insErr;
+      }
     }
 
     return new Response(JSON.stringify({ ok: true }), {
