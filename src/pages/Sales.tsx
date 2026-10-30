@@ -262,9 +262,17 @@ export default function Sales() {
   }, [clientId]);
 
   const addToCart = (svc: SimpleService) => {
+    if (svc.kind === "product" && svc.stock_quantity <= 0) {
+      toast.error(`"${svc.name}" está sem estoque.`);
+      return;
+    }
     setCart((prev) => {
       const exist = prev.find((i) => i.service.id === svc.id);
       if (exist) {
+        if (svc.kind === "product" && exist.qty + 1 > svc.stock_quantity) {
+          toast.error(`Estoque de "${svc.name}": ${svc.stock_quantity} unidade(s).`);
+          return prev;
+        }
         return prev.map((i) => i.service.id === svc.id ? { ...i, qty: i.qty + 1 } : i);
       }
       return [...prev, { service: svc, qty: 1 }];
@@ -274,7 +282,15 @@ export default function Sales() {
   const changeQty = (id: string, delta: number) => {
     setCart((prev) =>
       prev
-        .map((i) => i.service.id === id ? { ...i, qty: i.qty + delta } : i)
+        .map((i) => {
+          if (i.service.id !== id) return i;
+          const next = i.qty + delta;
+          if (delta > 0 && i.service.kind === "product" && next > i.service.stock_quantity) {
+            toast.error(`Estoque de "${i.service.name}": ${i.service.stock_quantity} unidade(s).`);
+            return i;
+          }
+          return { ...i, qty: next };
+        })
         .filter((i) => i.qty > 0)
     );
   };
@@ -322,8 +338,13 @@ export default function Sales() {
   const onFinalize = async () => {
     if (!profile?.id) return;
     if (!clientId) { toast.error("Selecione o cliente."); return; }
-    if (cart.length === 0) { toast.error("Adicione ao menos um serviço."); return; }
+    if (cart.length === 0) { toast.error("Adicione ao menos um serviço ou produto."); return; }
     if (professionalEntries.length === 0) { toast.error("Selecione ao menos um profissional."); return; }
+    const outOfStock = cart.find((i) => i.service.kind === "product" && i.qty > i.service.stock_quantity);
+    if (outOfStock) {
+      toast.error(`Estoque insuficiente de "${outOfStock.service.name}" (disponível: ${outOfStock.service.stock_quantity}).`);
+      return;
+    }
     if (remainingToPay > 0 && isCard && !cardMachineId) { toast.error("Selecione a maquininha."); return; }
     if (appliedCredit > availableCredit) { toast.error("Crédito insuficiente."); return; }
 
