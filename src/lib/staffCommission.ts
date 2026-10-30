@@ -1,4 +1,4 @@
-export { parseStaffCommission, staffCommissionPatch } from "../../supabase/functions/_shared/staff-commission";
+export { parseStaffCommission, staffCommissionPatch } from "../../supabase/functions/_shared/staff-commission.ts";
 
 export function staffCommissionValue(professional?: {
   commission_type?: string | null;
