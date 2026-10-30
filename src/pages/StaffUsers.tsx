@@ -19,6 +19,7 @@ import { EditProfessionalDialog } from "@/components/users/EditProfessionalDialo
 import { EditUserDialog } from "@/components/users/EditUserDialog";
 import { checkEmailDomain, validateEmail } from "@/lib/contactValidation";
 import { ProfessionalColorPicker } from "@/components/users/ProfessionalColorPicker";
+import { staffCommissionPatch, staffCommissionValue } from "@/lib/staffCommission";
 
 export default function StaffUsers() {
   const { profile, establishmentRole } = useAuth();
@@ -121,6 +122,13 @@ export default function StaffUsers() {
 
   const onCreate = async () => {
     if (!establishmentId || !name.trim()) return;
+    let commissionConfig: ReturnType<typeof staffCommissionPatch>;
+    try {
+      commissionConfig = staffCommissionPatch(onAgenda ? commission : undefined);
+    } catch (error) {
+      toast({ title: "Comissão inválida", description: error instanceof Error ? error.message : "Informe a porcentagem.", variant: "destructive" });
+      return;
+    }
 
     if (withAccess) {
       const emailValidation = validateEmail(email, { required: true });
@@ -151,6 +159,7 @@ export default function StaffUsers() {
             password: password.trim(),
             name: name.trim(),
             role,
+            ...commissionConfig,
             service_ids: onAgenda ? selectedServices : [],
             calendar_color: onAgenda && calendarColor ? calendarColor : undefined,
           },
@@ -162,7 +171,7 @@ export default function StaffUsers() {
           establishment_id: establishmentId,
           name: name.trim(),
           active: true,
-          commission_percentage: Number(commission) || 0,
+          ...commissionConfig,
           ...(calendarColor ? { calendar_color: calendarColor } : {}),
         } as any).select("id").single();
         if (error) throw error;
@@ -328,21 +337,16 @@ export default function StaffUsers() {
               <div className="space-y-3 pt-1">
                 <div className="grid md:grid-cols-2 gap-3">
                   <div>
-                    <Label>Comissão padrão (%)</Label>
+                    <Label htmlFor="new-staff-commission">Comissão do profissional (%)</Label>
                     <Input
+                      id="new-staff-commission"
                       type="number"
                       min="0"
                       max="100"
                       step="0.01"
                       value={commission}
                       onChange={(e) => setCommission(e.target.value)}
-                      disabled={withAccess}
                     />
-                    {withAccess && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        A comissão pode ser ajustada depois, em Editar.
-                      </p>
-                    )}
                   </div>
                   <div>
                     <Label className="mb-2 block">Cor na agenda</Label>
@@ -409,7 +413,7 @@ export default function StaffUsers() {
                   <span>•</span>
                   <span>{p.active ? "Na agenda" : "Fora da agenda"}</span>
                   <span>•</span>
-                  <span>Comissão {Number(p.commission_percentage ?? 0)}%</span>
+                  <span>Comissão {staffCommissionValue(p)}%</span>
                 </div>
               </div>
               <div className="flex gap-2 flex-wrap">

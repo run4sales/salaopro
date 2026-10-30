@@ -12,13 +12,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { checkEmailDomain, validateEmail } from "@/lib/contactValidation";
 import { ProfessionalColorPicker } from "@/components/users/ProfessionalColorPicker";
 import { DEFAULT_PROFESSIONAL_CALENDAR_COLOR } from "@/lib/professionalCalendarColors";
+import { parseStaffCommission, staffCommissionValue } from "@/lib/staffCommission";
 
 interface UserRow {
   id: string;
   user_id: string;
   role: "admin" | "employee" | string;
   professional_id?: string | null;
-  professional?: { name?: string; calendar_color?: string | null } | null;
+  professional?: { name?: string; calendar_color?: string | null; commission_type?: string | null; commission_percentage?: number | null; custom_percentage?: number | null } | null;
   email?: string | null;
 }
 
@@ -40,6 +41,7 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
   const [emailError, setEmailError] = useState("");
   const [calendarColor, setCalendarColor] = useState<string>(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [commission, setCommission] = useState("0");
 
   const servicesQuery = useQuery({
     queryKey: ["services-lite", establishmentId],
@@ -65,6 +67,7 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
     setEmailError("");
     setPassword("");
     setCalendarColor(user.professional?.calendar_color ?? DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
+    setCommission(String(staffCommissionValue(user.professional)));
     setSelectedServices([]);
     if (user.professional_id) {
       supabase
@@ -78,6 +81,16 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
 
   const onSave = async () => {
     if (!user) return;
+    let commissionPercentage: number | undefined;
+    try {
+      if (user.professional_id) {
+        const value = parseStaffCommission(commission);
+        if (value !== staffCommissionValue(user.professional)) commissionPercentage = value;
+      }
+    } catch (error) {
+      toast({ title: "Comissão inválida", description: error instanceof Error ? error.message : "Informe a porcentagem.", variant: "destructive" });
+      return;
+    }
     const emailValidation = validateEmail(email, { required: true });
     if (!emailValidation.valid) { setEmailError(emailValidation.message ?? "E-mail inválido."); return; }
     if (password && password.length < 6) {
@@ -96,6 +109,7 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
           email: email.trim() || undefined,
           password: password || undefined,
           role,
+          commission_percentage: commissionPercentage,
           calendar_color: calendarColor,
           service_ids: selectedServices,
         },
@@ -104,6 +118,8 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
       toast({ title: "Usuário atualizado" });
       qc.invalidateQueries({ queryKey: ["establishment-users"] });
       qc.invalidateQueries({ queryKey: ["professionals-manage"] });
+      qc.invalidateQueries({ queryKey: ["professionals"] });
+      qc.invalidateQueries({ queryKey: ["agenda-professionals"] });
       qc.invalidateQueries({ queryKey: ["service_professionals"] });
       onOpenChange(false);
     } catch (e: any) {
@@ -116,7 +132,7 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar usuário</DialogTitle>
         </DialogHeader>
@@ -128,6 +144,14 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
           </div>
 
           <ProfessionalColorPicker value={calendarColor} onChange={setCalendarColor} />
+
+          {user?.professional_id && (
+            <div>
+              <Label htmlFor="edit-staff-commission">Comissão do profissional (%)</Label>
+              <Input id="edit-staff-commission" type="number" min="0" max="100" step="0.01"
+                value={commission} onChange={(e) => setCommission(e.target.value)} />
+            </div>
+          )}
 
           <div>
             <Label>E-mail</Label>
