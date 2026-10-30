@@ -45,6 +45,8 @@ interface SimpleService {
   name: string;
   price: number;
   commission_solo: number;
+  kind: "service" | "product";
+  stock_quantity: number;
 }
 interface SimpleProfessional {
   id: string;
@@ -119,7 +121,7 @@ export default function Sales() {
       if (!profile?.id) return [];
       const { data } = await supabase
         .from("services")
-        .select("id, name, price, commission_solo")
+        .select("id, name, price, commission_solo, kind, stock_quantity")
         .eq("establishment_id", profile.id)
         .eq("active", true)
         .order("name");
@@ -128,6 +130,8 @@ export default function Sales() {
         name: s.name,
         price: Number(s.price),
         commission_solo: Number(s.commission_solo ?? 0),
+        kind: s.kind === "product" ? "product" : "service",
+        stock_quantity: Number(s.stock_quantity ?? 0),
       }));
     },
     enabled: !!profile?.id,
