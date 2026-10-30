@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { extractEdgeFunctionError } from "@/lib/edgeFunctionError";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { checkEmailDomain, validateEmail } from "@/lib/contactValidation";
 import { ProfessionalColorPicker } from "@/components/users/ProfessionalColorPicker";
 import { DEFAULT_PROFESSIONAL_CALENDAR_COLOR } from "@/lib/professionalCalendarColors";
@@ -38,16 +39,42 @@ export function EditUserDialog({ open, onOpenChange, establishmentId, user }: Pr
   const [saving, setSaving] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [calendarColor, setCalendarColor] = useState<string>(DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+
+  const servicesQuery = useQuery({
+    queryKey: ["services-lite", establishmentId],
+    enabled: open && !!establishmentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("services")
+        .select("id, name")
+        .eq("establishment_id", establishmentId)
+        .eq("kind", "service")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !open) return;
     setName(user.professional?.name ?? "");
     setRole((user.role as any) === "admin" ? "admin" : "employee");
     setEmail(user.email ?? "");
     setEmailError("");
     setPassword("");
     setCalendarColor(user.professional?.calendar_color ?? DEFAULT_PROFESSIONAL_CALENDAR_COLOR);
-  }, [user]);
+    setSelectedServices([]);
+    if (user.professional_id) {
+      supabase
+        .from("service_professionals")
+        .select("service_id")
+        .eq("establishment_id", establishmentId)
+        .eq("professional_id", user.professional_id)
+        .then(({ data }) => setSelectedServices((data ?? []).map((r: any) => r.service_id)));
+    }
+  }, [user, open, establishmentId]);
 
   const onSave = async () => {
     if (!user) return;
