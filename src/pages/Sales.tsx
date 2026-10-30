@@ -99,6 +99,7 @@ export default function Sales() {
 
   // PDV state
   const [search, setSearch] = useState("");
+  const [catalogTab, setCatalogTab] = useState<"service" | "product">("service");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [clientId, setClientId] = useState<string>("");
   const [professionalEntries, setProfessionalEntries] = useState<ProfessionalEntry[]>([]);
@@ -195,9 +196,18 @@ export default function Sales() {
 
   const filteredServices = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return services ?? [];
-    return (services ?? []).filter((s) => s.name.toLowerCase().includes(q));
-  }, [services, search]);
+    return (services ?? []).filter((s) =>
+      s.kind === catalogTab && (!q || s.name.toLowerCase().includes(q))
+    );
+  }, [services, search, catalogTab]);
+
+  const catalogCounts = useMemo(() => {
+    const list = services ?? [];
+    return {
+      service: list.filter((s) => s.kind === "service").length,
+      product: list.filter((s) => s.kind === "product").length,
+    };
+  }, [services]);
 
   const subtotal = useMemo(
     () => cart.reduce((s, item) => s + (item.customPrice ?? item.service.price) * item.qty, 0),
