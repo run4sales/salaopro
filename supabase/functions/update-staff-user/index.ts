@@ -114,6 +114,32 @@ Deno.serve(async (req) => {
       if (pErr) throw pErr;
     }
 
+    if (service_ids !== undefined && membership.professional_id) {
+      const uniqueIds = [...new Set(service_ids as string[])];
+      if (uniqueIds.length) {
+        const { data: allowedServices, error: servicesError } = await adminClient
+          .from("services")
+          .select("id")
+          .eq("establishment_id", establishment_id)
+          .in("id", uniqueIds);
+        if (servicesError || (allowedServices?.length ?? 0) !== uniqueIds.length) {
+          throw new Error("Um ou mais serviços selecionados são inválidos");
+        }
+      }
+      const { error: delErr } = await adminClient
+        .from("service_professionals")
+        .delete()
+        .eq("establishment_id", establishment_id)
+        .eq("professional_id", membership.professional_id);
+      if (delErr) throw delErr;
+      if (uniqueIds.length) {
+        const { error: insErr } = await adminClient.from("service_professionals").insert(
+          uniqueIds.map((service_id) => ({ establishment_id, service_id, professional_id: membership.professional_id })),
+        );
+        if (insErr) throw insErr;
+      }
+    }
+
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...cors, "Content-Type": "application/json" },
     });
