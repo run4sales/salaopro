@@ -127,6 +127,13 @@
       "when": 1793797206674,
       "tag": "0017_ambassador_referrals_commissions",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793797487084,
+      "tag": "0018_ambassador_payment_eligibility_hardening",
+      "breakpoints": true
     }
   ]
 }
