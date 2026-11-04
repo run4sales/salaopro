@@ -153,7 +153,8 @@ export async function syncAsaasSubscription(
     .sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''))[0] ?? null;
   trace.push(`Último pagamento: ${latestPayment?.id ?? 'nenhum'} (${latestPayment?.status ?? 'sem status'})`);
 
-  for (const payment of payments) {
+  // Chronological imports preserve the first paid billing month for referral commissions.
+  for (const payment of [...payments].sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''))) {
     const { error } = await admin.from('subscription_payments').upsert({
       establishment_id: establishmentId,
       subscription_id: subscription.id,
@@ -167,7 +168,7 @@ export async function syncAsaasSubscription(
       payment_date: payment.paymentDate ?? payment.clientPaymentDate ?? payment.confirmedDate ?? null,
       invoice_url: payment.invoiceUrl ?? null,
       bank_slip_url: payment.bankSlipUrl ?? null,
-      raw: { id: payment.id, status: payment.status, dueDate: payment.dueDate },
+      raw: { id: payment.id, status: payment.status, dueDate: payment.dueDate, refundedValue: typeof payment.refundedValue === 'number' ? payment.refundedValue : 0 },
     }, { onConflict: 'asaas_payment_id' });
     if (error) throw error;
   }
