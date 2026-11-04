@@ -12,6 +12,7 @@ import {
   ShieldAlert,
   Settings as SettingsIcon,
   RefreshCw,
+  Users,
 } from "lucide-react";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminCompanies from "@/components/admin/AdminCompanies";
@@ -20,8 +21,10 @@ import AdminSaaSFinance from "@/components/admin/AdminSaaSFinance";
 import AdminControl from "@/components/admin/AdminControl";
 import AdminPlans from "@/components/admin/AdminPlans";
 import AdminAgendorSync from "@/components/admin/AdminAgendorSync";
+import AdminAmbassadors from "@/components/admin/AdminAmbassadors";
+import { Button } from "@/components/ui/button";
 
-type Tab = "dashboard" | "companies" | "subscriptions" | "finance" | "control" | "plans" | "agendor";
+type Tab = "dashboard" | "companies" | "subscriptions" | "finance" | "control" | "plans" | "agendor" | "ambassadors";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard Geral", icon: LayoutDashboard },
@@ -31,6 +34,7 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "control", label: "Controle", icon: ShieldAlert },
   { id: "plans", label: "Planos", icon: SettingsIcon },
   { id: "agendor", label: "Agendor", icon: RefreshCw },
+  { id: "ambassadors", label: "Embaixadores", icon: Users },
 ];
 
 export default function SuperAdmin() {
@@ -50,10 +54,11 @@ export default function SuperAdmin() {
     queryKey: ["roles", user?.id],
     enabled: !loading && !!user,
     queryFn: async () => {
+      if (!user) return [];
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user!.id);
+        .eq("user_id", user.id);
       if (error) throw error;
       return (data ?? []).map((r) => r.role as string);
     },
@@ -101,7 +106,7 @@ export default function SuperAdmin() {
           {TABS.map((t) => {
             const active = tab === t.id;
             return (
-              <button
+              <Button variant="ghost"
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
@@ -112,7 +117,7 @@ export default function SuperAdmin() {
               >
                 <t.icon className="h-4 w-4" />
                 {t.label}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -125,6 +130,7 @@ export default function SuperAdmin() {
       {tab === "control" && <AdminControl />}
       {tab === "plans" && <AdminPlans />}
       {tab === "agendor" && <AdminAgendorSync />}
+      {tab === "ambassadors" && <AdminAmbassadors />}
     </main>
   );
 }

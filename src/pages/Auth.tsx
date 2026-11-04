@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { checkEmailDomain, formatBrazilianPhone, normalizePhone, validateEmail, validatePhone } from '@/lib/contactValidation';
+import { getSignupReferral } from '@/lib/ambassadorReferral';
 
 const Auth = () => {
   const { user, signIn, signUp, resetPassword, updatePassword } = useAuth();
@@ -99,6 +100,7 @@ const Auth = () => {
       city: signupData.city,
       business_type: signupData.businessType,
       selected_plan: selectedPlan,
+      ambassador_ref: getSignupReferral(searchParams.toString()),
     };
 
     const { error } = await signUp(emailValidation.normalized, signupData.password, signupMetadata);

@@ -29,6 +29,7 @@ import Checkout from "./pages/Checkout";
 import Plans from "./pages/Plans";
 import OAuthConsent from "./pages/OAuthConsent";
 import SalesHistory from "./pages/SalesHistory";
+import AmbassadorReferralCapture from "./components/AmbassadorReferralCapture";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <AmbassadorReferralCapture />
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
