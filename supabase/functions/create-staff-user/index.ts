@@ -61,7 +61,8 @@ Deno.serve(async (req) => {
     const rawBody = await req.text();
     if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) throw new Error("Payload muito grande");
     const body = JSON.parse(rawBody);
-    const { establishment_id, email, password, name, role, service_ids = [], calendar_color } = body ?? {};
+    const { establishment_id, email, password, name, role, service_ids = [], calendar_color, on_agenda = true } = body ?? {};
+    if (typeof on_agenda !== "boolean") throw new RequestError("INVALID_INPUT", "Informe se a pessoa atende na agenda.");
     let commissionConfig: ReturnType<typeof staffCommissionPatch>;
     try {
       commissionConfig = staffCommissionPatch(body?.commission_percentage);
@@ -116,7 +117,7 @@ Deno.serve(async (req) => {
 
     const { data: professional, error: profErr } = await adminClient
       .from("professionals")
-      .insert({ establishment_id, name: String(name).trim(), active: true, ...commissionConfig, ...(normalizedColor ? { calendar_color: normalizedColor } : {}) })
+      .insert({ establishment_id, name: String(name).trim(), active: on_agenda, ...commissionConfig, ...(normalizedColor ? { calendar_color: normalizedColor } : {}) })
       .select("id")
       .single();
     if (profErr) {

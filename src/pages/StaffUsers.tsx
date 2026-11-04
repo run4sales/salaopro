@@ -159,6 +159,7 @@ export default function StaffUsers() {
             password: password.trim(),
             name: name.trim(),
             role,
+            on_agenda: onAgenda,
             ...commissionConfig,
             service_ids: onAgenda ? selectedServices : [],
             calendar_color: onAgenda && calendarColor ? calendarColor : undefined,
@@ -170,7 +171,7 @@ export default function StaffUsers() {
         const { data: prof, error } = await supabase.from("professionals").insert({
           establishment_id: establishmentId,
           name: name.trim(),
-          active: true,
+          active: onAgenda,
           ...commissionConfig,
           ...(calendarColor ? { calendar_color: calendarColor } : {}),
         } as any).select("id").single();
@@ -181,7 +182,7 @@ export default function StaffUsers() {
           );
           if (spErr) throw spErr;
         }
-        toast({ title: "Profissional cadastrado", description: `${name.trim()} aparece na agenda, sem acesso ao sistema.` });
+        toast({ title: "Pessoa cadastrada", description: onAgenda ? `${name.trim()} aparece na agenda, sem acesso ao sistema.` : `${name.trim()} fica fora da agenda, sem acesso ao sistema.` });
       }
       resetForm();
       invalidateTeam();
