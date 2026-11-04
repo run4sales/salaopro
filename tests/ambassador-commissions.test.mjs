@@ -28,7 +28,7 @@ for (const plan of ['individual', 'profissional', 'empresa']) {
 }
 test('unpaid and manual receipts never generate commission', { skip: !enabled }, () => {
   const result = sql(`${fixture} ${invoice(first, '10', 'OVERDUE')} ${invoice(second, '11')} UPDATE public.subscription_payments SET payment_source='manual' WHERE id='${second}'; SELECT coalesce(sum(amount),0) FROM public.ambassador_commission_entries; ROLLBACK;`);
-  assert.equal(result.at(-1), '0');
+  assert.equal(Number(result.at(-1)), 0);
 });
 test('repeated paid updates do not duplicate commissions, refund reverses once', { skip: !enabled }, () => {
   const result = sql(`${fixture} ${invoice(first, '10')} UPDATE public.subscription_payments SET status='CONFIRMED' WHERE id='${first}'; SELECT count(*) FROM public.ambassador_commission_entries; UPDATE public.subscription_payments SET status='REFUNDED' WHERE id='${first}'; UPDATE public.subscription_payments SET status='REFUNDED' WHERE id='${first}'; SELECT sum(amount) FROM public.ambassador_commission_entries; SELECT count(*) FROM public.ambassador_commission_entries; ROLLBACK;`);
