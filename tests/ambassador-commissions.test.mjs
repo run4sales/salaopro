@@ -52,3 +52,7 @@ test('unknown plan holds commission rather than inventing a rate', { skip: !enab
   const result = sql(`${fixture} UPDATE public.subscription_plans SET slug='unknown'; ${invoice(first, '10')} SELECT count(*) FROM public.ambassador_commission_entries; ROLLBACK;`);
   assert.equal(result.at(-1), '0');
 });
+test('non-admin cannot read report or register payouts', { skip: !enabled }, () => {
+  const result = sql(`BEGIN; DO $$ BEGIN PERFORM public.admin_ambassador_report(); RAISE EXCEPTION 'Test must fail'; EXCEPTION WHEN insufficient_privilege THEN NULL; END; $$; DO $$ BEGIN PERFORM public.register_ambassador_payout(gen_random_uuid(),1,current_date-1,'PIX-fixture','',gen_random_uuid()); RAISE EXCEPTION 'Test must fail'; EXCEPTION WHEN insufficient_privilege THEN NULL; END; $$; SELECT 'access-denied'; ROLLBACK;`);
+  assert.equal(result.at(-1), 'access-denied');
+});
