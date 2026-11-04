@@ -1,0 +1,2 @@
+Ambassador referrals are server-resolved at signup and immutable to clients; admin reports never expose ambassador Pix/contact data publicly.
+Commission accounting is an append-only ledger driven by official invoice states and immutable plan snapshots; ambassador-row locks serialize recalculation with idempotent payout registration to protect balances from retries and concurrent writes.
