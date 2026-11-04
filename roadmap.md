@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Implementar programa de embaixadores com links de indicação, salões cadastrados/conversões por pagamento Asaas, comissões e registro de repasses no superadministrador; aguardando definição do modelo e valor da comissão.
 - [x] Corrigir a opção de atendimento na agenda nos cadastros com e sem acesso; 22 testes aprovados, função create-staff-user publicada e compilação aprovada. Cadastros temporários sem acesso foram salvos/reabertos com a opção ligada/desligada e removidos; ramo com acesso validado pelo handler em teste, sem criar identidades reais. Interface pública aguarda publicação.
 - [x] Restaurar porcentagem de comissão no cadastro e na edição de usuários; funções de gravação publicadas, 25 testes aprovados, campos conferidos em sessão autenticada e edição salva/reaberta preservando o valor existente. Não alterar comissões reais para testar; interface pública aguarda publicação.
 - [x] Corrigir nomes ausentes no histórico e relatórios com busca de clientes vinculados em lotes; 14 testes aprovados, histórico autenticado com 109 vendas e nenhum nome ausente, compilação aprovada; registros preservados e site público depende de publicação.
