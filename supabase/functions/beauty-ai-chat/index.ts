@@ -6,7 +6,7 @@ const MAX_MESSAGE_CHARS = 2000;
 const HISTORY_LIMIT = 40;
 const MAX_TOOL_ROUNDS = 6;
 const MODEL = "openai/gpt-6-astra";
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/responses";
 
 class RequestError extends Error {
   constructor(public code: string, message: string, public status = 400) { super(message); }
@@ -15,104 +15,90 @@ class RequestError extends Error {
 const TOOLS = [
   {
     type: "function",
-    function: {
-      name: "revenue_summary",
-      description: "Faturamento realizado (vendas não excluídas), quantidade de vendas, ticket médio, divisão serviços/produtos, formas de pagamento e comparativo com o período anterior de mesmo tamanho.",
-      parameters: {
-        type: "object",
-        properties: {
-          start: { type: "string", description: "Início do período em ISO 8601 (ex.: 2026-11-01T00:00:00-03:00)" },
-          end: { type: "string", description: "Fim do período (exclusivo) em ISO 8601" },
-        },
-        required: ["start", "end"],
+    name: "revenue_summary",
+    description: "Faturamento realizado (vendas não excluídas), quantidade de vendas, ticket médio, divisão serviços/produtos, formas de pagamento e comparativo com o período anterior de mesmo tamanho.",
+    parameters: {
+      type: "object",
+      properties: {
+        start: { type: "string", description: "Início do período em ISO 8601 (ex.: 2026-11-01T00:00:00-03:00)" },
+        end: { type: "string", description: "Fim do período (exclusivo) em ISO 8601" },
+      },
+      required: ["start", "end"],
+    },
+  },
+  {
+    type: "function",
+    name: "expenses_summary",
+    description: "Despesas e contas a pagar por data de vencimento: total, pago, pendente, vencido e por categoria.",
+    parameters: {
+      type: "object",
+      properties: {
+        start: { type: "string", description: "Data inicial (AAAA-MM-DD)" },
+        end: { type: "string", description: "Data final (AAAA-MM-DD)" },
+      },
+      required: ["start", "end"],
+    },
+  },
+  {
+    type: "function",
+    name: "commissions_summary",
+    description: "Comissões dos profissionais no período, respeitando a divisão entre múltiplos profissionais.",
+    parameters: {
+      type: "object",
+      properties: {
+        start: { type: "string" },
+        end: { type: "string" },
+      },
+      required: ["start", "end"],
+    },
+  },
+  {
+    type: "function",
+    name: "inactive_clients",
+    description: "Clientes sem atendimento há pelo menos N dias, com faixas (30-60, 60-90, 90+), quem não tem agendamento futuro e lista de até 50 clientes.",
+    parameters: {
+      type: "object",
+      properties: {
+        days: { type: "integer", description: "Dias sem atendimento (padrão 30)" },
       },
     },
   },
   {
     type: "function",
-    function: {
-      name: "expenses_summary",
-      description: "Despesas e contas a pagar por data de vencimento: total, pago, pendente, vencido e por categoria.",
-      parameters: {
-        type: "object",
-        properties: {
-          start: { type: "string", description: "Data inicial (AAAA-MM-DD)" },
-          end: { type: "string", description: "Data final (AAAA-MM-DD)" },
-        },
-        required: ["start", "end"],
+    name: "top_services",
+    description: "Serviços e produtos mais vendidos (quantidade, faturamento, ticket médio) e mais agendados no período.",
+    parameters: {
+      type: "object",
+      properties: {
+        start: { type: "string" },
+        end: { type: "string" },
+        limit: { type: "integer" },
       },
+      required: ["start", "end"],
     },
   },
   {
     type: "function",
-    function: {
-      name: "commissions_summary",
-      description: "Comissões dos profissionais no período, respeitando a divisão entre múltiplos profissionais.",
-      parameters: {
-        type: "object",
-        properties: {
-          start: { type: "string" },
-          end: { type: "string" },
-        },
-        required: ["start", "end"],
+    name: "professional_performance",
+    description: "Desempenho dos profissionais: atendimentos, faturamento de agendamentos e cancelamentos no período.",
+    parameters: {
+      type: "object",
+      properties: {
+        start: { type: "string" },
+        end: { type: "string" },
       },
+      required: ["start", "end"],
     },
   },
   {
     type: "function",
-    function: {
-      name: "inactive_clients",
-      description: "Clientes sem atendimento há pelo menos N dias, com faixas (30-60, 60-90, 90+), quem não tem agendamento futuro e lista de até 50 clientes.",
-      parameters: {
-        type: "object",
-        properties: {
-          days: { type: "integer", description: "Dias sem atendimento (padrão 30)" },
-        },
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "top_services",
-      description: "Serviços e produtos mais vendidos (quantidade, faturamento, ticket médio) e mais agendados no período.",
-      parameters: {
-        type: "object",
-        properties: {
-          start: { type: "string" },
-          end: { type: "string" },
-          limit: { type: "integer" },
-        },
-        required: ["start", "end"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "professional_performance",
-      description: "Desempenho dos profissionais: atendimentos, faturamento de agendamentos e cancelamentos no período.",
-      parameters: {
-        type: "object",
-        properties: {
-          start: { type: "string" },
-          end: { type: "string" },
-        },
-        required: ["start", "end"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "forecast",
-      description: "Previsão de recebimento: agendamentos futuros não cancelados com o valor combinado (snapshot), no mês e no total.",
-      parameters: { type: "object", properties: {} },
-    },
+    name: "forecast",
+    description: "Previsão de recebimento: agendamentos futuros não cancelados com o valor combinado (snapshot), no mês e no total.",
+    parameters: { type: "object", properties: {} },
   },
 ];
 
-type ToolCall = { id: string; function: { name: string; arguments: string } };
+type ToolCall = { call_id: string; name: string; arguments: string };
 
 async function executeTool(
   adminClient: ReturnType<typeof createClient>,
