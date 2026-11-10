@@ -528,6 +528,114 @@ export type Database = {
         }
         Relationships: []
       }
+      beauty_ai_messages: {
+        Row: {
+          content: string
+          created_at: string
+          establishment_id: string
+          id: string
+          role: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          establishment_id: string
+          id?: string
+          role: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          role?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beauty_ai_messages_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      beauty_ai_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          establishment_id: string
+          monthly_limit: number
+          updated_at: string
+          usage_count: number
+          usage_period: string | null
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          establishment_id: string
+          monthly_limit?: number
+          updated_at?: string
+          usage_count?: number
+          usage_period?: string | null
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          establishment_id?: string
+          monthly_limit?: number
+          updated_at?: string
+          usage_count?: number
+          usage_period?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beauty_ai_settings_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      beauty_ai_usage_log: {
+        Row: {
+          created_at: string
+          detail: Json | null
+          establishment_id: string
+          id: string
+          kind: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json | null
+          establishment_id: string
+          id?: string
+          kind: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detail?: Json | null
+          establishment_id?: string
+          id?: string
+          kind?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beauty_ai_usage_log_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       card_machine_fees: {
         Row: {
           card_machine_id: string
@@ -2538,6 +2646,15 @@ export type Database = {
         Returns: string
       }
       admin_ambassador_report: { Args: never; Returns: Json }
+      admin_beauty_ai_report: { Args: never; Returns: Json }
+      admin_set_beauty_ai_access: {
+        Args: {
+          p_enabled: boolean
+          p_establishment: string
+          p_monthly_limit?: number
+        }
+        Returns: Json
+      }
       admin_set_subscription_authorization: {
         Args: {
           p_action: string
@@ -2597,6 +2714,41 @@ export type Database = {
         Args: { p_establishment: string }
         Returns: undefined
       }
+      beauty_ai_access_state: {
+        Args: { p_establishment: string }
+        Returns: Json
+      }
+      beauty_ai_commissions_summary: {
+        Args: { p_end: string; p_establishment: string; p_start: string }
+        Returns: Json
+      }
+      beauty_ai_current_period: { Args: never; Returns: string }
+      beauty_ai_expenses_summary: {
+        Args: { p_end: string; p_establishment: string; p_start: string }
+        Returns: Json
+      }
+      beauty_ai_forecast: { Args: { p_establishment: string }; Returns: Json }
+      beauty_ai_inactive_clients: {
+        Args: { p_days?: number; p_establishment: string }
+        Returns: Json
+      }
+      beauty_ai_professional_performance: {
+        Args: { p_end: string; p_establishment: string; p_start: string }
+        Returns: Json
+      }
+      beauty_ai_revenue_summary: {
+        Args: { p_end: string; p_establishment: string; p_start: string }
+        Returns: Json
+      }
+      beauty_ai_top_services: {
+        Args: {
+          p_end: string
+          p_establishment: string
+          p_limit?: number
+          p_start: string
+        }
+        Returns: Json
+      }
       can_manage_appointment_block: {
         Args: { p_establishment: string; p_professional: string }
         Returns: boolean
@@ -2605,6 +2757,10 @@ export type Database = {
       consume_asaas_audit_ticket: {
         Args: { p_ticket: string }
         Returns: boolean
+      }
+      consume_beauty_ai_interaction: {
+        Args: { p_establishment: string; p_user?: string }
+        Returns: Json
       }
       consume_service_benefit: {
         Args: {
@@ -2705,6 +2861,7 @@ export type Database = {
           state: string
         }[]
       }
+      get_my_beauty_ai_status: { Args: never; Returns: Json }
       get_my_employee_agenda: {
         Args: { _end: string; _start: string }
         Returns: Json
@@ -2813,6 +2970,10 @@ export type Database = {
           rows_updated: number
           sales_affected: number
         }[]
+      }
+      refund_beauty_ai_interaction: {
+        Args: { p_establishment: string; p_reason?: string; p_user?: string }
+        Returns: undefined
       }
       refund_client_credit: {
         Args: { _source: string; _source_id: string }
