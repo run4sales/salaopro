@@ -107,12 +107,12 @@ async function executeTool(
 ): Promise<string> {
   let args: Record<string, unknown> = {};
   try {
-    args = call.function.arguments ? JSON.parse(call.function.arguments) : {};
+    args = call.arguments ? JSON.parse(call.arguments) : {};
   } catch {
     return JSON.stringify({ error: "argumentos inválidos" });
   }
 
-  const name = call.function.name;
+  const name = call.name;
   let rpc: string;
   let params: Record<string, unknown>;
 
@@ -263,8 +263,7 @@ Deno.serve(async (req) => {
     const historyMessages = (history ?? []).reverse();
 
     const todaySP = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "long", year: "numeric", month: "long", day: "numeric" });
-    const messages: Array<Record<string, unknown>> = [
-      { role: "system", content: systemPrompt(todaySP) },
+    const input: Array<Record<string, unknown>> = [
       ...historyMessages.map((m) => ({ role: m.role, content: m.content })),
       { role: "user", content: message },
     ];
@@ -275,7 +274,7 @@ Deno.serve(async (req) => {
       const gatewayRes = await fetch(GATEWAY_URL, {
         method: "POST",
         headers: { Authorization: `Bearer ${gatewayKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: MODEL, messages, tools: TOOLS }),
+        body: JSON.stringify({ model: MODEL, instructions: systemPrompt(todaySP), input, tools: TOOLS }),
       });
 
       if (!gatewayRes.ok) {
@@ -285,23 +284,24 @@ Deno.serve(async (req) => {
       }
 
       const completion = await gatewayRes.json();
-      const choice = completion.choices?.[0];
-      const assistantMessage = choice?.message;
-      if (!assistantMessage) {
+      const output: Array<Record<string, unknown>> = completion.output ?? [];
+      if (output.length === 0) {
         console.error("gateway sem resposta", JSON.stringify(completion).slice(0, 500));
         throw new RequestError("AI_UNAVAILABLE", "A Beauty IA não conseguiu responder agora. Tente novamente.", 503);
       }
 
-      const toolCalls: ToolCall[] = assistantMessage.tool_calls ?? [];
+      const toolCalls = output.filter((item) => item.type === "function_call") as unknown as ToolCall[];
       if (toolCalls.length === 0) {
-        reply = String(assistantMessage.content ?? "").trim();
+        const messageItem = output.find((item) => item.type === "message");
+        const parts = (messageItem?.content as Array<{ type: string; text?: string }> | undefined) ?? [];
+        reply = parts.filter((p) => p.type === "output_text").map((p) => p.text ?? "").join("").trim();
         break;
       }
 
-      messages.push(assistantMessage);
+      input.push(...output);
       for (const call of toolCalls) {
         const result = await executeTool(adminClient, establishmentId, call);
-        messages.push({ role: "tool", tool_call_id: call.id, content: result });
+        input.push({ type: "function_call_output", call_id: call.call_id, output: result });
       }
     }
 
