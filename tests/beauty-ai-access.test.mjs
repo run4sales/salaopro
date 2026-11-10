@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 
 const enabled = process.env.BEAUTY_AI_TEST_PORT === '55441';
 function sql(query) {
-  const result = spawnSync('psql', ['-X', '-v', 'ON_ERROR_STOP=1', '-At', '-h', '127.0.0.1', '-p', '55441', '-U', 'nobody', '-d', 'postgres'], { input: query, encoding: 'utf8', env: { ...process.env, PGSSLMODE: 'disable', PGPASSWORD: '' } });
+  const result = spawnSync('psql', ['-X', '-v', 'ON_ERROR_STOP=1', '-At', '-h', '127.0.0.1', '-p', '55441', '-U', 'postgres', '-d', 'postgres'], { input: query, encoding: 'utf8', env: { ...process.env, PGSSLMODE: 'disable', PGPASSWORD: '' } });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim().split('\n').filter(line => !/^(BEGIN|ROLLBACK|INSERT|UPDATE|SET)/.test(line));
 }
