@@ -134,6 +134,13 @@
       "when": 1793797487084,
       "tag": "0018_ambassador_payment_eligibility_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794341592336,
+      "tag": "0019_beauty_ai_copilot",
+      "breakpoints": true
     }
   ]
 }
