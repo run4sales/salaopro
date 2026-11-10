@@ -28,6 +28,7 @@ import {
   CreditCard,
   Package,
   History,
+  Bot,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -53,6 +54,7 @@ const groups = [
   {
     label: "Crescimento",
     items: [
+      { title: "Beauty IA", url: "/beauty-ia", icon: Bot },
       { title: "Métricas", url: "/metrics", icon: TrendingUp },
       { title: "Relatórios Inteligentes", url: "/reports", icon: BarChart3 },
     ],

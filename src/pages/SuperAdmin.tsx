@@ -13,6 +13,7 @@ import {
   Settings as SettingsIcon,
   RefreshCw,
   Users,
+  Bot,
 } from "lucide-react";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminCompanies from "@/components/admin/AdminCompanies";
@@ -22,9 +23,10 @@ import AdminControl from "@/components/admin/AdminControl";
 import AdminPlans from "@/components/admin/AdminPlans";
 import AdminAgendorSync from "@/components/admin/AdminAgendorSync";
 import AdminAmbassadors from "@/components/admin/AdminAmbassadors";
+import AdminBeautyAI from "@/components/admin/AdminBeautyAI";
 import { Button } from "@/components/ui/button";
 
-type Tab = "dashboard" | "companies" | "subscriptions" | "finance" | "control" | "plans" | "agendor" | "ambassadors";
+type Tab = "dashboard" | "companies" | "subscriptions" | "finance" | "control" | "plans" | "agendor" | "ambassadors" | "beautyai";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard Geral", icon: LayoutDashboard },
@@ -35,6 +37,7 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "plans", label: "Planos", icon: SettingsIcon },
   { id: "agendor", label: "Agendor", icon: RefreshCw },
   { id: "ambassadors", label: "Embaixadores", icon: Users },
+  { id: "beautyai", label: "Beauty IA", icon: Bot },
 ];
 
 export default function SuperAdmin() {
@@ -131,6 +134,7 @@ export default function SuperAdmin() {
       {tab === "plans" && <AdminPlans />}
       {tab === "agendor" && <AdminAgendorSync />}
       {tab === "ambassadors" && <AdminAmbassadors />}
+      {tab === "beautyai" && <AdminBeautyAI />}
     </main>
   );
 }

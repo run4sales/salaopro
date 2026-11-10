@@ -29,6 +29,7 @@ import Checkout from "./pages/Checkout";
 import Plans from "./pages/Plans";
 import OAuthConsent from "./pages/OAuthConsent";
 import SalesHistory from "./pages/SalesHistory";
+import BeautyAI from "./pages/BeautyAI";
 import AmbassadorReferralCapture from "./components/AmbassadorReferralCapture";
 
 const queryClient = new QueryClient();
@@ -77,6 +78,7 @@ const App = () => (
                 <Route path="/agenda" element={<Agenda />} />
                 <Route path="/atendimentos" element={<Attendances />} />
                 <Route path="/reports" element={<RoleProtectedRoute><Reports /></RoleProtectedRoute>} />
+                <Route path="/beauty-ia" element={<RoleProtectedRoute><BeautyAI /></RoleProtectedRoute>} />
                 <Route path="/metrics" element={<RoleProtectedRoute><Metrics /></RoleProtectedRoute>} />
                 <Route path="/settings" element={<RoleProtectedRoute><Settings /></RoleProtectedRoute>} />
                 <Route path="/users" element={<RoleProtectedRoute><StaffUsers /></RoleProtectedRoute>} />
