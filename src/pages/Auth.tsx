@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,9 +9,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { checkEmailDomain, formatBrazilianPhone, normalizePhone, validateEmail, validatePhone } from '@/lib/contactValidation';
 import { getSignupReferral } from '@/lib/ambassadorReferral';
+import { safeNavigationRoute } from '@/lib/navigationPersistence';
+import { restoredNavigation } from '@/components/NavigationContinuity';
 
 const Auth = () => {
-  const { user, signIn, signUp, resetPassword, updatePassword } = useAuth();
+  const { user, profile, establishmentRole, loading, profileError, retryProfile, signIn, signUp, resetPassword, updatePassword } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
@@ -60,11 +63,15 @@ const Auth = () => {
   const isResetPasswordMode = authMode === 'reset-password';
 
   const nextParam = searchParams.get('next');
-  const safeNext = nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
+  const from = location.state?.from;
+  const safeNext = safeNavigationRoute(nextParam, establishmentRole) ?? safeNavigationRoute(from ? from.pathname + (from.search ?? '') : null, establishmentRole);
 
   // Redirect if user is already logged in, except while finishing password recovery.
-  if (user && !isResetPasswordMode) {
-    return <Navigate to={safeNext ?? "/dashboard"} replace />;
+  if (!isResetPasswordMode && loading) return <div className="p-6 text-sm text-muted-foreground">Restaurando acesso...</div>;
+  if (!isResetPasswordMode && profileError) return <div className="p-6 space-y-4"><p>{profileError}</p><Button onClick={() => void retryProfile()}>Tentar novamente</Button></div>;
+  if (user && profile && !isResetPasswordMode) {
+    const saved = restoredNavigation(user.id, profile.id, establishmentRole);
+    return <Navigate to={safeNext ?? safeNavigationRoute(saved, establishmentRole) ?? (establishmentRole === 'employee' ? '/agenda' : '/dashboard')} replace />;
   }
 
   const handleLogin = async (e: React.FormEvent) => {

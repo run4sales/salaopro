@@ -31,6 +31,7 @@ import OAuthConsent from "./pages/OAuthConsent";
 import SalesHistory from "./pages/SalesHistory";
 import BeautyAI from "./pages/BeautyAI";
 import AmbassadorReferralCapture from "./components/AmbassadorReferralCapture";
+import NavigationContinuity from "./components/NavigationContinuity";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <AmbassadorReferralCapture />
+            <NavigationContinuity />
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />

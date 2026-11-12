@@ -17,6 +17,8 @@ import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, Legend } from "recharts";
+import { useNavigationState } from "@/hooks/useNavigationState";
+import { navigationChoice } from "@/lib/navigationPersistence";
 
 interface Props { establishmentId: string; startDate: Date; endDate: Date; }
 
@@ -39,7 +41,7 @@ export function CashFlowReport({ establishmentId, startDate, endDate }: Props) {
   const qc = useQueryClient();
 
   const [open, setOpen] = useState(false);
-  const [recurringFilter, setRecurringFilter] = useState<"all" | "recurring" | "single">("all");
+  const [recurringFilter, setRecurringFilter] = useNavigationState<"all" | "recurring" | "single">("cashflow.recurrence", "all", navigationChoice("all", "recurring", "single"));
   const [form, setForm] = useState({
     entry_type: "income" as "income" | "expense",
     description: "",

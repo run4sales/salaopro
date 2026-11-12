@@ -25,6 +25,8 @@ import AdminAgendorSync from "@/components/admin/AdminAgendorSync";
 import AdminAmbassadors from "@/components/admin/AdminAmbassadors";
 import AdminBeautyAI from "@/components/admin/AdminBeautyAI";
 import { Button } from "@/components/ui/button";
+import { useNavigationState } from "@/hooks/useNavigationState";
+import { navigationChoice } from "@/lib/navigationPersistence";
 
 type Tab = "dashboard" | "companies" | "subscriptions" | "finance" | "control" | "plans" | "agendor" | "ambassadors" | "beautyai";
 
@@ -43,7 +45,7 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
 export default function SuperAdmin() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const [tab, setTab] = useNavigationState<Tab>("super-admin.tab", "dashboard", navigationChoice(...TABS.map(item => item.id)));
 
   useEffect(() => {
     document.title = "Painel Super Admin | Beauty Core";

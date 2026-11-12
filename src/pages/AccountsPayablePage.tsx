@@ -16,6 +16,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { useNavigationState } from "@/hooks/useNavigationState";
+import { isNavigationDate, navigationChoice } from "@/lib/navigationPersistence";
 
 const CATEGORIES = ["Aluguel", "Água", "Energia", "Internet", "Marketing", "Produtos", "Funcionários", "Impostos", "Equipamentos", "Manutenção", "Outros"];
 const CENTERS = ["Administrativo", "Recepção", "Marketing", "Estoque", "Serviços", "Produtos"];
@@ -57,7 +59,12 @@ export default function Expenses() {
   const [paying, setPaying] = useState<Expense | null>(null);
   const [busy, setBusy] = useState(false);
   const [payment, setPayment] = useState({ date: format(new Date(), "yyyy-MM-dd"), amount: "", method: "pix", account: "Caixa principal", interest: "0", fine: "0", discount: "0", notes: "" });
-  const [filters, setFilters] = useState({ q: "", status: "all", category: "all", supplier: "", from: format(startOfMonth(new Date()), "yyyy-MM-dd"), to: format(endOfMonth(new Date()), "yyyy-MM-dd"), min: "", max: "" });
+  const [savedFrom, setSavedFrom] = useNavigationState("expenses.from", format(startOfMonth(new Date()), "yyyy-MM-dd"), isNavigationDate);
+  const [savedTo, setSavedTo] = useNavigationState("expenses.to", format(endOfMonth(new Date()), "yyyy-MM-dd"), isNavigationDate);
+  const [savedStatus, setSavedStatus] = useNavigationState("expenses.status", "all", navigationChoice("all", ...Object.keys(STATUS)));
+  const [savedCategory, setSavedCategory] = useNavigationState("expenses.category", "all", navigationChoice("all", ...CATEGORIES));
+  const [filters, setFilters] = useState({ q: "", status: savedStatus, category: savedCategory, supplier: "", from: savedFrom, to: savedTo, min: "", max: "" });
+  useEffect(() => { setSavedFrom(filters.from); setSavedTo(filters.to); setSavedStatus(filters.status); setSavedCategory(filters.category); }, [filters.from, filters.to, filters.status, filters.category]);
   const shiftMonth = (delta: number) => setFilters((current) => {
     const base = addMonths(new Date(`${current.from || format(new Date(), "yyyy-MM-dd")}T12:00:00`), delta);
     return { ...current, from: format(startOfMonth(base), "yyyy-MM-dd"), to: format(endOfMonth(base), "yyyy-MM-dd") };

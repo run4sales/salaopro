@@ -6,9 +6,12 @@ import { ProfileForm } from "@/components/settings/ProfileForm";
 import { GeneralSettingsForm } from "@/components/settings/GeneralSettingsForm";
 import { GoalsForm } from "@/components/settings/GoalsForm";
 import { CardMachinesForm } from "@/components/settings/CardMachinesForm";
+import { useNavigationState } from "@/hooks/useNavigationState";
+import { navigationChoice } from "@/lib/navigationPersistence";
 
 export default function Settings() {
   const { user, profile } = useAuth();
+  const [tab, setTab] = useNavigationState<string>("settings.tab", "profile", navigationChoice("profile", "general", "goals", "machines"));
 
   useEffect(() => {
     document.title = "Configurações | Beauty Core";
@@ -35,7 +38,7 @@ export default function Settings() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="rounded-md border bg-card p-4">
-          <Tabs defaultValue="profile">
+          <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="flex-wrap h-auto">
               <TabsTrigger value="profile">Perfil</TabsTrigger>
               <TabsTrigger value="general">Preferências</TabsTrigger>

@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { KpiCard, currencyBRL } from "./KpiCard";
 import { Users, Scissors, DollarSign } from "lucide-react";
 import { fetchClientNames, round2, toPeriodRange } from "@/lib/finance/revenue";
+import { useNavigationState } from "@/hooks/useNavigationState";
+import { isNavigationId } from "@/lib/navigationPersistence";
 
 interface Props {
   establishmentId: string;
@@ -18,7 +20,7 @@ export function ProfessionalServicesReport({ establishmentId, startDate, endDate
   const range = useMemo(() => toPeriodRange(startDate, endDate), [startDate, endDate]);
   const startISO = range.startISO;
   const endISO = range.endExclusiveISO;
-  const [filter, setFilter] = useState<string>("all");
+  const [filter, setFilter] = useNavigationState<string>("reports.professional", "all", isNavigationId);
 
   const { data, isLoading } = useQuery({
     queryKey: ["reports", "by-professional", establishmentId, startISO, endISO],

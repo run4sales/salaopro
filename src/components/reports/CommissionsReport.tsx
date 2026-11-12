@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { KpiCard, currencyBRL } from "./KpiCard";
 import { Download, Percent, Users, Wallet } from "lucide-react";
 import { fetchCommissionReport, sumCommissionBase, sumCommissions, toPeriodRange } from "@/lib/finance/revenue";
+import { useNavigationState } from "@/hooks/useNavigationState";
+import { isNavigationId, navigationChoice } from "@/lib/navigationPersistence";
 
 interface Props {
   establishmentId: string;
@@ -24,9 +26,9 @@ const roleLabel: Record<string, string> = {
 
 export function CommissionsReport({ establishmentId, startDate, endDate }: Props) {
   const range = useMemo(() => toPeriodRange(startDate, endDate), [startDate, endDate]);
-  const [proFilter, setProFilter] = useState<string>("all");
-  const [serviceFilter, setServiceFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [proFilter, setProFilter] = useNavigationState<string>("commissions.professional", "all", isNavigationId);
+  const [serviceFilter, setServiceFilter] = useNavigationState<string>("commissions.service", "all", isNavigationId);
+  const [statusFilter, setStatusFilter] = useNavigationState<string>("commissions.status", "all", navigationChoice("all", "Recebido", "Pago com crédito"));
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["reports", "commissions", establishmentId, range.startISO, range.endExclusiveISO],

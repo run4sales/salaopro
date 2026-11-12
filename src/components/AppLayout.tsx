@@ -15,7 +15,7 @@ import { AlertCircle } from "lucide-react";
 
 export default function AppLayout() {
   const location = useLocation();
-  const { user, loading: authLoading, establishmentRole, profileError, retryProfile } = useAuth();
+  const { user, profile, loading: authLoading, establishmentRole, profileError, retryProfile } = useAuth();
   const isOwner = establishmentRole === "owner";
   const managesEstablishment = isOwner || establishmentRole === "admin";
   const { data: sub, isLoading: subLoading } = useSubscription(managesEstablishment);
@@ -23,10 +23,6 @@ export default function AppLayout() {
   // Gate: usuário precisa estar autenticado e com contexto de estabelecimento carregado.
   if (authLoading) {
     return <div className="p-6 text-sm text-muted-foreground">Carregando permissões...</div>;
-  }
-
-  if (!user) {
-    return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
   if (profileError) {
@@ -40,6 +36,10 @@ export default function AppLayout() {
         </div>
       </div>
     );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
   // Proprietários e gestores passam pelo gate de plano; funcionários operacionais não escolhem plano.
@@ -85,7 +85,7 @@ export default function AppLayout() {
           {isEmployee ? <EmployeeSidebar /> : <AppSidebar />}
           <main className="flex min-w-0 flex-1 flex-col">
             <SubscriptionBanner />
-            <div className="min-w-0 flex-1">
+            <div key={`${user.id}:${profile?.id}:${establishmentRole}`} className="min-w-0 flex-1">
               {isEmployee && location.pathname === "/atendimentos" ? <EmployeeAttendances /> : <Outlet />}
             </div>
           </main>

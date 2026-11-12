@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { KpiCard, currencyBRL } from "./KpiCard";
 import { summarizeCanceledAppointments } from "@/lib/canceledAppointments";
 import { fetchClientNames, toPeriodRange } from "@/lib/finance/revenue";
+import { useNavigationState } from "@/hooks/useNavigationState";
+import { isNavigationId } from "@/lib/navigationPersistence";
 
 interface Props { establishmentId: string; startDate: Date; endDate: Date }
 type Named = { id: string; name: string };
@@ -16,8 +18,8 @@ type Named = { id: string; name: string };
 export function CanceledAppointmentsReport({ establishmentId, startDate, endDate }: Props) {
   const range = useMemo(() => toPeriodRange(startDate, endDate), [startDate, endDate]);
   const [clientFilter, setClientFilter] = useState("");
-  const [professionalFilter, setProfessionalFilter] = useState("all");
-  const [serviceFilter, setServiceFilter] = useState("all");
+  const [professionalFilter, setProfessionalFilter] = useNavigationState<string>("cancellations.professional", "all", isNavigationId);
+  const [serviceFilter, setServiceFilter] = useNavigationState<string>("cancellations.service", "all", isNavigationId);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["reports", "canceled-appointments", establishmentId, range.startISO, range.endExclusiveISO],

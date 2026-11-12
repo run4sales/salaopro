@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigationState } from "@/hooks/useNavigationState";
+import { navigationChoice } from "@/lib/navigationPersistence";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -99,7 +101,7 @@ export default function Sales() {
 
   // PDV state
   const [search, setSearch] = useState("");
-  const [catalogTab, setCatalogTab] = useState<"service" | "product">("service");
+  const [catalogTab, setCatalogTab] = useNavigationState<"service" | "product">("sales.catalog", "service", navigationChoice("service", "product"));
   const [cart, setCart] = useState<CartItem[]>([]);
   const [clientId, setClientId] = useState<string>("");
   const [professionalEntries, setProfessionalEntries] = useState<ProfessionalEntry[]>([]);

@@ -2,6 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { clearNavigation } from '@/lib/navigationPersistence';
+import { isTemporaryAuthError, needsAccessContext } from '@/lib/authContinuity';
 
 interface AuthContextType {
   establishmentRole: "owner" | "admin" | "employee" | null;
@@ -51,6 +54,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profileError, setProfileError] = useState<string | null>(null);
   const profileRequestRef = useRef(0);
   const sessionLoadRef = useRef(0);
+  const verifiedUserRef = useRef<string | null>(null);
+  const contextPromiseRef = useRef<Promise<void> | null>(null);
+  const restoreRef = useRef<(() => Promise<void>) | null>(null);
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const fetchProfile = useCallback(async (userId: string) => {
@@ -159,7 +166,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const retryProfile = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id) { await restoreRef.current?.(); return; }
     setLoading(true);
     try {
       await fetchProfile(user.id);
@@ -173,13 +180,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const loadFor = async (s: Session | null) => {
       if (!active) return;
-      const loadId = ++sessionLoadRef.current;
       setSession(s);
-      setUser(s?.user ?? null);
+      // The provider re-emits SIGNED_IN on tab focus and TOKEN_REFRESHED on renewal.
+      // Updating credentials for the SAME identity must not unmount the outlet or refetch its profile.
+      if (s?.user && !needsAccessContext(verifiedUserRef.current, s.user.id)) {
+        await contextPromiseRef.current;
+        return;
+      }
+      const loadId = ++sessionLoadRef.current;
       if (s?.user) {
         setLoading(true);
-        await fetchProfile(s.user.id);
+        setProfileError(null);
+        if (verifiedUserRef.current && verifiedUserRef.current !== s.user.id) {
+          clearNavigation(window.localStorage, verifiedUserRef.current);
+          verifiedUserRef.current = null;
+          profileRequestRef.current += 1;
+          queryClient.clear();
+          setUser(null);
+          setProfile(null);
+          setEstablishmentRole(null);
+          setProfessionalId(null);
+        }
+        try {
+          const { data, error } = await withTimeout(supabase.auth.getUser(), 'Verificação da sessão');
+          if (!active || loadId !== sessionLoadRef.current) return;
+          if (error) throw error;
+          if (!data.user || data.user.id !== s.user.id) throw new Error('Sessão inválida');
+          verifiedUserRef.current = data.user.id;
+          setUser(data.user);
+          contextPromiseRef.current = fetchProfile(data.user.id);
+          await contextPromiseRef.current;
+          contextPromiseRef.current = null;
+        } catch (error) {
+          if (!active || loadId !== sessionLoadRef.current) return;
+          if (isTemporaryAuthError(error)) {
+            // Do not revoke or duplicate provider storage on a temporary outage.
+            setProfileError('Não foi possível verificar sua conexão. Tente novamente.');
+          } else {
+            await supabase.auth.signOut({ scope: 'local' });
+          }
+        }
       } else {
+        if (verifiedUserRef.current) clearNavigation(window.localStorage, verifiedUserRef.current);
+        verifiedUserRef.current = null;
+        queryClient.clear();
+        setUser(null);
         profileRequestRef.current += 1;
         setProfile(null);
         setEstablishmentRole(null);
@@ -194,17 +239,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setTimeout(() => { void loadFor(s); }, 0);
     });
 
-    supabase.auth.getSession()
-      .then(({ data: { session: s } }) => { void loadFor(s); })
-      .catch((error) => {
-        console.error('Erro ao restaurar sessão:', error);
+    const restore = async () => {
+      setLoading(true);
+      setProfileError(null);
+      try {
+        const { data: { session: s }, error } = await withTimeout(supabase.auth.getSession(), 'Restauração da sessão');
+        if (error) throw error;
+        await loadFor(s);
+      } catch {
         if (!active) return;
         setProfileError('Não foi possível carregar seus dados. Tente novamente.');
         setLoading(false);
-      });
+      }
+    };
+    restoreRef.current = restore;
+    void restore();
 
-    return () => { active = false; subscription.unsubscribe(); };
-  }, [fetchProfile]);
+    // Provider owns visibility-based token refresh. Online merely retries a failed initial validation.
+    const retryConnection = () => { if (!verifiedUserRef.current) void restore(); };
+    window.addEventListener('online', retryConnection);
+
+    return () => { active = false; restoreRef.current = null; subscription.unsubscribe(); window.removeEventListener('online', retryConnection); };
+  }, [fetchProfile, queryClient]);
 
   const signUp = async (email: string, password: string, metadata?: any) => {
     const redirectUrl = `${window.location.origin}/`;
@@ -294,7 +350,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error) {
+      toast({ title: 'Não foi possível sair', description: 'Tente novamente.', variant: 'destructive' });
+      return;
+    }
+    if (user?.id) clearNavigation(window.localStorage, user.id);
+    queryClient.clear();
+    verifiedUserRef.current = null;
+    profileRequestRef.current += 1;
+    sessionLoadRef.current += 1;
     setUser(null);
     setSession(null);
     setProfile(null);

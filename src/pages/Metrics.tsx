@@ -7,6 +7,8 @@ import { FinanceMetrics } from "@/components/metrics/FinanceMetrics";
 import { ClientMetrics } from "@/components/metrics/ClientMetrics";
 import { OperationMetrics } from "@/components/metrics/OperationMetrics";
 import { InsightsMetrics } from "@/components/metrics/InsightsMetrics";
+import { useNavigationDate, useNavigationState } from "@/hooks/useNavigationState";
+import { navigationChoice } from "@/lib/navigationPersistence";
 
 export default function Metrics() {
   const { user, profile } = useAuth();
@@ -28,8 +30,9 @@ export default function Metrics() {
   const startDefault = useMemo(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; }, []);
   const endDefault = useMemo(() => { const d = new Date(); d.setHours(23,59,59,999); return d; }, []);
 
-  const [startDate, setStartDate] = useState<Date>(startDefault);
-  const [endDate, setEndDate] = useState<Date>(endDefault);
+  const [startDate, setStartDate] = useNavigationDate("metrics.start", startDefault);
+  const [endDate, setEndDate] = useNavigationDate("metrics.end", endDefault);
+  const [tab, setTab] = useNavigationState<string>("metrics.tab", "finance", navigationChoice("finance", "clients", "ops", "insights"));
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,7 +47,7 @@ export default function Metrics() {
         <DateRangePicker startDate={startDate} endDate={endDate} onChange={(s, e) => { setStartDate(s); setEndDate(e); }} />
 
         <div className="rounded-md border bg-card p-4">
-          <Tabs defaultValue="finance">
+          <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="flex flex-wrap">
               <TabsTrigger value="finance">Financeiros</TabsTrigger>
               <TabsTrigger value="clients">Clientes</TabsTrigger>

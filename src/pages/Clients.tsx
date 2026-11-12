@@ -27,6 +27,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { checkEmailDomain, formatBrazilianPhone, normalizeEmail, normalizePhone, validateEmail, validatePhone } from '@/lib/contactValidation';
 import { ClientProfileDialog } from '@/components/clients/ClientProfileDialog';
 import { Switch } from '@/components/ui/switch';
+import { useNavigationState } from '@/hooks/useNavigationState';
+import { isNavigationId, navigationChoice } from '@/lib/navigationPersistence';
 
 const DEFAULT_CLIENT_FIELDS: Record<string, boolean> = { phone: true, whatsapp: false, email: true, cpf: false, birth_date: true, address: false, gender: true, acquisition_source: true, notes: true };
 
@@ -38,7 +40,7 @@ const Clients = () => {
   const queryClient = useQueryClient();
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [birthdayFilter, setBirthdayFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [birthdayFilter, setBirthdayFilter] = useNavigationState<'all' | 'today' | 'week' | 'month'>('clients.birthday', 'all', navigationChoice('all', 'today', 'week', 'month'));
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
@@ -48,7 +50,9 @@ const Clients = () => {
   const [walletClient, setWalletClient] = useState<any>(null);
   const [deletingClient, setDeletingClient] = useState<any>(null);
   const [contactErrors, setContactErrors] = useState({ phone: '', whatsapp: '', email: '' });
-  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [selectedClientId, setSelectedClientId] = useNavigationState<string | null>('clients.selected', null, (value): value is string | null => value === null || (isNavigationId(value) && value !== 'all'));
+  const [selectedClientTab, setSelectedClientTab] = useNavigationState<string>('clients.tab', 'history', navigationChoice('personal', 'history', 'packages', 'subscriptions', 'financial'));
+  const setSelectedClient = (client: any) => { setSelectedClientId(client?.id ?? null); if (!client || client.id !== selectedClientId) setSelectedClientTab('history'); };
   const [clientFields, setClientFields] = useState(DEFAULT_CLIENT_FIELDS);
 
   const [newClient, setNewClient] = useState({
@@ -149,6 +153,12 @@ const Clients = () => {
 
     return { day, month };
   };
+
+  // Rehydrate only from an authorized tenant query, never from a locally cached client record.
+  const selectedClient = allClients?.find(client => client.id === selectedClientId) ?? null;
+  useEffect(() => {
+    if (allClients && selectedClientId && !allClients.some(client => client.id === selectedClientId)) setSelectedClientId(null);
+  }, [allClients, selectedClientId, setSelectedClientId]);
 
   const formatBirthday = (birthDate?: string | null) => {
     const birthday = getBirthdayParts(birthDate);
@@ -1108,7 +1118,7 @@ const Clients = () => {
         onOpenChange={(v) => { if (!v) setWalletClient(null); }}
         client={walletClient}
       />
-      <ClientProfileDialog client={selectedClient} open={!!selectedClient} onOpenChange={(value) => { if (!value) setSelectedClient(null); }} onEdit={(client) => { setSelectedClient(null); handleEditClient(client); }} />
+      <ClientProfileDialog client={selectedClient} open={!!selectedClient} tab={selectedClientTab} onTabChange={setSelectedClientTab} onOpenChange={(value) => { if (!value) setSelectedClient(null); }} onEdit={(client) => { setSelectedClient(null); handleEditClient(client); }} />
     </div>
   );
 };

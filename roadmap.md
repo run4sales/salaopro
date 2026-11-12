@@ -1,5 +1,14 @@
 # Roadmap
 
+## Sessão e continuidade de navegação
+- [x] Corrigir reinicialização do contexto em eventos de renovação/foco e validar sessão restaurada
+- [x] Restaurar rotas e contexto não sensível por conta/salão sem contornar permissões
+- [x] Preservar agenda, ficha do cliente e seleções financeiras após recarga
+- [x] 45 testes e navegador autenticado: agenda, ficha/aba, relatórios, despesas, reabertura mobile, erro de conexão com retry e limpeza no logout
+- [x] Entregar resultados e limitações em docs/session-continuity.md
+- [ ] Conferência em aparelho físico e com login de colaborador (requer aparelho e conta autorizada)
+- [ ] Publicação desta correção (requer autorização)
+
 ## Beauty IA — copiloto de gestão (concluído nesta rodada)
 - [x] Mapear arquitetura: financeiro, planos/assinatura, super admin, isolamento multi-tenant
 - [x] Migration: controle de acesso por estabelecimento + conversa única + consumo atômico + RPCs

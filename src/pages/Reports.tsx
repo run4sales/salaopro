@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigationDate, useNavigationState } from "@/hooks/useNavigationState";
+import { navigationChoice } from "@/lib/navigationPersistence";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PeriodFilter, PeriodPreset, applyPreset } from "@/components/reports/PeriodFilter";
@@ -27,9 +29,10 @@ export default function Reports() {
   }, []);
 
   const initial = applyPreset("30");
-  const [startDate, setStartDate] = useState<Date>(initial.start);
-  const [endDate, setEndDate] = useState<Date>(initial.end);
-  const [preset, setPreset] = useState<PeriodPreset>("30");
+  const [startDate, setStartDate] = useNavigationDate("reports.start", initial.start);
+  const [endDate, setEndDate] = useNavigationDate("reports.end", initial.end);
+  const [preset, setPreset] = useNavigationState<PeriodPreset>("reports.preset", "30", navigationChoice("7", "15", "30", "custom"));
+  const [tab, setTab] = useNavigationState<string>("reports.tab", "financial-dashboard", navigationChoice("financial-dashboard", "revenue", "pro", "commissions", "expenses", "cashflow", "cancellations"));
 
   if (!user) return <Navigate to="/auth" replace />;
 
@@ -51,7 +54,7 @@ export default function Reports() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="financial-dashboard" className="space-y-4">
+        <Tabs value={tab} onValueChange={setTab} className="space-y-4">
           <TabsList className="h-auto flex-wrap justify-start gap-1 bg-muted/60 p-1">
             <TabsTrigger value="financial-dashboard" className="gap-2">
               <BarChart3 className="h-4 w-4" /> Dashboard financeiro

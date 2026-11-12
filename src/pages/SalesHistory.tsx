@@ -12,6 +12,8 @@ import { format, startOfMonth, endOfMonth } from "date-fns";
 import { EditSaleDialog } from "@/components/sales/EditSaleDialog";
 import { DeleteSaleDialog } from "@/components/sales/DeleteSaleDialog";
 import { fetchClientNames, fetchRealizedSales, toPeriodRange } from "@/lib/finance/revenue";
+import { useNavigationState } from "@/hooks/useNavigationState";
+import { isNavigationDate } from "@/lib/navigationPersistence";
 
 
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -24,8 +26,8 @@ export default function SalesHistory() {
   useEffect(() => { document.title = "Histórico de Vendas | Beauty Core"; }, []);
 
   const now = new Date();
-  const [startDate, setStartDate] = useState(format(startOfMonth(now), "yyyy-MM-dd"));
-  const [endDate, setEndDate] = useState(format(endOfMonth(now), "yyyy-MM-dd"));
+  const [startDate, setStartDate] = useNavigationState("sales-history.start", format(startOfMonth(now), "yyyy-MM-dd"), isNavigationDate);
+  const [endDate, setEndDate] = useNavigationState("sales-history.end", format(endOfMonth(now), "yyyy-MM-dd"), isNavigationDate);
   const [search, setSearch] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);

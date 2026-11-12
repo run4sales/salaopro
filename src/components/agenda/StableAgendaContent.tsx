@@ -3,6 +3,8 @@ import { View } from "react-big-calendar";
 import { addDays, addMonths, addWeeks, endOfDay, endOfMonth, endOfWeek, format, startOfDay, startOfMonth, startOfWeek, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigationDate, useNavigationState } from "@/hooks/useNavigationState";
+import { isNavigationDate, isNavigationId, navigationChoice } from "@/lib/navigationPersistence";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -29,7 +31,6 @@ type Professional = { id: string; name: string; calendar_color?: string | null; 
 type AppointmentBlock = { id: string; professional_id: string; start_time: string; end_time: string; reason?: string | null };
 
 const ALL_PROFESSIONALS = "all";
-const FILTER_STORAGE_KEY = "agenda.professionalFilter";
 const APPOINTMENT_ID_BATCH_SIZE = 500;
 const APPOINTMENT_FIELDS = "id, establishment_id, appointment_date, duration_minutes, service_amount, status, notes, client_id, service_id, professional_id";
 const APPOINTMENT_CORE_FIELDS = "id, establishment_id, appointment_date, status, notes, client_id, service_id, professional_id";
@@ -103,17 +104,16 @@ export default function StableAgendaContent() {
   const establishmentId = profile?.id as string | undefined;
   const isEmployee = establishmentRole === "employee";
 
-  const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
-  const [calendarView, setCalendarView] = useState<View>("week");
-  const [calendarDate, setCalendarDate] = useState<Date>(new Date());
-  const [periodMode, setPeriodMode] = useState<PeriodMode>("week");
-  const [range, setRange] = useState<{ start: Date; end: Date }>(() => getRangeForPeriod("week", new Date()));
-  const [customStart, setCustomStart] = useState(() => toDateInputValue(range.start));
-  const [customEnd, setCustomEnd] = useState(() => toDateInputValue(range.end));
-  const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>(() => {
-    if (typeof window === "undefined") return ALL_PROFESSIONALS;
-    return window.localStorage.getItem(FILTER_STORAGE_KEY) || ALL_PROFESSIONALS;
-  });
+  const [viewMode, setViewMode] = useNavigationState<"calendar" | "list">("agenda.view", "calendar", navigationChoice("calendar", "list"));
+  const [calendarView, setCalendarView] = useNavigationState<View>("agenda.calendarView", "week", navigationChoice("day", "week", "month", "work_week", "agenda"));
+  const [calendarDate, setCalendarDate] = useNavigationDate("agenda.date", new Date());
+  const [periodMode, setPeriodMode] = useNavigationState<PeriodMode>("agenda.period", "week", navigationChoice("day", "week", "month", "custom"));
+  const [customStart, setCustomStart] = useNavigationState("agenda.start", () => toDateInputValue(getRangeForPeriod(periodMode, calendarDate).start), isNavigationDate);
+  const [customEnd, setCustomEnd] = useNavigationState("agenda.end", () => toDateInputValue(getRangeForPeriod(periodMode, calendarDate).end), isNavigationDate);
+  const [range, setRange] = useState<{ start: Date; end: Date }>(() => periodMode === "custom"
+    ? { start: startOfDay(fromDateInputValue(customStart, calendarDate)), end: endOfDay(fromDateInputValue(customEnd, calendarDate)) }
+    : getRangeForPeriod(periodMode, calendarDate));
+  const [selectedProfessionalId, setSelectedProfessionalId] = useNavigationState<string>("agenda.professional", ALL_PROFESSIONALS, isNavigationId);
   const [formOpen, setFormOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -129,11 +129,6 @@ export default function StableAgendaContent() {
     if (!isEmployee || !professionalId) return;
     setSelectedProfessionalId(professionalId);
   }, [isEmployee, professionalId]);
-
-  useEffect(() => {
-    if (isEmployee || typeof window === "undefined") return;
-    window.localStorage.setItem(FILTER_STORAGE_KEY, selectedProfessionalId);
-  }, [isEmployee, selectedProfessionalId]);
 
   useEffect(() => {
     if (periodMode !== "custom") {

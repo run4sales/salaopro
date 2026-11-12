@@ -32,12 +32,14 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: (client: ClientRecord) => void;
+  tab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
 const money = (value: unknown) => Number(value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const when = (value?: string | null) => value ? format(new Date(value), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : "—";
 
-export function ClientProfileDialog({ client, open, onOpenChange, onEdit }: Props) {
+export function ClientProfileDialog({ client, open, onOpenChange, onEdit, tab, onTabChange }: Props) {
   const { data, isLoading } = useQuery({
     queryKey: ["client-crm", client?.establishment_id, client?.id],
     enabled: open && !!client?.id && !!client?.establishment_id,
@@ -108,7 +110,7 @@ export function ClientProfileDialog({ client, open, onOpenChange, onEdit }: Prop
               ))}
             </div>
 
-            <Tabs defaultValue="history">
+            <Tabs defaultValue="history" value={tab} onValueChange={onTabChange}>
               <TabsList className="h-auto w-full justify-start overflow-x-auto">
                 <TabsTrigger value="personal">Dados pessoais</TabsTrigger>
                 <TabsTrigger value="history">Histórico</TabsTrigger>
