@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -6,23 +6,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { clearNavigation } from '@/lib/navigationPersistence';
 import { isTemporaryAuthError, needsAccessContext } from '@/lib/authContinuity';
 
-interface AuthContextType {
-  establishmentRole: "owner" | "admin" | "employee" | null;
-  professionalId: string | null;
-  user: User | null;
-  session: Session | null;
-  profile: any | null;
-  signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  resetPassword: (email: string) => Promise<{ error: any }>;
-  updatePassword: (password: string) => Promise<{ error: any }>;
-  signOut: () => Promise<void>;
-  loading: boolean;
-  profileError: string | null;
-  retryProfile: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext } from '@/hooks/authContext';
+export { useAuth } from '@/hooks/authContext';
 
 const AUTH_QUERY_TIMEOUT_MS = 12000;
 
@@ -35,14 +20,6 @@ function withTimeout<T = any>(promise: PromiseLike<T>, label: string): Promise<T
       .finally(() => window.clearTimeout(timeout));
   });
 }
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
