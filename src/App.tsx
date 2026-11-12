@@ -14,6 +14,7 @@ import Services from "./pages/Services";
 import Products from "./pages/Products";
 import Sales from "./pages/Sales";
 import Expenses from "./pages/AccountsPayablePage";
+import AccountsReceivable from "./pages/AccountsReceivable";
 import Agenda from "./pages/StableAgenda";
 import Reports from "./pages/Reports";
 import Metrics from "./pages/Metrics";
@@ -77,6 +78,7 @@ const App = () => (
                 <Route path="/sales" element={<RoleProtectedRoute><Sales /></RoleProtectedRoute>} />
                 <Route path="/vendas-historico" element={<RoleProtectedRoute><SalesHistory /></RoleProtectedRoute>} />
                 <Route path="/expenses" element={<RoleProtectedRoute><Expenses /></RoleProtectedRoute>} />
+                <Route path="/receivables" element={<RoleProtectedRoute><AccountsReceivable /></RoleProtectedRoute>} />
                 <Route path="/agenda" element={<Agenda />} />
                 <Route path="/atendimentos" element={<Attendances />} />
                 <Route path="/reports" element={<RoleProtectedRoute><Reports /></RoleProtectedRoute>} />

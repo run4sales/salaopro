@@ -12,6 +12,7 @@ import { CommissionsReport } from "@/components/reports/CommissionsReport";
 import { ExpensesReport } from "@/components/reports/ExpensesReport";
 import { CashFlowReport } from "@/components/reports/CashFlowReport";
 import { CanceledAppointmentsReport } from "@/components/reports/CanceledAppointmentsReport";
+import { ReceivablesReport } from "@/components/receivables/ReceivablesReport";
 import { BarChart3, DollarSign, Users, Wallet, TrendingDown, Banknote, CalendarX2 } from "lucide-react";
 
 export default function Reports() {
@@ -32,7 +33,7 @@ export default function Reports() {
   const [startDate, setStartDate] = useNavigationDate("reports.start", initial.start);
   const [endDate, setEndDate] = useNavigationDate("reports.end", initial.end);
   const [preset, setPreset] = useNavigationState<PeriodPreset>("reports.preset", "30", navigationChoice("7", "15", "30", "custom"));
-  const [tab, setTab] = useNavigationState<string>("reports.tab", "financial-dashboard", navigationChoice("financial-dashboard", "revenue", "pro", "commissions", "expenses", "cashflow", "cancellations"));
+  const [tab, setTab] = useNavigationState<string>("reports.tab", "financial-dashboard", navigationChoice("financial-dashboard", "revenue", "pro", "commissions", "expenses", "cashflow", "cancellations", "receivables"));
 
   if (!user) return <Navigate to="/auth" replace />;
 
@@ -56,6 +57,7 @@ export default function Reports() {
       <main className="container mx-auto px-4 py-6">
         <Tabs value={tab} onValueChange={setTab} className="space-y-4">
           <TabsList className="h-auto flex-wrap justify-start gap-1 bg-muted/60 p-1">
+            <TabsTrigger value="receivables">Contas a receber</TabsTrigger>
             <TabsTrigger value="financial-dashboard" className="gap-2">
               <BarChart3 className="h-4 w-4" /> Dashboard financeiro
             </TabsTrigger>
@@ -81,6 +83,7 @@ export default function Reports() {
 
           {profile?.id ? (
             <>
+              <TabsContent value="receivables"><ReceivablesReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
               <TabsContent value="financial-dashboard"><FinancialDashboardReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
               <TabsContent value="revenue"><RevenueGeneralReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>
               <TabsContent value="pro"><ProfessionalServicesReport establishmentId={profile.id} startDate={startDate} endDate={endDate} /></TabsContent>

@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KpiCard, currencyBRL } from "./KpiCard";
 import { Users, Scissors, DollarSign } from "lucide-react";
-import { fetchClientNames, round2, toPeriodRange } from "@/lib/finance/revenue";
+import { fetchClientNames, fetchRealizedSales, saleRealizedRevenue, round2, toPeriodRange } from "@/lib/finance/revenue";
 import { useNavigationState } from "@/hooks/useNavigationState";
 import { isNavigationId } from "@/lib/navigationPersistence";
 
@@ -26,18 +26,12 @@ export function ProfessionalServicesReport({ establishmentId, startDate, endDate
     queryKey: ["reports", "by-professional", establishmentId, startISO, endISO],
     queryFn: async () => {
       const [salesRes, servicesRes, profsRes, salePros] = await Promise.all([
-        supabase.from("sales")
-          .select("id, client_id, service_id, professional_id, amount, sale_date")
-          .eq("establishment_id", establishmentId)
-          .gte("sale_date", startISO).lt("sale_date", endISO)
-          .is("deleted_at", null)
-          .order("sale_date", { ascending: false }),
+        fetchRealizedSales(establishmentId, range),
         supabase.from("services").select("id, name").eq("establishment_id", establishmentId),
         supabase.from("professionals").select("id, name").eq("establishment_id", establishmentId),
         supabase.from("sale_professionals").select("sale_id, professional_id").eq("establishment_id", establishmentId),
       ]);
-      if (salesRes.error) throw salesRes.error;
-      const sales = salesRes.data ?? [];
+      const sales = salesRes;
       const clientsRes = await fetchClientNames(establishmentId, sales.map(sale => sale.client_id));
       const clients = new Map(clientsRes.map(c => [c.id, c.name]));
       const services = new Map((servicesRes.data ?? []).map((s: any) => [s.id, s.name]));
@@ -56,9 +50,9 @@ export function ProfessionalServicesReport({ establishmentId, startDate, endDate
           date: s.sale_date,
           service: services.get(s.service_id) ?? "—",
           client: clients.get(s.client_id) ?? "—",
-          amount: Number(s.amount || 0),
+          amount: saleRealizedRevenue(s),
           // Valor rateado: evita multiplicar a venda pelo nº de profissionais.
-          shareAmount: round2(Number(s.amount || 0) / Math.max(proIds.length, 1)),
+          shareAmount: round2(saleRealizedRevenue(s) / Math.max(proIds.length, 1)),
           proIds,
           proNames: proIds.map((id: string) => profs.get(id) ?? "—"),
         };

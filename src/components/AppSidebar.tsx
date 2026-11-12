@@ -46,9 +46,11 @@ const groups = [
   {
     label: "Financeiro",
     items: [
+      { title: "Visão geral", url: "/reports", icon: BarChart3 },
       { title: "Vendas (PDV)", url: "/sales", icon: DollarSign },
       { title: "Histórico de Vendas", url: "/vendas-historico", icon: History },
-      { title: "Despesas", url: "/expenses", icon: Receipt },
+      { title: "Contas a pagar", url: "/expenses", icon: Receipt },
+      { title: "Contas a receber", url: "/receivables", icon: Receipt },
     ],
   },
   {

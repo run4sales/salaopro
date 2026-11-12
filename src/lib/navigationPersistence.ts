@@ -8,7 +8,7 @@ export interface NavigationStorage {
 }
 
 const PREFIX = "beauty.navigation.v1:";
-const routes = new Set(["/dashboard", "/clients", "/services", "/products", "/sales", "/vendas-historico", "/expenses", "/agenda", "/atendimentos", "/reports", "/beauty-ia", "/metrics", "/settings", "/users", "/escolher-plano", "/checkout", "/planos", "/admin", "/super-admin"]);
+const routes = new Set(["/dashboard", "/clients", "/services", "/products", "/sales", "/vendas-historico", "/expenses", "/receivables", "/agenda", "/atendimentos", "/reports", "/beauty-ia", "/metrics", "/settings", "/users", "/escolher-plano", "/checkout", "/planos", "/admin", "/super-admin"]);
 const employeeRoutes = new Set(["/agenda", "/atendimentos", "/services", "/products", "/sales"]);
 const safeQueryValues: Record<string, RegExp> = {
   filter: /^(inactive|active|birthday|birthdays|all)$/,

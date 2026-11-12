@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { StrategicPanel } from '@/components/dashboard/StrategicPanel';
 import { isCanceledAppointment } from '@/lib/canceledAppointments';
+import { ReceivableSummary } from '@/components/receivables/ReceivableSummary';
 
 const currencyBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -173,6 +174,7 @@ const Dashboard = () => {
       <main className="container mx-auto px-4 py-6 md:py-8 space-y-6 max-w-6xl">
 
         {canViewFinance && profile?.id && <StrategicPanel establishmentId={profile.id} today={today} />}
+        {canViewFinance && profile?.id && <ReceivableSummary establishmentId={profile.id} />}
 
         {/* HERO — AGENDA DO DIA */}
         <section className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/95 via-primary to-primary/80 text-primary-foreground p-6 md:p-8 shadow-elegant">

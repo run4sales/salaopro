@@ -37,7 +37,7 @@ export default function SalesHistory() {
     enabled: !!establishmentId && isAdmin,
     queryFn: async () => {
       if (!establishmentId) throw new Error("Estabelecimento não disponível");
-      const sales = await fetchRealizedSales(establishmentId, toPeriodRange(new Date(`${startDate}T00:00:00`), new Date(`${endDate}T00:00:00`)));
+      const sales = await fetchRealizedSales(establishmentId, toPeriodRange(new Date(`${startDate}T00:00:00`), new Date(`${endDate}T00:00:00`)), false);
       const [clientsRes, servicesRes, profsRes, salePros] = await Promise.all([
         fetchClientNames(establishmentId, sales.map(sale => sale.client_id)),
         supabase.from("services").select("id, name").eq("establishment_id", establishmentId),
@@ -157,10 +157,10 @@ export default function SalesHistory() {
                       <TableCell className="text-right font-medium">{fmt(Number(r.amount))}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditId(r.id)} title="Editar">
+                          <Button disabled={!!r.receivable_id} size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditId(r.id)} title={r.receivable_id ? "Gerencie pela conta a receber" : "Editar"}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(r.id)} title="Excluir">
+                          <Button disabled={!!r.receivable_id} size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(r.id)} title={r.receivable_id ? "Histórico da conta a receber protegido" : "Excluir"}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>

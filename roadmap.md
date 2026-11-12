@@ -1,5 +1,11 @@
 # Roadmap
 
+## Contas a Receber
+- [ ] Persistência, permissões administrativas, auditoria e recebimentos parciais atômicos
+- [ ] Listagem, indicadores, filtros, cadastro, edição e cancelamento
+- [ ] Integração com comanda, PDV, CRM, caixa e faturamento sem duplicidade
+- [ ] Testes de regras e fluxo autenticado desktop/mobile
+
 ## Sessão e continuidade de navegação
 - [x] Corrigir reinicialização do contexto em eventos de renovação/foco e validar sessão restaurada
 - [x] Restaurar rotas e contexto não sensível por conta/salão sem contornar permissões

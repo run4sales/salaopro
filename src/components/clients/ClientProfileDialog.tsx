@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { normalizeStatus, STATUS_LABELS } from "@/lib/appointmentStatus";
+import { ClientReceivables } from "@/components/receivables/ClientReceivables";
 
 type ClientRecord = {
   id: string;
@@ -157,6 +158,7 @@ export function ClientProfileDialog({ client, open, onOpenChange, onEdit, tab, o
               </TabsContent>
 
               <TabsContent value="financial" className="space-y-3 pt-3">
+                <ClientReceivables establishmentId={client.establishment_id} clientId={client.id} />
                 <div className="flex items-center justify-between border-b pb-3"><span className="text-sm text-muted-foreground">Saldo na carteira</span><strong className="text-lg text-primary">{money(client.credit_balance)}</strong></div>
                 {sales.map((sale) => <div key={sale.id} className="flex items-center justify-between gap-3 border-b pb-3"><div><p className="font-medium">{sale.services?.name ?? "Venda"}</p><p className="text-sm text-muted-foreground">{when(sale.sale_date)} · {sale.payment_method ?? "Forma não informada"}</p></div><strong>{money(sale.amount)}</strong></div>)}
                 {(data?.credits ?? []).map((entry) => <div key={entry.id} className="flex items-center justify-between gap-3 border-b pb-3"><div><p className="font-medium">{entry.description || entry.origin}</p><p className="text-sm text-muted-foreground">{when(entry.created_at)}</p></div><strong className={entry.type === "credit" ? "text-success" : "text-destructive"}>{entry.type === "credit" ? "+" : "−"}{money(entry.amount)}</strong></div>)}

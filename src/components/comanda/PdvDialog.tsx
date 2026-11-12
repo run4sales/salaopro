@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Banknote, Smartphone, CreditCard, ArrowLeftRight, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,9 @@ import { ClientCreditPrompt } from "@/components/clients/ClientCreditPrompt";
 import { useAuth } from "@/hooks/useAuth";
 import { insertSalesWithCreatorFallback } from "@/lib/salesInsert";
 import { syncSaleCommissions } from "@/lib/commissions";
+import { DeferredPaymentFields } from "@/components/receivables/DeferredPaymentFields";
+import { brazilToday } from "@/lib/finance/receivableRules";
+import { refreshReceivables } from "@/components/receivables/ReceivableDetails";
 
 const methods = [
   { value: "Dinheiro", label: "Dinheiro", icon: Banknote },
@@ -34,7 +37,13 @@ interface Props {
 }
 
 export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId, total, onPaid }: Props) {
-  const { user } = useAuth();
+  const { user, establishmentRole } = useAuth();
+  const qc = useQueryClient();
+  const [deferred, setDeferred] = useState(false);
+  const [paidNow, setPaidNow] = useState("0");
+  const [due, setDue] = useState(brazilToday());
+  const request = useRef(crypto.randomUUID());
+  const lock = useRef(false);
   const [method, setMethod] = useState<typeof methods[number]["value"]>("Dinheiro");
   const [machineId, setMachineId] = useState("");
   const [installments, setInstallments] = useState("2");
@@ -109,16 +118,24 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
     return f ? Number(f.fee_percentage) : 0;
   }, [isCard, machineId, meta, fees, installments]);
 
-  const feeAmount = remainingToPay * (feePct / 100);
-  const netTotal = remainingToPay - feeAmount;
+  const payableNow = deferred ? Math.max(0, Number(paidNow) || 0) : remainingToPay;
+  const feeAmount = payableNow * (feePct / 100);
+  const netTotal = payableNow - feeAmount;
 
   const finalize = async () => {
+    if (lock.current) return;
     if (!user) { toast.error("Faça login para finalizar a venda."); return; }
-    if (remainingToPay > 0 && isCard && !machineId) { toast.error("Selecione a maquininha"); return; }
+    if (payableNow > 0 && isCard && !machineId) { toast.error("Selecione a maquininha"); return; }
     if (items.length === 0) return;
     if (appliedCredit > availableCredit) { toast.error("Crédito insuficiente"); return; }
+    lock.current = true;
     setSubmitting(true);
     try {
+      if (deferred) {
+        const { error } = await supabase.rpc("checkout_receivable", { p_establishment: establishmentId, p_client: comanda.client_id, p_items: [], p_total: total, p_paid: Number(paidNow), p_credit: appliedCredit, p_due: due, p_method: method, p_request: request.current, p_comanda: comanda.id, p_machine: isCard ? machineId || null : null, p_installments: method === "Crédito parcelado" ? Number(installments) : null });
+        if (error) throw error;
+        await refreshReceivables(qc); toast.success("Comanda finalizada e saldo a receber registrado."); onPaid(); return;
+      }
       const { data: currentComanda, error: currentError } = await supabase.from("comandas")
         .select("status, appointment_id").eq("id", comanda.id).eq("establishment_id", establishmentId).single();
       if (currentError) throw currentError;
@@ -216,6 +233,7 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao finalizar");
     } finally {
+      lock.current = false;
       setSubmitting(false);
     }
   };
@@ -311,7 +329,7 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
             {appliedCredit > 0 && (
               <div className="flex justify-between text-primary"><span>Crédito aplicado</span><span>- R$ {appliedCredit.toFixed(2)}</span></div>
             )}
-            <div className="flex justify-between font-semibold border-t pt-1"><span>A pagar agora</span><span>R$ {remainingToPay.toFixed(2)}</span></div>
+            <div className="flex justify-between font-semibold border-t pt-1"><span>A pagar agora</span><span>R$ {payableNow.toFixed(2)}</span></div>
             {feeAmount > 0 && (
               <>
                 <div className="flex justify-between text-muted-foreground"><span>Taxa ({feePct}%)</span><span>- R$ {feeAmount.toFixed(2)}</span></div>
@@ -320,6 +338,7 @@ export function PdvDialog({ open, onOpenChange, comanda, items, establishmentId,
             )}
           </div>
 
+          {(establishmentRole === "owner" || establishmentRole === "admin") && <DeferredPaymentFields enabled={deferred} onEnabled={setDeferred} paid={paidNow} onPaid={setPaidNow} due={due} onDue={setDue} total={remainingToPay} />}
           <Button className="w-full" onClick={finalize} disabled={submitting}>
             {submitting ? "Processando..." : "Confirmar pagamento"}
           </Button>

@@ -1,0 +1,40 @@
+\set ON_ERROR_STOP on
+BEGIN;
+DO $$
+DECLARE tenant uuid; owner_id uuid; client uuid; other_tenant uuid; other_client uuid; r uuid; receipt uuid; service uuid; professional uuid; comanda uuid; r2 uuid; r3 uuid; result numeric;
+BEGIN
+ SELECT p.id,p.user_id,c.id INTO tenant,owner_id,client FROM public.profiles p JOIN public.clients c ON c.establishment_id=p.id LIMIT 1;
+ SELECT p.id,c.id INTO other_tenant,other_client FROM public.profiles p JOIN public.clients c ON c.establishment_id=p.id WHERE p.id<>tenant LIMIT 1;
+ PERFORM set_config('request.jwt.claim.sub',owner_id::text,true);
+ r=public.create_receivable(tenant,jsonb_build_object('client_id',client,'description','Teste transacional contas a receber','amount',300,'entry_date',current_date,'due_date',current_date+8),gen_random_uuid());
+ receipt=public.receive_receivable(r,100,current_date,'Pix','Teste',gen_random_uuid());
+ SELECT amount-received_amount INTO result FROM public.receivables WHERE id=r;
+ IF result<>200 THEN RAISE EXCEPTION 'Esperado saldo 200, encontrado %',result; END IF;
+ PERFORM public.receive_receivable(r,100,current_date,'Pix','Teste', (SELECT request_id FROM public.receivable_payments WHERE id=receipt));
+ IF (SELECT received_amount FROM public.receivables WHERE id=r)<>100 THEN RAISE EXCEPTION 'Retry duplicou recebimento'; END IF;
+ BEGIN PERFORM public.receive_receivable(r,200.01,current_date,'Pix','',gen_random_uuid()); RAISE EXCEPTION 'TEST_OVERPAY_NOT_BLOCKED'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='TEST_OVERPAY_NOT_BLOCKED' THEN RAISE; END IF; END;
+ PERFORM public.receive_receivable(r,200,current_date,'Dinheiro','Teste',gen_random_uuid());
+ IF (SELECT count(*) FROM public.receivable_payments WHERE receivable_id=r)<>2 THEN RAISE EXCEPTION 'Esperado histórico com duas baixas'; END IF;
+ IF (SELECT public.receivable_status(amount,received_amount,due_date,canceled_at) FROM public.receivables WHERE id=r)<>'received' THEN RAISE EXCEPTION 'Não quitou'; END IF;
+ IF (SELECT sum(amount) FROM public.cash_flow_entries WHERE source='manual' AND source_id IN(SELECT id FROM public.receivable_payments WHERE receivable_id=r))<>300 THEN RAISE EXCEPTION 'Caixa incorreto'; END IF;
+ IF public.receivable_status(300,100,current_date-1,null)<>'partial_overdue' THEN RAISE EXCEPTION 'Status vencido incorreto'; END IF;
+ BEGIN PERFORM public.create_receivable(tenant,jsonb_build_object('client_id',other_client,'description','Outro salão','amount',300,'entry_date',current_date,'due_date',current_date),gen_random_uuid()); RAISE EXCEPTION 'TEST_TENANT_NOT_BLOCKED'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='TEST_TENANT_NOT_BLOCKED' THEN RAISE; END IF; END;
+ SELECT id INTO service FROM public.services WHERE establishment_id=tenant AND kind='service' LIMIT 1;
+ SELECT id INTO professional FROM public.professionals WHERE establishment_id=tenant LIMIT 1;
+ INSERT INTO public.comandas(establishment_id,client_id,status,subtotal,total) VALUES(tenant,client,'open',350,350) RETURNING id INTO comanda;
+ INSERT INTO public.comanda_items(establishment_id,comanda_id,kind,service_id,name,qty,unit_price,total,professional_id) VALUES(tenant,comanda,'service',service,'Teste',1,350,350,professional);
+ r2=public.checkout_receivable(tenant,client,'[]',350,100,0,current_date+8,'Pix',gen_random_uuid(),comanda);
+ IF (SELECT amount FROM public.receivables WHERE id=r2)<>250 THEN RAISE EXCEPTION 'Esperado dívida comanda 250'; END IF;
+ IF (SELECT sum(amount) FROM public.sales WHERE receivable_id=r2)<>350 THEN RAISE EXCEPTION 'Venda comanda incorreta'; END IF;
+ IF (SELECT sum(amount) FROM public.cash_flow_entries WHERE source='sale' AND source_id IN(SELECT id FROM public.sales WHERE receivable_id=r2))<>100 THEN RAISE EXCEPTION 'Entrada comanda duplicada'; END IF;
+ PERFORM public.receive_receivable(r2,250,current_date,'Dinheiro','',gen_random_uuid());
+ IF (SELECT sum(amount) FROM public.sales WHERE receivable_id=r2)<>350 THEN RAISE EXCEPTION 'Baixa duplicou venda'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.receivables WHERE id=r2 AND client_id=client AND comanda_id=comanda) THEN RAISE EXCEPTION 'Vínculo CRM ausente'; END IF;
+ IF (SELECT count(*) FROM public.receivable_audit_logs WHERE receivable_id=r2)<2 THEN RAISE EXCEPTION 'Auditoria ausente'; END IF;
+ r3=public.checkout_receivable(tenant,client,jsonb_build_array(jsonb_build_object('service_id',service,'professional_id',professional,'qty',3,'total',100)),100,33.33,0,current_date+8,'Pix',gen_random_uuid(),null,jsonb_build_array(jsonb_build_object('professional_id',professional)));
+ IF (SELECT sum(deferred_amount) FROM public.sales WHERE receivable_id=r3)<>66.67 THEN RAISE EXCEPTION 'Rateio de centavos incorreto'; END IF;
+ PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+ BEGIN PERFORM public.receive_receivable(r3,1,current_date,'Pix','',gen_random_uuid()); RAISE EXCEPTION 'TEST_ACCESS_NOT_BLOCKED'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='TEST_ACCESS_NOT_BLOCKED' THEN RAISE; END IF; END;
+ RAISE NOTICE '12 cenários transacionais aprovados: parcial, quitação, histórico, status, comanda, caixa, CRM, auditoria, rateio, acesso, isolamento e retry';
+END $$;
+ROLLBACK;

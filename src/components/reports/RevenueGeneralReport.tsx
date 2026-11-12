@@ -13,6 +13,7 @@ import {
   sumCashReceived,
   sumCreditUsed,
   sumRealizedRevenue,
+  saleRealizedRevenue,
   toPeriodRange,
 } from "@/lib/finance/revenue";
 
@@ -58,10 +59,10 @@ export function RevenueGeneralReport({ establishmentId, startDate, endDate }: Pr
           date: s.sale_date,
           client: (s.client_id && clients.get(s.client_id)) || "—",
           type: service?.kind === "product" ? "Produto" : "Serviço",
-          name: service?.name ?? "—",
+          name: service?.name ?? (s.receipt_id ? s.notes ?? "Recebimento de dívida" : "—"),
           professionals: linked.length > 0 ? linked : fallback ? [fallback] : [],
           payment: s.payment_method ?? "—",
-          amount: Number(s.amount || 0),
+          amount: saleRealizedRevenue(s),
         };
       });
 

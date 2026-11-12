@@ -52,9 +52,10 @@ interface Props {
   /** show selected as compact chip (default) or plain text */
   compact?: boolean;
   placeholder?: string;
+  allowCreate?: boolean;
 }
 
-export function ClientCombobox({ establishmentId, value, onChange, compact = true, placeholder = "Buscar por nome ou telefone..." }: Props) {
+export function ClientCombobox({ establishmentId, value, onChange, compact = true, placeholder = "Buscar por nome ou telefone...", allowCreate = true }: Props) {
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_CLIENTS);
   const [newClientOpen, setNewClientOpen] = useState(false);
@@ -158,10 +159,10 @@ export function ClientCombobox({ establishmentId, value, onChange, compact = tru
       )}
 
 
-      <Button type="button" variant="outline" className="w-full" onClick={() => setNewClientOpen(true)}>
+      {allowCreate && <Button type="button" variant="outline" className="w-full" onClick={() => setNewClientOpen(true)}>
         <UserPlus className="h-4 w-4 mr-2" /> Cadastrar novo cliente
-      </Button>
-      <BookingClientDialog open={newClientOpen} onOpenChange={setNewClientOpen} establishmentId={establishmentId} onCreated={client => { onChange(client.id, client); setSearch(""); }} />
+      </Button>}
+      {allowCreate && <BookingClientDialog open={newClientOpen} onOpenChange={setNewClientOpen} establishmentId={establishmentId} onCreated={client => { onChange(client.id, client); setSearch(""); }} />}
     </div>
   );
 }

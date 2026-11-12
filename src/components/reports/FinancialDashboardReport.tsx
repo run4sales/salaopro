@@ -168,7 +168,7 @@ export function FinancialDashboardReport({ establishmentId, startDate, endDate }
         const cashReceived = sumCashReceived(sales);
         const creditUsed = sumCreditUsed(sales);
         const grossRevenue = sales.reduce((total, sale) => total + asNumber(sale.gross_amount ?? sale.amount), 0);
-        const discounts = Math.max(0, grossRevenue - realizedRevenue);
+        const discounts = Math.max(0, grossRevenue - sales.reduce((total,sale) => total + asNumber(sale.amount),0));
         const realizedExpense = cashEntries
           .filter((entry) => normalizeStatus(entry.status) === "" || CONFIRMED_CASH_STATUSES.has(normalizeStatus(entry.status)))
           .filter((entry) => normalizeStatus(entry.entry_type) === "expense")

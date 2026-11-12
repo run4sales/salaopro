@@ -141,6 +141,20 @@
       "when": 1794341592336,
       "tag": "0019_beauty_ai_copilot",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794495115852,
+      "tag": "0020_accounts_receivable",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794495344833,
+      "tag": "0021_receivable_checkout_hardening",
+      "breakpoints": true
     }
   ]
 }

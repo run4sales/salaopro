@@ -7,11 +7,12 @@
  *    Isso garante que o último dia selecionado entre inteiro, sem depender de
  *    milissegundos ou de conversão de timezone.
  *
- * 2. Faturamento realizado = soma de `sales.amount` das vendas finalizadas
+ * 2. Faturamento realizado = `sales.amount - deferred_amount` das vendas finalizadas
  *    (não excluídas / `deleted_at IS NULL`) cuja `sale_date` está no período.
  *    O crédito do cliente (sinal/adiantamento) é apenas FORMA DE PAGAMENTO de
  *    uma venda já finalizada — descontá-lo subestimaria a receita do serviço
- *    prestado. O caixa do sinal já é tratado separadamente em cash_flow_entries.
+ *    prestado. Recebimentos posteriores entram uma única vez na data da baixa,
+ *    sem criar outra venda; o caixa do sinal permanece separado.
  *
  * 3. Recebido em caixa (dinheiro novo entrando na venda) = `paid_now`
  *    (fallback: bruto - crédito usado). É uma métrica DIFERENTE de faturamento.
@@ -37,6 +38,8 @@ export type SaleLike = {
   paid_now?: number | null;
   credit_used?: number | null;
   fee_amount?: number | null;
+  deferred_amount?: number | null;
+  receipt_id?: string | null;
   client_id?: string | null;
   sale_date?: string | null;
 };
@@ -78,7 +81,7 @@ export function previousPeriodRange(range: PeriodRange): PeriodRange {
 
 /** Regra 2 — faturamento realizado de uma venda. */
 export function saleRealizedRevenue(sale: SaleLike): number {
-  return asNumber(sale.amount);
+  return Math.max(0, round2(asNumber(sale.amount) - asNumber(sale.deferred_amount)));
 }
 
 /** Regra 3 — dinheiro efetivamente recebido no ato da venda. */
@@ -149,7 +152,7 @@ export function buildCommissionEntries(
     .map((link) => {
       const sale = saleById.get(link.sale_id) as SaleLike;
       const participants = participantsBySale.get(link.sale_id) ?? 1;
-      const saleAmount = saleRealizedRevenue(sale);
+      const saleAmount = asNumber(sale.amount);
       const baseAmount = round2(saleAmount / participants);
       const percent = asNumber(link.commission_percentage);
       const stored = link.commission_amount;

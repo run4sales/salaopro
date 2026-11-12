@@ -1893,6 +1893,213 @@ export type Database = {
         }
         Relationships: []
       }
+      receivable_audit_logs: {
+        Row: {
+          created_at: string
+          establishment_id: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          operation: string
+          receivable_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          establishment_id: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          operation: string
+          receivable_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          operation?: string
+          receivable_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivable_audit_logs_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivable_audit_logs_receivable_id_fkey"
+            columns: ["receivable_id"]
+            isOneToOne: false
+            referencedRelation: "receivables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receivable_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          establishment_id: string
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string
+          receivable_id: string
+          request_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by: string
+          establishment_id: string
+          id?: string
+          notes?: string | null
+          payment_date: string
+          payment_method: string
+          receivable_id: string
+          request_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          establishment_id?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string
+          receivable_id?: string
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivable_payments_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivable_payments_receivable_id_fkey"
+            columns: ["receivable_id"]
+            isOneToOne: false
+            referencedRelation: "receivables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receivables: {
+        Row: {
+          amount: number
+          canceled_at: string | null
+          cancellation_reason: string | null
+          client_id: string
+          comanda_id: string | null
+          created_at: string
+          created_by: string
+          description: string
+          due_date: string
+          entry_date: string
+          establishment_id: string
+          expected_method: string
+          id: string
+          initial_paid: number
+          notes: string | null
+          professional_id: string | null
+          received_amount: number
+          request_id: string
+          service_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          canceled_at?: string | null
+          cancellation_reason?: string | null
+          client_id: string
+          comanda_id?: string | null
+          created_at?: string
+          created_by: string
+          description: string
+          due_date: string
+          entry_date?: string
+          establishment_id: string
+          expected_method?: string
+          id?: string
+          initial_paid?: number
+          notes?: string | null
+          professional_id?: string | null
+          received_amount?: number
+          request_id: string
+          service_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          canceled_at?: string | null
+          cancellation_reason?: string | null
+          client_id?: string
+          comanda_id?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_date?: string
+          entry_date?: string
+          establishment_id?: string
+          expected_method?: string
+          id?: string
+          initial_paid?: number
+          notes?: string | null
+          professional_id?: string | null
+          received_amount?: number
+          request_id?: string
+          service_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivables_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_comanda_id_fkey"
+            columns: ["comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivables_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sale_professionals: {
         Row: {
           commission_amount: number
@@ -1935,6 +2142,7 @@ export type Database = {
           created_at: string
           created_by_user_id: string | null
           credit_used: number
+          deferred_amount: number
           deleted_at: string | null
           deleted_by: string | null
           deleted_reason: string | null
@@ -1948,6 +2156,7 @@ export type Database = {
           paid_now: number | null
           payment_method: string | null
           professional_id: string | null
+          receivable_id: string | null
           sale_date: string
           service_id: string
           updated_at: string
@@ -1961,6 +2170,7 @@ export type Database = {
           created_at?: string
           created_by_user_id?: string | null
           credit_used?: number
+          deferred_amount?: number
           deleted_at?: string | null
           deleted_by?: string | null
           deleted_reason?: string | null
@@ -1974,6 +2184,7 @@ export type Database = {
           paid_now?: number | null
           payment_method?: string | null
           professional_id?: string | null
+          receivable_id?: string | null
           sale_date?: string
           service_id: string
           updated_at?: string
@@ -1987,6 +2198,7 @@ export type Database = {
           created_at?: string
           created_by_user_id?: string | null
           credit_used?: number
+          deferred_amount?: number
           deleted_at?: string | null
           deleted_by?: string | null
           deleted_reason?: string | null
@@ -2000,6 +2212,7 @@ export type Database = {
           paid_now?: number | null
           payment_method?: string | null
           professional_id?: string | null
+          receivable_id?: string | null
           sale_date?: string
           service_id?: string
           updated_at?: string
@@ -2025,6 +2238,13 @@ export type Database = {
             columns: ["establishment_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_receivable_id_fkey"
+            columns: ["receivable_id"]
+            isOneToOne: false
+            referencedRelation: "receivables"
             referencedColumns: ["id"]
           },
           {
@@ -2681,6 +2901,7 @@ export type Database = {
           created_at: string
           created_by_user_id: string | null
           credit_used: number
+          deferred_amount: number
           deleted_at: string | null
           deleted_by: string | null
           deleted_reason: string | null
@@ -2694,6 +2915,7 @@ export type Database = {
           paid_now: number | null
           payment_method: string | null
           professional_id: string | null
+          receivable_id: string | null
           sale_date: string
           service_id: string
           updated_at: string
@@ -2752,6 +2974,25 @@ export type Database = {
       can_manage_appointment_block: {
         Args: { p_establishment: string; p_professional: string }
         Returns: boolean
+      }
+      checkout_receivable: {
+        Args: {
+          p_client: string
+          p_comanda?: string
+          p_credit: number
+          p_due: string
+          p_establishment: string
+          p_installments?: number
+          p_items: Json
+          p_machine?: string
+          p_method: string
+          p_notes?: string
+          p_paid: number
+          p_professionals?: Json
+          p_request: string
+          p_total: number
+        }
+        Returns: string
       }
       claim_asaas_webhook: { Args: { p_event_id: string }; Returns: string }
       consume_asaas_audit_ticket: {
@@ -2842,6 +3083,10 @@ export type Database = {
           p_services: string[]
           start_time: string
         }
+        Returns: string
+      }
+      create_receivable: {
+        Args: { p_data: Json; p_establishment: string; p_request: string }
         Returns: string
       }
       delete_payable: { Args: { p_id: string }; Returns: undefined }
@@ -2971,6 +3216,26 @@ export type Database = {
           sales_affected: number
         }[]
       }
+      receivable_status: {
+        Args: {
+          p_amount: number
+          p_canceled: string
+          p_due: string
+          p_received: number
+        }
+        Returns: string
+      }
+      receive_receivable: {
+        Args: {
+          p_amount: number
+          p_date: string
+          p_id: string
+          p_method: string
+          p_notes: string
+          p_request: string
+        }
+        Returns: string
+      }
       refund_beauty_ai_interaction: {
         Args: { p_establishment: string; p_reason?: string; p_user?: string }
         Returns: undefined
@@ -3069,6 +3334,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_receivable: {
+        Args: { p_cancel?: boolean; p_data: Json; p_id: string }
+        Returns: undefined
       }
       use_client_credit: {
         Args: {

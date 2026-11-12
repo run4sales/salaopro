@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { loadClientNames } from "../clientLookup";
+import { fetchReceivables, fetchReceipts } from "../receivables";
 import {
   asNumber,
   buildCommissionEntries,
@@ -22,9 +23,10 @@ export async function fetchClientNames(establishmentId: string, clientIds: (stri
 }
 
 const SALE_COLUMNS =
-  "id, client_id, service_id, professional_id, appointment_id, amount, gross_amount, net_amount, paid_now, credit_used, fee_amount, payment_method, installments, notes, sale_date";
+  "id, client_id, service_id, professional_id, appointment_id, amount, gross_amount, net_amount, paid_now, credit_used, fee_amount, payment_method, installments, notes, sale_date, deferred_amount, receivable_id";
 
 export type FinanceSale = SaleLike & {
+  receivable_id?: string | null;
   service_id: string | null;
   professional_id: string | null;
   appointment_id: string | null;
@@ -41,6 +43,7 @@ export type FinanceSale = SaleLike & {
 export async function fetchRealizedSales(
   establishmentId: string,
   range: PeriodRange,
+  includeReceipts = true,
 ): Promise<FinanceSale[]> {
   const rows: FinanceSale[] = [];
   for (let offset = 0; ; offset += 1000) {
@@ -58,7 +61,17 @@ export async function fetchRealizedSales(
     rows.push(...((data ?? []) as unknown as FinanceSale[]));
     if (!data || data.length < 1000) break;
   }
-  return rows;
+  if (!includeReceipts) return rows;
+  const [accounts, payments] = await Promise.all([fetchReceivables(establishmentId), fetchReceipts(establishmentId)]);
+  const accountMap = new Map(accounts.map(a => [a.id, a]));
+  for (const payment of payments) {
+    const date = `${payment.payment_date}T00:00:00-03:00`;
+    if (new Date(date) < new Date(range.startISO) || new Date(date) >= new Date(range.endExclusiveISO)) continue;
+    const account = accountMap.get(payment.receivable_id);
+    if (!account) continue;
+    rows.push({ id: payment.id, receipt_id: payment.id, amount: payment.amount, gross_amount: payment.amount, net_amount: payment.amount, paid_now: payment.amount, credit_used: 0, fee_amount: 0, deferred_amount: 0, client_id: account.client_id, service_id: account.service_id, professional_id: account.professional_id, appointment_id: null, payment_method: payment.payment_method, installments: null, notes: account.description, sale_date: date });
+  }
+  return rows.sort((a,b) => b.sale_date.localeCompare(a.sale_date));
 }
 
 async function fetchSaleProfessionals(saleIds: string[]): Promise<SaleProfessionalLike[]> {
@@ -103,7 +116,7 @@ export async function fetchCommissionReport(
   establishmentId: string,
   range: PeriodRange,
 ): Promise<CommissionReport> {
-  const sales = await fetchRealizedSales(establishmentId, range);
+  const sales = await fetchRealizedSales(establishmentId, range, false);
   const saleIds = sales.map((sale) => sale.id);
   const clientIds = Array.from(new Set(sales.map((s) => s.client_id).filter(Boolean))) as string[];
 

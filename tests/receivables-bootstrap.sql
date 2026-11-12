@@ -1,0 +1,23 @@
+-- Only for an empty isolated local database.
+CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+CREATE SCHEMA auth;
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+CREATE TABLE public.profiles(id uuid PRIMARY KEY,user_id uuid);
+CREATE TABLE public.clients(id uuid PRIMARY KEY,establishment_id uuid,credit_balance numeric DEFAULT 0);
+CREATE TABLE public.services(id uuid PRIMARY KEY,establishment_id uuid,name text,kind text,stock_quantity int DEFAULT 50,commission_solo numeric DEFAULT 10);
+CREATE TABLE public.professionals(id uuid PRIMARY KEY,establishment_id uuid,commission_type text DEFAULT 'per_service',custom_percentage numeric DEFAULT 20);
+CREATE TABLE public.comandas(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),establishment_id uuid,client_id uuid,appointment_id uuid,status text,subtotal numeric,total numeric,discount numeric DEFAULT 0,closed_at timestamptz);
+CREATE TABLE public.comanda_items(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),establishment_id uuid,comanda_id uuid,kind text,service_id uuid,name text,qty numeric,unit_price numeric,total numeric,professional_id uuid,commission_percentage numeric DEFAULT 10,payment_source text DEFAULT 'normal');
+CREATE TABLE public.appointments(id uuid PRIMARY KEY,status text);
+CREATE TABLE public.appointment_professionals(appointment_id uuid,professional_id uuid);
+CREATE TABLE public.card_machines(id uuid PRIMARY KEY,establishment_id uuid,active boolean);
+CREATE TABLE public.card_machine_fees(card_machine_id uuid,payment_type text,installments int,fee_percentage numeric);
+CREATE TABLE public.sales(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),establishment_id uuid,client_id uuid,service_id uuid,professional_id uuid,appointment_id uuid,amount numeric,gross_amount numeric,paid_now numeric,credit_used numeric,fee_amount numeric,net_amount numeric,payment_method text,sale_date timestamptz,created_by_user_id uuid,card_machine_id uuid,installments int,notes text,deleted_at timestamptz);
+CREATE TABLE public.sale_professionals(establishment_id uuid,sale_id uuid,professional_id uuid,role text,commission_percentage numeric,commission_amount numeric);
+CREATE TABLE public.cash_flow_entries(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),establishment_id uuid,entry_type text,category text,description text,amount numeric,payment_method text,status text,entry_date timestamptz,source text,source_id uuid,notes text);
+CREATE FUNCTION public.is_establishment_admin(uuid,uuid) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT EXISTS(SELECT 1 FROM public.profiles WHERE id=$1 AND user_id=$2) $$;
+CREATE FUNCTION public.use_client_credit(uuid,numeric,text,text,text,uuid) RETURNS uuid LANGUAGE plpgsql AS $$ BEGIN UPDATE public.clients SET credit_balance=credit_balance-$2 WHERE id=$1 AND credit_balance>=$2; IF NOT FOUND THEN RAISE EXCEPTION 'Saldo insuficiente'; END IF; RETURN gen_random_uuid(); END $$;
+INSERT INTO public.profiles VALUES('10000000-0000-0000-0000-000000000001','20000000-0000-0000-0000-000000000001'),('10000000-0000-0000-0000-000000000002','20000000-0000-0000-0000-000000000002');
+INSERT INTO public.clients(id,establishment_id) VALUES('30000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001'),('30000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000002');
+INSERT INTO public.services(id,establishment_id,name,kind) VALUES('40000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','Serviço teste','service');
+INSERT INTO public.professionals(id,establishment_id) VALUES('50000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001');

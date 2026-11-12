@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigationState } from "@/hooks/useNavigationState";
 import { navigationChoice } from "@/lib/navigationPersistence";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,9 @@ import { ClientCreditPrompt } from "@/components/clients/ClientCreditPrompt";
 import { insertSalesWithCreatorFallback } from "@/lib/salesInsert";
 import { syncSaleCommissions } from "@/lib/commissions";
 import { Wallet } from "lucide-react";
+import { DeferredPaymentFields } from "@/components/receivables/DeferredPaymentFields";
+import { brazilToday } from "@/lib/finance/receivableRules";
+import { refreshReceivables } from "@/components/receivables/ReceivableDetails";
 
 interface SimpleClient { id: string; name: string }
 interface SimpleService {
@@ -93,7 +96,13 @@ const roleLabels: Record<CommissionRole, string> = {
 };
 
 export default function Sales() {
-  const { user, profile } = useAuth();
+  const { user, profile, establishmentRole } = useAuth();
+  const qc = useQueryClient();
+  const [deferred, setDeferred] = useState(false);
+  const [paidNow, setPaidNow] = useState("0");
+  const [due, setDue] = useState(brazilToday());
+  const request = useRef(crypto.randomUUID());
+  const lock = useRef(false);
 
   useEffect(() => {
     document.title = "PDV de Vendas | Beauty Core";
@@ -244,8 +253,9 @@ export default function Sales() {
     ? Math.min(Number(creditAmount) || 0, availableCredit, grossTotal)
     : 0;
   const remainingToPay = Math.max(grossTotal - appliedCredit, 0);
-  const feeAmount = (remainingToPay * feePercentage) / 100;
-  const netTotal = remainingToPay - feeAmount;
+  const payableNow = deferred ? Math.max(0, Number(paidNow) || 0) : remainingToPay;
+  const feeAmount = (payableNow * feePercentage) / 100;
+  const netTotal = payableNow - feeAmount;
 
   // Auto-prompt quando cliente com saldo é selecionado e há itens no carrinho
   useEffect(() => {
@@ -322,6 +332,8 @@ export default function Sales() {
   const availableProfessionals = (professionals || []).filter(p => !professionalEntries.some(e => e.professional_id === p.id));
 
   const resetSale = () => {
+    request.current = crypto.randomUUID();
+    setDeferred(false); setPaidNow("0"); setDue(brazilToday());
     setCart([]);
     setProfessionalEntries([]);
     setClientId("");
@@ -338,6 +350,7 @@ export default function Sales() {
   };
 
   const onFinalize = async () => {
+    if (lock.current) return;
     if (!profile?.id) return;
     if (!clientId) { toast.error("Selecione o cliente."); return; }
     if (cart.length === 0) { toast.error("Adicione ao menos um serviço ou produto."); return; }
@@ -347,11 +360,17 @@ export default function Sales() {
       toast.error(`Estoque insuficiente de "${outOfStock.service.name}" (disponível: ${outOfStock.service.stock_quantity}).`);
       return;
     }
-    if (remainingToPay > 0 && isCard && !cardMachineId) { toast.error("Selecione a maquininha."); return; }
+    if (payableNow > 0 && isCard && !cardMachineId) { toast.error("Selecione a maquininha."); return; }
     if (appliedCredit > availableCredit) { toast.error("Crédito insuficiente."); return; }
 
+    lock.current = true;
     setSubmitting(true);
     try {
+      if (deferred) {
+        const {error} = await supabase.rpc("checkout_receivable", { p_establishment: profile.id, p_client: clientId, p_items: cart.map(item => ({service_id: item.service.id, professional_id: professionalEntries[0]?.professional_id, total: (item.customPrice ?? item.service.price) * item.qty, qty: item.qty})), p_total: Number(grossTotal.toFixed(2)), p_paid: Number(paidNow), p_credit: appliedCredit, p_due: due, p_method: paymentMethod, p_request: request.current, p_professionals: professionalEntries.map(p=>({...p})), p_notes: notes, p_machine: isCard ? cardMachineId || null : null, p_installments: paymentMethod === "Crédito parcelado" ? Number(installments) : null });
+        if(error) throw error;
+        await refreshReceivables(qc); await qc.invalidateQueries({queryKey:["services",profile.id]}); toast.success("Venda finalizada e saldo a receber registrado."); resetSale(); return;
+      }
       const principal = professionalEntries[0].professional_id;
       const flatItems: { svc: SimpleService; baseAmount: number }[] = [];
       cart.forEach((item) => {
@@ -432,6 +451,7 @@ export default function Sales() {
     } catch (err: any) {
       toast.error(err?.message ?? "Não foi possível finalizar a venda.");
     } finally {
+      lock.current = false;
       setSubmitting(false);
     }
   };
@@ -772,10 +792,10 @@ export default function Sales() {
                   <span>- R$ {appliedCredit.toFixed(2)}</span>
                 </div>
               )}
-              {appliedCredit > 0 && (
+              {(appliedCredit > 0 || deferred) && (
                 <div className="flex justify-between font-semibold border-t pt-1.5">
                   <span>A pagar agora</span>
-                  <span>R$ {remainingToPay.toFixed(2)}</span>
+                  <span>R$ {payableNow.toFixed(2)}</span>
                 </div>
               )}
               {feeAmount > 0 && (
@@ -854,6 +874,7 @@ export default function Sales() {
             </div>
 
             <div className="p-3 border-t bg-card">
+              {(establishmentRole === "owner" || establishmentRole === "admin") && <DeferredPaymentFields enabled={deferred} onEnabled={setDeferred} paid={paidNow} onPaid={setPaidNow} due={due} onDue={setDue} total={remainingToPay} />}
               <Button
                 size="lg"
                 className="w-full h-12 text-base font-bold"
